@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sqlite3
+from typing import Optional
 
 from models.exercise import Exercise, ExerciseCategory
 from repositories.exercise_repo import ExerciseRepo
@@ -21,7 +22,7 @@ class ExerciseService:
         self,
         name: str,
         category: ExerciseCategory,
-        equipment: str | None = None,
+        equipment: Optional[str] = None,
     ) -> Exercise:
         exercise = Exercise(
             id=None,

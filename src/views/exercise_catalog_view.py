@@ -15,7 +15,6 @@ def build_exercise_catalog_view(
 ) -> ft.View:
     """Exercise catalog: add exercises, archive / unarchive."""
 
-    show_archived_ref = ft.Ref[bool]()
     show_archived = [False]  # mutable container so nested functions can write
 
     list_col = ft.Column(spacing=0, scroll=ft.ScrollMode.AUTO, expand=True)
