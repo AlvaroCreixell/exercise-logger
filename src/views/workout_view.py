@@ -102,6 +102,7 @@ def build_workout_view(
                         size=12,
                     ),
                     bgcolor=ft.Colors.GREEN_900,
+                    on_click=lambda e, sid=s.id, idx=i+1, r=s.reps, w=s.weight: on_edit_set(sid, idx, r, w),
                 )
                 for i, s in enumerate(session_sets)
             ],
@@ -180,6 +181,106 @@ def build_workout_view(
                 routine_day_exercise_id=rde.id,
             )
             rebuild_cards()
+
+        def on_edit_set(set_id: int, display_idx: int, current_reps: int, current_weight: float) -> None:
+            edit_reps = [current_reps if current_reps is not None else 0]
+            edit_weight = [current_weight if current_weight is not None else 0.0]
+
+            reps_text = ft.Text(f"{edit_reps[0]:.0f}", size=20, width=64,
+                                text_align=ft.TextAlign.CENTER, weight=ft.FontWeight.BOLD)
+            weight_text = ft.Text(f"{edit_weight[0]:.1f}", size=20, width=64,
+                                  text_align=ft.TextAlign.CENTER, weight=ft.FontWeight.BOLD)
+
+            def dec_reps(e):
+                edit_reps[0] = max(0, edit_reps[0] - 1)
+                reps_text.value = f"{edit_reps[0]:.0f}"
+                reps_text.update()
+
+            def inc_reps(e):
+                edit_reps[0] += 1
+                reps_text.value = f"{edit_reps[0]:.0f}"
+                reps_text.update()
+
+            def dec_weight(e):
+                edit_weight[0] = max(0.0, edit_weight[0] - 5.0)
+                weight_text.value = f"{edit_weight[0]:.1f}"
+                weight_text.update()
+
+            def inc_weight(e):
+                edit_weight[0] += 5.0
+                weight_text.value = f"{edit_weight[0]:.1f}"
+                weight_text.update()
+
+            def do_save(e):
+                page.close(edit_dlg)
+                workout_svc.edit_set(set_id, reps=int(edit_reps[0]), weight=edit_weight[0])
+                rebuild_cards()
+
+            def do_delete(e):
+                page.close(edit_dlg)
+
+                def confirm_delete(e2):
+                    page.close(confirm_dlg)
+                    workout_svc.delete_set(set_id)
+                    rebuild_cards()
+
+                confirm_dlg = ft.AlertDialog(
+                    modal=True,
+                    title=ft.Text("Delete Set?"),
+                    content=ft.Text(f"Remove set {display_idx} from this workout?"),
+                    actions=[
+                        ft.TextButton("Cancel", on_click=lambda e: page.close(confirm_dlg)),
+                        ft.ElevatedButton(
+                            "Delete",
+                            on_click=confirm_delete,
+                            style=ft.ButtonStyle(bgcolor=ft.Colors.RED_700),
+                        ),
+                    ],
+                )
+                page.open(confirm_dlg)
+
+            edit_dlg = ft.AlertDialog(
+                modal=True,
+                title=ft.Text(f"Edit Set {display_idx}"),
+                content=ft.Column(
+                    controls=[
+                        ft.Row(
+                            controls=[
+                                ft.Text("Reps", size=12, color=ft.Colors.WHITE54, width=56),
+                                ft.IconButton(icon=ft.Icons.REMOVE_CIRCLE_OUTLINE,
+                                              icon_color=ft.Colors.WHITE70, icon_size=28, on_click=dec_reps),
+                                reps_text,
+                                ft.IconButton(icon=ft.Icons.ADD_CIRCLE_OUTLINE,
+                                              icon_color=ft.Colors.WHITE70, icon_size=28, on_click=inc_reps),
+                            ],
+                            alignment=ft.MainAxisAlignment.START,
+                            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                        ),
+                        ft.Row(
+                            controls=[
+                                ft.Text("Weight", size=12, color=ft.Colors.WHITE54, width=56),
+                                ft.IconButton(icon=ft.Icons.REMOVE_CIRCLE_OUTLINE,
+                                              icon_color=ft.Colors.WHITE70, icon_size=28, on_click=dec_weight),
+                                weight_text,
+                                ft.IconButton(icon=ft.Icons.ADD_CIRCLE_OUTLINE,
+                                              icon_color=ft.Colors.WHITE70, icon_size=28, on_click=inc_weight),
+                            ],
+                            alignment=ft.MainAxisAlignment.START,
+                            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                        ),
+                    ],
+                    spacing=8,
+                    tight=True,
+                ),
+                actions=[
+                    ft.TextButton("Delete", on_click=do_delete,
+                                  style=ft.ButtonStyle(color=ft.Colors.RED_400)),
+                    ft.TextButton("Cancel", on_click=lambda e: page.close(edit_dlg)),
+                    ft.ElevatedButton("Save", on_click=do_save,
+                                      style=ft.ButtonStyle(bgcolor=ft.Colors.BLUE_700)),
+                ],
+            )
+            page.open(edit_dlg)
 
         log_btn = ft.ElevatedButton(
             "Log Set",
