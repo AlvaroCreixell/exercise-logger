@@ -14,6 +14,7 @@ def build_home_view(
     page: ft.Page,
     routine: Optional[Routine],
     current_day: Optional[RoutineDay],
+    all_days: Optional[list[RoutineDay]],
     in_progress: Optional[WorkoutSession],
     workout_svc: WorkoutService,
     cycle_svc: CycleService,
@@ -181,6 +182,40 @@ def build_home_view(
             alignment=ft.alignment.center,
         )
 
+    # ── day selector ──────────────────────────────────────────────
+    day_selector: list[ft.Control] = []
+    if routine and all_days and len(all_days) > 1:
+        chips = []
+        for d in all_days:
+            is_current = current_day is not None and d.id == current_day.id
+
+            def on_chip_tap(e: ft.ControlEvent, day=d) -> None:
+                cycle_svc.override_day(routine.id, day.day_index)
+                page.go("/home")
+
+            chips.append(
+                ft.ActionChip(
+                    label=ft.Text(
+                        d.name,
+                        size=12,
+                        color=ft.Colors.WHITE if is_current else ft.Colors.WHITE70,
+                        weight=ft.FontWeight.BOLD if is_current else ft.FontWeight.NORMAL,
+                    ),
+                    bgcolor=ft.Colors.BLUE_900 if is_current else ft.Colors.with_opacity(0.12, ft.Colors.WHITE),
+                    on_click=on_chip_tap,
+                )
+            )
+        day_selector.append(
+            ft.Column(
+                controls=[
+                    ft.Text("Switch Day", size=11, color=ft.Colors.WHITE38, weight=ft.FontWeight.W_600),
+                    ft.Row(controls=chips, wrap=True, spacing=6, run_spacing=6),
+                ],
+                spacing=6,
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+            )
+        )
+
     # ── start button ──────────────────────────────────────────────
     start_btn = ft.ElevatedButton(
         text="Start Workout",
@@ -201,6 +236,7 @@ def build_home_view(
             *resume_banner,
             ft.Container(height=24),
             day_info,
+            *([ft.Container(height=16), *day_selector] if day_selector else []),
             ft.Container(height=32),
             start_btn,
         ],

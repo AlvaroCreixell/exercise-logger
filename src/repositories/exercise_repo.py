@@ -61,3 +61,8 @@ class ExerciseRepo(BaseRepository):
         self._execute(
             "UPDATE exercises SET is_archived = 1 WHERE id = ?", (exercise_id,)
         )
+
+    def unarchive(self, exercise_id: int) -> None:
+        self._execute(
+            "UPDATE exercises SET is_archived = 0 WHERE id = ?", (exercise_id,)
+        )

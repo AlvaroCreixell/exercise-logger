@@ -7,9 +7,13 @@ from db.connection import get_connection
 from db.schema import init_db
 from db.seed import seed_sample_routine
 from services.cycle_service import CycleService
+from services.exercise_service import ExerciseService
 from services.routine_service import RoutineService
 from services.workout_service import WorkoutService
+from views.exercise_catalog_view import build_exercise_catalog_view
 from views.home_view import build_home_view
+from views.routine_editor_view import build_routine_editor_view
+from views.settings_view import build_settings_view
 from views.workout_view import build_workout_view
 
 
@@ -27,6 +31,7 @@ def main(page: ft.Page) -> None:
     workout_svc = WorkoutService(conn)
     cycle_svc = CycleService(conn)
     routine_svc = RoutineService(conn)
+    exercise_svc = ExerciseService(conn)
 
     # ── Navigation ───────────────────────────────────────────────
     def route_change(e: ft.RouteChangeEvent) -> None:
@@ -35,12 +40,14 @@ def main(page: ft.Page) -> None:
 
         if route in ("/", "/home"):
             routine = routine_svc.get_active_routine()
+            all_days = routine_svc.get_days(routine.id) if routine else None
             current_day = cycle_svc.get_current_day(routine.id) if routine else None
             in_progress = workout_svc.get_in_progress_session()
             view = build_home_view(
                 page=page,
                 routine=routine,
                 current_day=current_day,
+                all_days=all_days,
                 in_progress=in_progress,
                 workout_svc=workout_svc,
                 cycle_svc=cycle_svc,
@@ -93,26 +100,16 @@ def main(page: ft.Page) -> None:
             )
 
         elif route == "/settings":
+            page.views.append(build_settings_view(page))
+
+        elif route == "/settings/routine":
             page.views.append(
-                ft.View(
-                    route="/settings",
-                    controls=[
-                        ft.AppBar(
-                            title=ft.Text("Settings"),
-                            bgcolor=ft.Colors.SURFACE,
-                            automatically_imply_leading=False,
-                        ),
-                        ft.Container(
-                            content=ft.Text(
-                                "Routine editor & settings — coming in Phase 2",
-                                color=ft.Colors.WHITE54,
-                            ),
-                            alignment=ft.alignment.center,
-                            expand=True,
-                        ),
-                    ],
-                    bgcolor=ft.Colors.BACKGROUND,
-                )
+                build_routine_editor_view(page, routine_svc, exercise_svc)
+            )
+
+        elif route == "/settings/exercises":
+            page.views.append(
+                build_exercise_catalog_view(page, exercise_svc)
             )
 
         else:
@@ -133,8 +130,11 @@ def main(page: ft.Page) -> None:
         if not p.views:
             return
         route = p.views[-1].route
-        # No nav bar during an active workout
-        if route and route.startswith("/workout/"):
+        # No nav bar during workout or on sub-screens
+        if route and (
+            route.startswith("/workout/")
+            or route.startswith("/settings/")
+        ):
             return
 
         selected = 0

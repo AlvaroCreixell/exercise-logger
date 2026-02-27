@@ -202,3 +202,43 @@ class RoutineRepo(BaseRepository):
         self._execute(
             "DELETE FROM routine_day_exercises WHERE id = ?", (rde_id,)
         )
+
+    def update_rde_sort_order(self, rde_id: int, sort_order: int) -> None:
+        self._execute(
+            "UPDATE routine_day_exercises SET sort_order = ? WHERE id = ?",
+            (sort_order, rde_id),
+        )
+
+    # --- Update helpers ---
+
+    def update_routine_name(self, routine_id: int, name: str) -> None:
+        self._execute(
+            "UPDATE routines SET name = ? WHERE id = ?", (name, routine_id)
+        )
+
+    def update_day_name(self, day_id: int, name: str) -> None:
+        self._execute(
+            "UPDATE routine_days SET name = ? WHERE id = ?", (name, day_id)
+        )
+
+    def swap_day_indexes(
+        self, day_id_a: int, index_a: int, day_id_b: int, index_b: int
+    ) -> None:
+        """Swap day_index between two days using a temp index of -1 to avoid UNIQUE conflict."""
+        self._execute(
+            "UPDATE routine_days SET day_index = -1 WHERE id = ?", (day_id_a,)
+        )
+        self._execute(
+            "UPDATE routine_days SET day_index = ? WHERE id = ?", (index_a, day_id_b)
+        )
+        self._execute(
+            "UPDATE routine_days SET day_index = ? WHERE id = ?", (index_b, day_id_a)
+        )
+
+    def resequence_days_after_delete(self, routine_id: int, deleted_index: int) -> None:
+        """After deleting a day, close the gap by decrementing all higher day_indexes."""
+        self._execute(
+            "UPDATE routine_days SET day_index = day_index - 1"
+            " WHERE routine_id = ? AND day_index > ?",
+            (routine_id, deleted_index),
+        )
