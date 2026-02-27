@@ -169,6 +169,25 @@ class TestDayExercises:
         assert rde1.sort_order == 0
         assert rde2.sort_order == 1
 
+    def test_add_after_remove_does_not_crash(self, db_conn: sqlite3.Connection) -> None:
+        """Regression: remove + add must not hit UNIQUE(routine_day_id, sort_order)."""
+        svc = RoutineService(db_conn)
+        ex1 = _make_exercise(db_conn, "A")
+        ex2 = _make_exercise(db_conn, "B")
+        ex3 = _make_exercise(db_conn, "C")
+        ex4 = _make_exercise(db_conn, "D")
+        r = svc.create_routine("X")
+        d = svc.add_day(r.id, "Day")
+        rde1 = svc.add_exercise_to_day(d.id, ex1)  # sort_order 0
+        rde2 = svc.add_exercise_to_day(d.id, ex2)  # sort_order 1
+        svc.add_exercise_to_day(d.id, ex3)          # sort_order 2
+        svc.remove_exercise_from_day(rde2.id)       # remove middle → gap at 1
+        rde4 = svc.add_exercise_to_day(d.id, ex4)  # must get sort_order 2, not collide
+        pairs = svc.get_day_exercises(d.id)
+        assert len(pairs) == 3
+        sort_orders = [rde.sort_order for rde, _ in pairs]
+        assert sort_orders == sorted(sort_orders)   # contiguous and ordered
+
     def test_remove_exercise_from_day(self, db_conn: sqlite3.Connection) -> None:
         svc = RoutineService(db_conn)
         ex_id = _make_exercise(db_conn)

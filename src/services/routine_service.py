@@ -141,5 +141,9 @@ class RoutineService:
         return rde
 
     def remove_exercise_from_day(self, rde_id: int) -> None:
+        rde = self._repo.get_day_exercise_by_id(rde_id)
+        if rde is None:
+            return
         self._repo.delete_day_exercise(rde_id)
+        self._repo.resequence_exercises_after_delete(rde.routine_day_id, rde.sort_order)
         self._conn.commit()

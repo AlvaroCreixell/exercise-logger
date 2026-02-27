@@ -198,9 +198,23 @@ class RoutineRepo(BaseRepository):
             ),
         )
 
+    def get_day_exercise_by_id(self, rde_id: int) -> Optional[RoutineDayExercise]:
+        row = self._fetchone(
+            "SELECT * FROM routine_day_exercises WHERE id = ?", (rde_id,)
+        )
+        return _row_to_rde(row) if row else None
+
     def delete_day_exercise(self, rde_id: int) -> None:
         self._execute(
             "DELETE FROM routine_day_exercises WHERE id = ?", (rde_id,)
+        )
+
+    def resequence_exercises_after_delete(self, day_id: int, deleted_sort_order: int) -> None:
+        """After deleting an exercise, close the gap by decrementing all higher sort_orders."""
+        self._execute(
+            "UPDATE routine_day_exercises SET sort_order = sort_order - 1"
+            " WHERE routine_day_id = ? AND sort_order > ?",
+            (day_id, deleted_sort_order),
         )
 
     def update_rde_sort_order(self, rde_id: int, sort_order: int) -> None:
