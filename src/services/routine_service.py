@@ -79,12 +79,25 @@ class RoutineService:
         self._conn.commit()
 
     def delete_day(self, day_id: int) -> None:
-        """Delete a day and re-sequence all sibling day_indexes."""
+        """Delete a day, re-sequence siblings, and clamp cycle state."""
         day = self._repo.get_day(day_id)
         if day is None:
             return
         self._repo.delete_day(day_id)
         self._repo.resequence_days_after_delete(day.routine_id, day.day_index)
+        # Clamp cycle state if it now points beyond the last day
+        total = self._repo.count_days(day.routine_id)
+        state = self._cycle_repo.get_state(day.routine_id)
+        if state and state.current_day_index >= total:
+            from models.routine import RoutineCycleState
+            clamped = RoutineCycleState(
+                id=state.id,
+                routine_id=state.routine_id,
+                current_day_index=max(0, total - 1),
+                last_session_id=state.last_session_id,
+                updated_at=state.updated_at,
+            )
+            self._cycle_repo.upsert_state(clamped)
         self._conn.commit()
 
     def move_day_up(self, routine_id: int, day_id: int) -> None:

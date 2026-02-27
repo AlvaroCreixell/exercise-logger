@@ -7,6 +7,7 @@ import pytest
 
 from services.routine_service import RoutineService
 from services.exercise_service import ExerciseService
+from services.cycle_service import CycleService
 from models.exercise import ExerciseCategory
 
 
@@ -210,4 +211,41 @@ class TestCycleStateOnCreate:
             (routine.id,),
         ).fetchone()
         assert row is not None
+        assert row["current_day_index"] == 0
+
+
+class TestDeleteDayClampsState:
+    def test_delete_day_clamps_cycle_when_pointing_beyond(self, db_conn: sqlite3.Connection) -> None:
+        svc = RoutineService(db_conn)
+        cycle_svc = CycleService(db_conn)
+
+        routine = svc.create_routine("Test")
+        svc.set_active_routine(routine.id)
+        d1 = svc.add_day(routine.id, "Day 1")
+        d2 = svc.add_day(routine.id, "Day 2")
+        d3 = svc.add_day(routine.id, "Day 3")
+
+        # Point cycle to last day (index 2)
+        cycle_svc.override_day(routine.id, 2)
+
+        # Delete day 2 (index 1). Routine now has 2 days (index 0, 1).
+        # Cycle was at index 2, which no longer exists — should clamp to 1.
+        svc.delete_day(d2.id)
+
+        idx = cycle_svc.get_current_index(routine.id)
+        assert idx <= 1  # Must be clamped to valid range
+
+    def test_delete_last_remaining_day_sets_cycle_to_zero(self, db_conn: sqlite3.Connection) -> None:
+        svc = RoutineService(db_conn)
+
+        routine = svc.create_routine("Test")
+        svc.set_active_routine(routine.id)
+        d1 = svc.add_day(routine.id, "Only Day")
+
+        svc.delete_day(d1.id)
+
+        row = db_conn.execute(
+            "SELECT current_day_index FROM routine_cycle_state WHERE routine_id = ?",
+            (routine.id,),
+        ).fetchone()
         assert row["current_day_index"] == 0
