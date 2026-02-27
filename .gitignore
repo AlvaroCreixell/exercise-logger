@@ -47,3 +47,6 @@ Thumbs.db
 
 # Claude Code project files (not needed in repo)
 .claude/
+
+# Git worktrees
+.worktrees/
