@@ -197,3 +197,17 @@ class TestDayExercises:
         svc.remove_exercise_from_day(rde.id)
         pairs = svc.get_day_exercises(d.id)
         assert len(pairs) == 0
+
+
+class TestCycleStateOnCreate:
+    def test_create_routine_initializes_cycle_state(self, db_conn: sqlite3.Connection) -> None:
+        svc = RoutineService(db_conn)
+        routine = svc.create_routine("Test Routine")
+        svc.set_active_routine(routine.id)
+
+        row = db_conn.execute(
+            "SELECT current_day_index FROM routine_cycle_state WHERE routine_id = ?",
+            (routine.id,),
+        ).fetchone()
+        assert row is not None
+        assert row["current_day_index"] == 0

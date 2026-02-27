@@ -6,11 +6,13 @@ from typing import Optional
 from models.exercise import Exercise
 from models.routine import Routine, RoutineDay, RoutineDayExercise
 from repositories.routine_repo import RoutineRepo
+from repositories.cycle_repo import CycleRepo
 
 
 class RoutineService:
     def __init__(self, conn: sqlite3.Connection) -> None:
         self._repo = RoutineRepo(conn)
+        self._cycle_repo = CycleRepo(conn)
         self._conn = conn
 
     # ── Read ─────────────────────────────────────────────────────
@@ -54,6 +56,7 @@ class RoutineService:
         """Make this the one active routine (deactivates all others)."""
         self._repo.deactivate_all()
         self._repo.set_active(routine_id)
+        self._cycle_repo.create_for_routine(routine_id)
         self._conn.commit()
 
     # ── Day write ─────────────────────────────────────────────────
