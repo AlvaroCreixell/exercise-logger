@@ -143,11 +143,11 @@ def main(page: ft.Page) -> None:
         page.update()
 
     def view_pop(e: ft.ViewPopEvent) -> None:
-        if len(page.views) > 1:
-            page.views.pop()
-            top_view = page.views[-1]
-            page.go(top_view.route)
-        # else: single-view stack (at root) — back press has nowhere to go
+        route = page.route
+        if route.startswith("/settings/"):
+            page.go("/settings")
+        elif route.startswith("/workout/"):
+            page.go("/home")
 
     def _inject_nav_bar(p: ft.Page) -> None:
         if not p.views:
