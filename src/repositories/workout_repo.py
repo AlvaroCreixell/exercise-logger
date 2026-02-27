@@ -126,25 +126,31 @@ class WorkoutRepo(BaseRepository):
         self, exercise_id: int, exclude_session_id: Optional[int] = None
     ) -> list[LoggedSet]:
         """Return sets from the most recent finished session for this exercise."""
-        params: list = [exercise_id]
-        exclude_clause = ""
         if exclude_session_id is not None:
-            exclude_clause = " AND ws.id != ?"
-            params.append(exclude_session_id)
+            sql = (
+                "SELECT ws.id"
+                " FROM logged_sets ls"
+                " JOIN workout_sessions ws ON ws.id = ls.session_id"
+                " WHERE ls.exercise_id = ?"
+                "   AND ws.status = 'finished'"
+                "   AND ws.id != ?"
+                " ORDER BY ws.started_at DESC"
+                " LIMIT 1"
+            )
+            params: list = [exercise_id, exclude_session_id]
+        else:
+            sql = (
+                "SELECT ws.id"
+                " FROM logged_sets ls"
+                " JOIN workout_sessions ws ON ws.id = ls.session_id"
+                " WHERE ls.exercise_id = ?"
+                "   AND ws.status = 'finished'"
+                " ORDER BY ws.started_at DESC"
+                " LIMIT 1"
+            )
+            params = [exercise_id]
 
-        row = self._fetchone(
-            f"""
-            SELECT ws.id
-            FROM logged_sets ls
-            JOIN workout_sessions ws ON ws.id = ls.session_id
-            WHERE ls.exercise_id = ?
-              AND ws.status = 'finished'
-              {exclude_clause}
-            ORDER BY ws.started_at DESC
-            LIMIT 1
-            """,
-            params,
-        )
+        row = self._fetchone(sql, params)
         if not row:
             return []
 

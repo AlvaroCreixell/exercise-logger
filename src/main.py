@@ -6,9 +6,8 @@ from config import APP_NAME
 from db.connection import get_connection
 from db.schema import init_db
 from db.seed import seed_sample_routine
-from repositories.routine_repo import RoutineRepo
-from repositories.workout_repo import WorkoutRepo
 from services.cycle_service import CycleService
+from services.routine_service import RoutineService
 from services.workout_service import WorkoutService
 from views.home_view import build_home_view
 from views.workout_view import build_workout_view
@@ -24,11 +23,10 @@ def main(page: ft.Page) -> None:
     init_db(conn)
     seed_sample_routine(conn)  # No-op if data already exists
 
-    # ── Services / repos ─────────────────────────────────────────
+    # ── Services ─────────────────────────────────────────────────
     workout_svc = WorkoutService(conn)
     cycle_svc = CycleService(conn)
-    routine_repo = RoutineRepo(conn)
-    workout_repo = WorkoutRepo(conn)
+    routine_svc = RoutineService(conn)
 
     # ── Navigation ───────────────────────────────────────────────
     def route_change(e: ft.RouteChangeEvent) -> None:
@@ -36,7 +34,7 @@ def main(page: ft.Page) -> None:
         route = e.route
 
         if route in ("/", "/home"):
-            routine = routine_repo.get_active()
+            routine = routine_svc.get_active_routine()
             current_day = cycle_svc.get_current_day(routine.id) if routine else None
             in_progress = workout_svc.get_in_progress_session()
             view = build_home_view(
@@ -55,7 +53,7 @@ def main(page: ft.Page) -> None:
             except ValueError:
                 page.go("/home")
                 return
-            session = workout_repo.get_by_id(session_id)
+            session = workout_svc.get_session_by_id(session_id)
             if session is None:
                 page.go("/home")
                 return
@@ -68,7 +66,6 @@ def main(page: ft.Page) -> None:
                 session=session,
                 workout_svc=workout_svc,
                 cycle_svc=cycle_svc,
-                routine_repo=routine_repo,
             )
             page.views.append(view)
 
@@ -126,9 +123,11 @@ def main(page: ft.Page) -> None:
         page.update()
 
     def view_pop(e: ft.ViewPopEvent) -> None:
-        page.views.pop()
-        top_view = page.views[-1]
-        page.go(top_view.route)
+        if len(page.views) > 1:
+            page.views.pop()
+            top_view = page.views[-1]
+            page.go(top_view.route)
+        # else: single-view stack (at root) — back press has nowhere to go
 
     def _inject_nav_bar(p: ft.Page) -> None:
         if not p.views:

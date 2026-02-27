@@ -20,24 +20,78 @@ def build_home_view(
 ) -> ft.View:
     """Build and return the Home ft.View."""
 
+    def _do_start_new_session() -> None:
+        """Start a fresh session — caller must ensure no in-progress session exists."""
+        if routine is None or current_day is None:
+            page.open(ft.SnackBar(ft.Text("No active routine. Set one up in Settings.")))
+            page.update()
+            return
+        session = workout_svc.start_session(
+            routine_id=routine.id,
+            routine_day_id=current_day.id,
+        )
+        page.go(f"/workout/{session.id}")
+
     def on_start_workout(e: ft.ControlEvent) -> None:
         if routine is None or current_day is None:
             page.open(ft.SnackBar(ft.Text("No active routine. Set one up in Settings.")))
             page.update()
             return
-        try:
-            session = workout_svc.start_session(
-                routine_id=routine.id,
-                routine_day_id=current_day.id,
+        if in_progress:
+            # Prompt the user to resolve the existing session first.
+            def do_resume(e2: ft.ControlEvent) -> None:
+                page.close(dlg)
+                page.go(f"/workout/{in_progress.id}")
+
+            def do_abandon(e2: ft.ControlEvent) -> None:
+                page.close(dlg)
+                workout_svc.abandon_session(in_progress.id)
+                _do_start_new_session()
+
+            dlg = ft.AlertDialog(
+                modal=True,
+                title=ft.Text("Workout already in progress"),
+                content=ft.Text(
+                    "You have an unfinished workout. Resume it, or abandon it to start a new one."
+                ),
+                actions=[
+                    ft.TextButton("Cancel", on_click=lambda e: page.close(dlg)),
+                    ft.OutlinedButton(
+                        "Abandon & start new",
+                        on_click=do_abandon,
+                        style=ft.ButtonStyle(color=ft.Colors.RED_400),
+                    ),
+                    ft.ElevatedButton("Resume", on_click=do_resume),
+                ],
             )
-            page.go(f"/workout/{session.id}")
-        except RuntimeError as exc:
-            page.open(ft.SnackBar(ft.Text(str(exc))))
-            page.update()
+            page.open(dlg)
+            return
+        _do_start_new_session()
 
     def on_resume_workout(e: ft.ControlEvent) -> None:
         if in_progress:
             page.go(f"/workout/{in_progress.id}")
+
+    def on_abandon_from_banner(e: ft.ControlEvent) -> None:
+        def do_abandon(e2: ft.ControlEvent) -> None:
+            page.close(confirm_dlg)
+            workout_svc.abandon_session(in_progress.id)
+            page.go("/home")
+
+        confirm_dlg = ft.AlertDialog(
+            modal=True,
+            title=ft.Text("Abandon workout?"),
+            content=ft.Text("Sets logged so far will be saved. The cycle will NOT advance."),
+            actions=[
+                ft.TextButton("Keep it", on_click=lambda e: page.close(confirm_dlg)),
+                ft.ElevatedButton(
+                    "Abandon",
+                    on_click=do_abandon,
+                    style=ft.ButtonStyle(bgcolor=ft.Colors.RED_700),
+                ),
+            ],
+        )
+        page.open(confirm_dlg)
 
     # ── resume banner ────────────────────────────────────────────
     resume_banner: list[ft.Control] = []
@@ -51,14 +105,20 @@ def build_home_view(
                             "Workout in progress",
                             color=ft.Colors.AMBER,
                             weight=ft.FontWeight.BOLD,
+                            expand=True,
                         ),
                         ft.TextButton(
                             "Resume",
                             on_click=on_resume_workout,
                             style=ft.ButtonStyle(color=ft.Colors.AMBER),
                         ),
+                        ft.TextButton(
+                            "Abandon",
+                            on_click=on_abandon_from_banner,
+                            style=ft.ButtonStyle(color=ft.Colors.RED_400),
+                        ),
                     ],
-                    alignment=ft.MainAxisAlignment.CENTER,
+                    alignment=ft.MainAxisAlignment.START,
                 ),
                 bgcolor=ft.Colors.with_opacity(0.15, ft.Colors.AMBER),
                 border_radius=8,
@@ -123,7 +183,7 @@ def build_home_view(
 
     # ── start button ──────────────────────────────────────────────
     start_btn = ft.ElevatedButton(
-        text="Start Workout" if not in_progress else "New Workout",
+        text="Start Workout",
         icon=ft.Icons.PLAY_ARROW_ROUNDED,
         on_click=on_start_workout,
         disabled=routine is None,

@@ -115,6 +115,28 @@ class TestFinishAbandon:
         ).fetchone()
         assert row["status"] == "abandoned"
 
+    def test_abandon_does_not_set_finished_at(
+        self, db_conn: sqlite3.Connection
+    ) -> None:
+        svc = WorkoutService(db_conn)
+        session = svc.start_session()
+        svc.abandon_session(session.id)
+
+        row = db_conn.execute(
+            "SELECT finished_at FROM workout_sessions WHERE id = ?", (session.id,)
+        ).fetchone()
+        assert row["finished_at"] is None
+
+    def test_finish_sets_finished_at(self, db_conn: sqlite3.Connection) -> None:
+        svc = WorkoutService(db_conn)
+        session = svc.start_session()
+        svc.finish_session(session.id)
+
+        row = db_conn.execute(
+            "SELECT finished_at FROM workout_sessions WHERE id = ?", (session.id,)
+        ).fetchone()
+        assert row["finished_at"] is not None
+
     def test_abandon_preserves_logged_sets(
         self, db_conn: sqlite3.Connection
     ) -> None:

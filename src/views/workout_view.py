@@ -8,7 +8,6 @@ import flet as ft
 from models.exercise import Exercise, ExerciseCategory
 from models.routine import RoutineDayExercise
 from models.workout import LoggedSet, WorkoutSession
-from repositories.routine_repo import RoutineRepo
 from services.cycle_service import CycleService
 from services.workout_service import WorkoutService
 
@@ -20,7 +19,6 @@ class ExerciseState:
     exercise: Exercise
     reps: int
     weight: float
-    logged_sets: list[LoggedSet] = field(default_factory=list)
     prev_sets: list[LoggedSet] = field(default_factory=list)
 
 
@@ -37,25 +35,20 @@ def build_workout_view(
     session: WorkoutSession,
     workout_svc: WorkoutService,
     cycle_svc: CycleService,
-    routine_repo: RoutineRepo,
 ) -> ft.View:
     """Build the workout logging view for the given session."""
 
-    if session.routine_day_id is None:
-        exercises_with_rde: list[tuple[RoutineDayExercise, Exercise]] = []
-    else:
-        exercises_with_rde = routine_repo.get_day_exercises_with_detail(
-            session.routine_day_id
-        )
+    exercises_with_rde = workout_svc.get_day_exercises_for_session(session.id)
 
     # Build mutable state per exercise
     states: list[ExerciseState] = []
     for rde, ex in exercises_with_rde:
         prev = workout_svc.get_previous_sets(ex.id, exclude_session_id=session.id)
-        # Pre-fill from previous session if available, else use targets
+        # Pre-fill from previous session if available, else use targets.
+        # Use explicit `is not None` so that 0 reps / 0.0 weight are preserved.
         if prev:
-            default_reps = prev[-1].reps or _default_reps(rde)
-            default_weight = prev[-1].weight or _default_weight(rde)
+            default_reps = prev[-1].reps if prev[-1].reps is not None else _default_reps(rde)
+            default_weight = prev[-1].weight if prev[-1].weight is not None else _default_weight(rde)
         else:
             default_reps = _default_reps(rde)
             default_weight = _default_weight(rde)
@@ -66,7 +59,6 @@ def build_workout_view(
                 exercise=ex,
                 reps=default_reps,
                 weight=default_weight,
-                logged_sets=workout_svc.get_session_sets(session.id),
                 prev_sets=prev,
             )
         )
