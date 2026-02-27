@@ -94,7 +94,7 @@ def build_routine_editor_view(
             )
 
         def on_create_new(e: ft.ControlEvent) -> None:
-            _open_create_dialog()
+            _open_create_dialog(current_routine=routine)
 
         main_col.controls.append(
             ft.Card(
@@ -311,7 +311,7 @@ def build_routine_editor_view(
 
     # ── Dialogs ───────────────────────────────────────────────────
 
-    def _open_create_dialog() -> None:
+    def _open_create_dialog(current_routine: Optional[Routine] = None) -> None:
         field = ft.TextField(
             label="Routine name",
             autofocus=True,
@@ -334,10 +334,22 @@ def build_routine_editor_view(
             routine_svc.set_active_routine(routine.id)
             rebuild()
 
+        warning = None
+        if current_routine is not None:
+            warning = ft.Text(
+                f"This will deactivate '{current_routine.name}'.",
+                size=12,
+                color=ft.Colors.ORANGE_400,
+            )
+
         dlg = ft.AlertDialog(
             modal=True,
             title=ft.Text("Create Routine"),
-            content=field,
+            content=ft.Column(
+                controls=[c for c in [warning, field] if c is not None],
+                spacing=12,
+                tight=True,
+            ),
             actions=[
                 ft.TextButton("Cancel", on_click=lambda e: page.close(dlg)),
                 ft.ElevatedButton(
