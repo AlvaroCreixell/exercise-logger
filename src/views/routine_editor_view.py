@@ -60,7 +60,7 @@ def build_routine_editor_view(
                             text_align=ft.TextAlign.CENTER,
                         ),
                         ft.ElevatedButton(
-                            text="Create Routine",
+                            "Create Routine",
                             icon=ft.Icons.ADD,
                             on_click=on_create,
                             style=ft.ButtonStyle(
@@ -145,7 +145,7 @@ def build_routine_editor_view(
         main_col.controls.append(
             ft.Container(
                 content=ft.OutlinedButton(
-                    text="Add Day",
+                    "Add Day",
                     icon=ft.Icons.ADD,
                     on_click=on_add_day,
                     style=ft.ButtonStyle(color=ft.Colors.WHITE70),
@@ -528,6 +528,6 @@ def build_routine_editor_view(
                 padding=ft.padding.all(16),
             ),
         ],
-        bgcolor=ft.Colors.BACKGROUND,
+        bgcolor=ft.Colors.SURFACE,
         padding=0,
     )

@@ -96,6 +96,6 @@ def build_settings_view(page: ft.Page) -> ft.View:
             ),
             body,
         ],
-        bgcolor=ft.Colors.BACKGROUND,
+        bgcolor=ft.Colors.SURFACE,
         padding=0,
     )

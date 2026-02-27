@@ -17,10 +17,33 @@ from views.settings_view import build_settings_view
 from views.workout_view import build_workout_view
 
 
+def _patch_page_compat(page: ft.Page) -> None:
+    """Polyfill page.open/page.close for Flet runtimes that lack them."""
+    if hasattr(page, "open"):
+        return
+
+    def _open(control: ft.Control) -> None:
+        if isinstance(control, ft.SnackBar):
+            page.snack_bar = control
+            page.snack_bar.open = True
+        else:
+            page.dialog = control
+            control.open = True
+        page.update()
+
+    def _close(control: ft.Control) -> None:
+        control.open = False
+        page.update()
+
+    page.open = _open  # type: ignore[attr-defined]
+    page.close = _close  # type: ignore[attr-defined]
+
+
 def main(page: ft.Page) -> None:
     page.title = APP_NAME
     page.theme_mode = ft.ThemeMode.DARK
     page.padding = 0
+    _patch_page_compat(page)
 
     # ── Bootstrap DB ─────────────────────────────────────────────
     conn = get_connection()
@@ -95,7 +118,7 @@ def main(page: ft.Page) -> None:
                             expand=True,
                         ),
                     ],
-                    bgcolor=ft.Colors.BACKGROUND,
+                    bgcolor=ft.Colors.SURFACE,
                 )
             )
 

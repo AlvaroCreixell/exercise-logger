@@ -194,7 +194,7 @@ def build_home_view(
                 page.go("/home")
 
             chips.append(
-                ft.ActionChip(
+                ft.Chip(
                     label=ft.Text(
                         d.name,
                         size=12,
@@ -218,7 +218,7 @@ def build_home_view(
 
     # ── start button ──────────────────────────────────────────────
     start_btn = ft.ElevatedButton(
-        text="Start Workout",
+        "Start Workout",
         icon=ft.Icons.PLAY_ARROW_ROUNDED,
         on_click=on_start_workout,
         disabled=routine is None,
@@ -256,6 +256,6 @@ def build_home_view(
             ),
             body,
         ],
-        bgcolor=ft.Colors.BACKGROUND,
+        bgcolor=ft.Colors.SURFACE,
         padding=ft.padding.all(16),
     )

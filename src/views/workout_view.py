@@ -179,7 +179,7 @@ def build_workout_view(
             rebuild_cards()
 
         log_btn = ft.ElevatedButton(
-            text="Log Set",
+            "Log Set",
             icon=ft.Icons.CHECK_CIRCLE_OUTLINE,
             on_click=on_log_set,
             style=ft.ButtonStyle(
@@ -283,13 +283,13 @@ def build_workout_view(
     bottom_row = ft.Row(
         controls=[
             ft.OutlinedButton(
-                text="Abandon",
+                "Abandon",
                 icon=ft.Icons.CANCEL_OUTLINED,
                 on_click=on_abandon,
                 style=ft.ButtonStyle(color=ft.Colors.RED_400),
             ),
             ft.ElevatedButton(
-                text="Finish Workout",
+                "Finish Workout",
                 icon=ft.Icons.DONE_ALL_ROUNDED,
                 on_click=on_finish,
                 style=ft.ButtonStyle(
@@ -327,6 +327,6 @@ def build_workout_view(
                 expand=True,
             ),
         ],
-        bgcolor=ft.Colors.BACKGROUND,
+        bgcolor=ft.Colors.SURFACE,
         padding=ft.padding.all(16),
     )

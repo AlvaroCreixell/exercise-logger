@@ -58,7 +58,7 @@ def build_exercise_catalog_view(
         rebuild()
 
     add_btn = ft.ElevatedButton(
-        text="Add",
+        "Add",
         icon=ft.Icons.ADD,
         on_click=do_add,
         style=ft.ButtonStyle(
@@ -200,6 +200,6 @@ def build_exercise_catalog_view(
                 spacing=0,
             ),
         ],
-        bgcolor=ft.Colors.BACKGROUND,
+        bgcolor=ft.Colors.SURFACE,
         padding=ft.padding.all(16),
     )
