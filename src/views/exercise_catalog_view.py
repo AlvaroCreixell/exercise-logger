@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import sqlite3
+
 import flet as ft
 
 from models.exercise import ExerciseCategory
@@ -49,7 +51,12 @@ def build_exercise_catalog_view(
             return
         name_field.error_text = None
         cat = ExerciseCategory(cat_dropdown.value)
-        exercise_svc.create(name, cat)
+        try:
+            exercise_svc.create(name, cat)
+        except sqlite3.IntegrityError:
+            name_field.error_text = "Exercise already exists"
+            name_field.update()
+            return
         name_field.value = ""
         name_field.update()
         cat_dropdown.value = ExerciseCategory.WEIGHT.value
