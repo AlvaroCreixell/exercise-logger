@@ -178,3 +178,59 @@ class TestSessionRecovery:
         session = svc.start_session()
         svc.abandon_session(session.id)
         assert svc.get_in_progress_session() is None
+
+
+class TestEditDeleteSet:
+    def test_edit_set_updates_reps_and_weight(self, db_conn: sqlite3.Connection) -> None:
+        svc = WorkoutService(db_conn)
+        ex_id = _seed_exercise(db_conn)
+        session = svc.start_session()
+        logged = svc.log_set(session.id, ex_id, reps=8, weight=135.0)
+
+        svc.edit_set(logged.id, reps=10, weight=140.0)
+
+        row = db_conn.execute(
+            "SELECT reps, weight FROM logged_sets WHERE id = ?", (logged.id,)
+        ).fetchone()
+        assert row["reps"] == 10
+        assert row["weight"] == 140.0
+
+    def test_edit_set_on_finished_session_raises(self, db_conn: sqlite3.Connection) -> None:
+        svc = WorkoutService(db_conn)
+        ex_id = _seed_exercise(db_conn)
+        session = svc.start_session()
+        logged = svc.log_set(session.id, ex_id, reps=8, weight=135.0)
+        svc.finish_session(session.id)
+
+        with pytest.raises(ValueError, match="not in progress"):
+            svc.edit_set(logged.id, reps=10, weight=140.0)
+
+    def test_delete_set_removes_from_db(self, db_conn: sqlite3.Connection) -> None:
+        svc = WorkoutService(db_conn)
+        ex_id = _seed_exercise(db_conn)
+        session = svc.start_session()
+        logged = svc.log_set(session.id, ex_id, reps=8, weight=135.0)
+
+        svc.delete_set(logged.id)
+
+        row = db_conn.execute(
+            "SELECT COUNT(*) AS cnt FROM logged_sets WHERE id = ?", (logged.id,)
+        ).fetchone()
+        assert row["cnt"] == 0
+
+    def test_delete_set_on_finished_session_raises(self, db_conn: sqlite3.Connection) -> None:
+        svc = WorkoutService(db_conn)
+        ex_id = _seed_exercise(db_conn)
+        session = svc.start_session()
+        logged = svc.log_set(session.id, ex_id, reps=8, weight=135.0)
+        svc.finish_session(session.id)
+
+        with pytest.raises(ValueError, match="not in progress"):
+            svc.delete_set(logged.id)
+
+    def test_can_start_after_abandon(self, db_conn: sqlite3.Connection) -> None:
+        svc = WorkoutService(db_conn)
+        s1 = svc.start_session()
+        svc.abandon_session(s1.id)
+        s2 = svc.start_session()
+        assert s2.id != s1.id

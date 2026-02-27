@@ -90,6 +90,33 @@ class WorkoutService:
         logged.id = set_id
         return logged
 
+    def edit_set(
+        self,
+        set_id: int,
+        reps: Optional[int],
+        weight: Optional[float],
+    ) -> None:
+        """Update a logged set's reps/weight. Only works on in-progress sessions."""
+        logged = self._repo.get_set_by_id(set_id)
+        if logged is None:
+            raise ValueError(f"Set {set_id} not found")
+        session = self._repo.get_by_id(logged.session_id)
+        if session is None or session.status != SessionStatus.IN_PROGRESS:
+            raise ValueError(f"Session is not in progress")
+        self._repo.update_set(set_id, reps, weight)
+        self._conn.commit()
+
+    def delete_set(self, set_id: int) -> None:
+        """Delete a logged set. Only works on in-progress sessions."""
+        logged = self._repo.get_set_by_id(set_id)
+        if logged is None:
+            raise ValueError(f"Set {set_id} not found")
+        session = self._repo.get_by_id(logged.session_id)
+        if session is None or session.status != SessionStatus.IN_PROGRESS:
+            raise ValueError(f"Session is not in progress")
+        self._repo.delete_set(set_id)
+        self._conn.commit()
+
     def log_cardio(
         self,
         session_id: int,

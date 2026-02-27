@@ -104,6 +104,21 @@ class WorkoutRepo(BaseRepository):
             ),
         )
 
+    def get_set_by_id(self, set_id: int) -> Optional[LoggedSet]:
+        row = self._fetchone(
+            "SELECT * FROM logged_sets WHERE id = ?", (set_id,)
+        )
+        return _row_to_set(row) if row else None
+
+    def update_set(self, set_id: int, reps: Optional[int], weight: Optional[float]) -> None:
+        self._execute(
+            "UPDATE logged_sets SET reps = ?, weight = ? WHERE id = ?",
+            (reps, weight, set_id),
+        )
+
+    def delete_set(self, set_id: int) -> None:
+        self._execute("DELETE FROM logged_sets WHERE id = ?", (set_id,))
+
     def get_sets_for_session(self, session_id: int) -> list[LoggedSet]:
         rows = self._fetchall(
             "SELECT * FROM logged_sets WHERE session_id = ?"
