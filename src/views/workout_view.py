@@ -78,7 +78,9 @@ def build_workout_view(
         # Previous sets summary
         if state.prev_sets:
             prev_text = "Prev: " + "  ".join(
-                f"{s.reps}×{s.weight:.0f}" if s.weight else f"{s.reps} reps"
+                f"{s.reps if s.reps is not None else '?'}×{s.weight:.0f}"
+                if s.weight is not None
+                else f"{s.reps if s.reps is not None else '?'} reps"
                 for s in state.prev_sets
                 if not s.is_warmup
             )
@@ -94,8 +96,9 @@ def build_workout_view(
             controls=[
                 ft.Chip(
                     label=ft.Text(
-                        f"Set {i+1}: {s.reps}×{s.weight:.0f}" if s.weight
-                        else f"Set {i+1}: {s.reps} reps",
+                        f"Set {i+1}: {s.reps if s.reps is not None else '?'}×{s.weight:.0f}"
+                        if s.weight is not None
+                        else f"Set {i+1}: {s.reps if s.reps is not None else '?'} reps",
                         size=12,
                     ),
                     bgcolor=ft.Colors.GREEN_900,
@@ -191,9 +194,9 @@ def build_workout_view(
         )
 
         target_str = ""
-        if rde.target_sets and rde.target_reps:
+        if rde.target_sets is not None and rde.target_reps is not None:
             target_str = f"{rde.target_sets}×{rde.target_reps}"
-            if rde.target_weight:
+            if rde.target_weight is not None:
                 target_str += f" @ {rde.target_weight:.0f}"
 
         return ft.Card(

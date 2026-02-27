@@ -208,11 +208,11 @@ def build_routine_editor_view(
         exercise_rows: list[ft.Control] = []
         for rde, ex in exercises:
             target_parts = []
-            if rde.target_sets:
+            if rde.target_sets is not None:
                 target_parts.append(f"{rde.target_sets} sets")
-            if rde.target_reps:
+            if rde.target_reps is not None:
                 target_parts.append(f"{rde.target_reps} reps")
-            if rde.target_weight:
+            if rde.target_weight is not None:
                 target_parts.append(f"@ {rde.target_weight:.0f}")
             target_str = " · ".join(target_parts) if target_parts else "No targets"
 
