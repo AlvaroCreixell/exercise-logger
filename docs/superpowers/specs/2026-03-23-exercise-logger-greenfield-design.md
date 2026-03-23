@@ -21,7 +21,7 @@ Mobile gym workout tracker for Android. Users define workout routines with label
 - **Build:** Buildozer → APK
 - **Testing:** pytest
 - **Target:** Android (primary), desktop (development)
-- **Charts:** matplotlib or kivy-garden chart widgets
+- **Charts:** matplotlib (rendered to canvas via Kivy; well-supported by Buildozer, large ecosystem, familiar API)
 
 **Build toolchain note:** Buildozer requires a Linux environment. On Windows, this means WSL2 or a Docker container. Builds must run from the WSL/Linux filesystem, not the Windows partition (see Buildozer docs). Desktop development and testing runs natively on Windows via Kivy; only the APK build step requires Linux.
 
@@ -56,7 +56,7 @@ src/
 ├── db/
 │   ├── connection.py           # Singleton connection manager
 │   ├── schema.py               # CREATE TABLE statements, init_db()
-│   └── seed.py                 # Default benchmark exercises, sample data
+│   └── seed.py                 # Dev-only sample data and default benchmark exercises. NOT run in production builds.
 │
 ├── repositories/
 │   ├── base.py                 # BaseRepository (_execute, _fetchone, _fetchall, _insert)
@@ -71,7 +71,7 @@ src/
 │   ├── exercise_service.py     # Exercise CRUD, validation
 │   ├── routine_service.py      # Routine management, set scheme logic
 │   ├── workout_service.py      # Session lifecycle, set logging, recovery
-│   ├── cycle_service.py        # Auto-advance, manual override
+│   ├── cycle_service.py        # Auto-advance, manual override, cross-routine validation
 │   ├── benchmark_service.py    # Due calculations, result recording
 │   ├── stats_service.py        # Dashboard queries, PR detection, chart data
 │   └── import_export_service.py # JSON import/export, validation
@@ -151,7 +151,7 @@ tests/
 | routine_id | INTEGER FK | → routines |
 | label | TEXT | "A", "B", "C"... |
 | name | TEXT | "Push", "Pull", "Legs"... |
-| sort_order | INTEGER | |
+| sort_order | INTEGER | UNIQUE(routine_id, sort_order) |
 
 ### routine_day_exercises
 
@@ -160,7 +160,7 @@ tests/
 | id | INTEGER PK | |
 | routine_day_id | INTEGER FK | → routine_days |
 | exercise_id | INTEGER FK | → exercises |
-| sort_order | INTEGER | |
+| sort_order | INTEGER | UNIQUE(routine_day_id, sort_order) |
 | set_scheme | TEXT | `uniform` or `progressive` (authoritative — controls UI display and default behavior) |
 | notes | TEXT | Nullable. Per-exercise plan notes ("use narrow grip", "slow eccentric") |
 | is_optional | INTEGER | 0/1. Optional exercises shown with lower visual priority |
@@ -171,13 +171,13 @@ tests/
 |--------|------|-------|
 | id | INTEGER PK | |
 | routine_day_exercise_id | INTEGER FK | → routine_day_exercises |
-| set_number | INTEGER | 1-indexed |
-| set_kind | TEXT | `reps_weight`, `reps_only`, `duration`, `distance`, `amrap` |
+| set_number | INTEGER | 1-indexed. UNIQUE(routine_day_exercise_id, set_number) |
+| set_kind | TEXT | `reps_weight`, `reps_only`, `duration`, `cardio`, `amrap` |
 | target_reps_min | INTEGER | Nullable. For rep ranges like "8-12" |
 | target_reps_max | INTEGER | Nullable. Same as min for exact targets (e.g., both = 10) |
 | target_weight | REAL | Nullable |
 | target_duration_seconds | INTEGER | Nullable (for time/cardio types) |
-| target_distance | REAL | Nullable (for cardio) |
+| target_distance | REAL | Nullable (for cardio — may coexist with duration on same row) |
 
 For **uniform** sets: N rows with identical targets.
 For **progressive** sets: N rows with different targets per set. Defaults: set 1 = 12 reps (lighter), set 2 = 8 reps (moderate), set 3 = 4 reps (heavier).
@@ -186,16 +186,18 @@ For **progressive** sets: N rows with different targets per set. Defaults: set 1
 
 **AMRAP sets:** `set_kind = 'amrap'` with `target_weight` set. Reps left open — user does as many as possible. Common pattern: "3 × 8, then 1 AMRAP" = 3 reps_weight sets + 1 amrap set.
 
+**Cardio sets:** `set_kind = 'cardio'` may carry both `target_duration_seconds` and `target_distance` on the same row (e.g., "20 min, 2.0 km"). Either field can be null if the user only cares about one dimension.
+
 ### workout_sessions
 
 | Column | Type | Notes |
 |--------|------|-------|
 | id | INTEGER PK | |
-| routine_id | INTEGER FK | Nullable |
-| routine_day_id | INTEGER FK | Nullable |
+| routine_id | INTEGER FK | Nullable. ON DELETE SET NULL |
+| routine_day_id | INTEGER FK | Nullable. ON DELETE SET NULL |
 | session_type | TEXT | `routine` or `benchmark` (no standalone ad-hoc sessions — ad-hoc exercises are added within routine sessions) |
 | status | TEXT | `in_progress` or `finished` |
-| completed_fully | INTEGER | 0/1 — false if ended early |
+| completed_fully | INTEGER | Nullable. NULL while `in_progress`. Set to 1 on Finish, 0 on End Early. |
 | day_label_snapshot | TEXT | Nullable. Captures day label at session start (e.g., "A") |
 | day_name_snapshot | TEXT | Nullable. Captures day name at session start (e.g., "Push") |
 | started_at | TEXT | ISO 8601 |
@@ -203,6 +205,8 @@ For **progressive** sets: N rows with different targets per set. Defaults: set 1
 | notes | TEXT | Nullable. Session-level notes |
 
 **Snapshots** preserve history: if the user renames "Day A - Push" to "Day A - Chest" next month, past sessions still show what they were called at the time.
+
+**`completed_fully` lifecycle:** NULL while status = `in_progress` (no assumption about how session will end). Set to 1 (Finish) or 0 (End Early) atomically when status transitions to `finished`. Services and queries must treat NULL as "session still active, not yet determined."
 
 ### session_exercises
 
@@ -213,8 +217,8 @@ Intermediate table between sessions and logged sets. Tracks which exercises were
 | id | INTEGER PK | |
 | session_id | INTEGER FK | → workout_sessions |
 | exercise_id | INTEGER FK | → exercises |
-| routine_day_exercise_id | INTEGER FK | Nullable → routine_day_exercises. Null = ad-hoc exercise |
-| sort_order | INTEGER | Order performed in session |
+| routine_day_exercise_id | INTEGER FK | Nullable. ON DELETE SET NULL → routine_day_exercises. Null = ad-hoc exercise |
+| sort_order | INTEGER | UNIQUE(session_id, sort_order). Order performed in session |
 | exercise_name_snapshot | TEXT | Captures exercise name at log time |
 | notes | TEXT | Nullable. Per-exercise session notes ("felt shoulder pain") |
 
@@ -224,13 +228,13 @@ Intermediate table between sessions and logged sets. Tracks which exercises were
 |--------|------|-------|
 | id | INTEGER PK | |
 | session_exercise_id | INTEGER FK | → session_exercises |
-| exercise_set_target_id | INTEGER FK | Nullable → exercise_set_targets. Null = no plan target (ad-hoc or extra set) |
-| set_number | INTEGER | |
-| set_kind | TEXT | `reps_weight`, `reps_only`, `duration`, `distance`, `amrap` |
+| exercise_set_target_id | INTEGER FK | Nullable. ON DELETE SET NULL → exercise_set_targets. Null = no plan target (ad-hoc or extra set) |
+| set_number | INTEGER | UNIQUE(session_exercise_id, set_number) |
+| set_kind | TEXT | `reps_weight`, `reps_only`, `duration`, `cardio`, `amrap` |
 | reps | INTEGER | Nullable |
 | weight | REAL | Nullable |
 | duration_seconds | INTEGER | Nullable |
-| distance | REAL | Nullable |
+| distance | REAL | Nullable (may coexist with duration for cardio) |
 | notes | TEXT | Nullable. Per-set notes ("new PR", "form broke down") |
 | logged_at | TEXT | ISO 8601 |
 
@@ -245,6 +249,8 @@ Intermediate table between sessions and logged sets. Tracks which exercises were
 
 **Why ID instead of index:** Storing the day ID directly means reordering days or deleting other days requires no patching of the cycle state. Advance logic: query the current day's sort_order, find the next day by sort_order, wrap to first if at end. Delete current day: pick the next day by sort_order, or first if none after.
 
+**Service invariant:** `CycleService` must validate that `current_routine_day_id` belongs to the same routine as `routine_id`. SQLite cannot enforce this cross-FK constraint. This validation must be checked on every write to `routine_cycle_state` and covered by tests.
+
 ### benchmark_definitions
 
 | Column | Type | Notes |
@@ -253,7 +259,7 @@ Intermediate table between sessions and logged sets. Tracks which exercises were
 | exercise_id | INTEGER FK | → exercises |
 | method | TEXT | `max_weight`, `max_reps`, or `timed_hold` |
 | reference_weight | REAL | Nullable — for max_reps: the weight tested at |
-| frequency_weeks | INTEGER | Default 6 |
+| frequency_weeks | INTEGER | Default 6. Per-exercise override. |
 | muscle_group_label | TEXT | "Upper", "Lower", "Back", "Core" |
 
 ### benchmark_results
@@ -273,9 +279,41 @@ Intermediate table between sessions and logged sets. Tracks which exercises were
 | key | TEXT PK | |
 | value | TEXT | |
 
-## Exercise Types
+## Ordering and Resequencing Rules
 
-Four exercise types, plus AMRAP as a set-level modifier:
+All ordered entities use a `sort_order` or `set_number` column with a UNIQUE constraint on `(parent_id, sort_order)`.
+
+### Invariant
+
+Sort order values within a parent must form a contiguous 0-based sequence (for sort_order) or 1-based sequence (for set_number) with no gaps and no duplicates. The UNIQUE constraint enforces no-duplicates at the DB level; gap-free contiguity is enforced by the service layer.
+
+### Resequencing on delete
+
+When an ordered item is deleted, all siblings with a higher sort_order/set_number are decremented by 1 in a single UPDATE. Example: deleting item at sort_order=2 from [0,1,2,3] → remaining items become [0,1,2].
+
+### Resequencing on insert
+
+New items are appended at `MAX(sort_order) + 1` by default. Insert-at-position shifts all items at or above the target position up by 1.
+
+### Reorder (swap/move)
+
+Reorder operations must update all affected sort_order values in a single transaction to avoid violating the UNIQUE constraint mid-operation. Implementations should use a temporary sentinel value or batch UPDATE with CASE expressions.
+
+### Affected tables
+
+| Table | Ordered column | Parent scope | Sequence start |
+|-------|---------------|-------------|----------------|
+| routine_days | sort_order | routine_id | 0 |
+| routine_day_exercises | sort_order | routine_day_id | 0 |
+| exercise_set_targets | set_number | routine_day_exercise_id | 1 |
+| session_exercises | sort_order | session_id | 0 |
+| logged_sets | set_number | session_exercise_id | 1 |
+
+## Exercise Types and Set Kind Compatibility
+
+### Exercise types
+
+Four exercise types determine what an exercise fundamentally is:
 
 | Type | Logged fields | Example exercises |
 |------|--------------|-------------------|
@@ -284,7 +322,28 @@ Four exercise types, plus AMRAP as a set-level modifier:
 | `time` | duration_seconds | Plank, wall sit, dead hang |
 | `cardio` | duration_seconds, distance | Treadmill, bike, rowing |
 
+### Set kinds
+
+Set kinds describe what a specific set within an exercise targets:
+
+| Set kind | Required fields | Optional fields | Compatible exercise types |
+|----------|----------------|-----------------|--------------------------|
+| `reps_weight` | reps, weight | — | `reps_weight` |
+| `reps_only` | reps | — | `reps_only` |
+| `duration` | duration_seconds | — | `time` |
+| `cardio` | — | duration_seconds, distance (at least one) | `cardio` |
+| `amrap` | weight | reps (logged after completion) | `reps_weight`, `reps_only` |
+
 **AMRAP** is a set kind, not an exercise type. Any `reps_weight` or `reps_only` exercise can have an AMRAP set — the user does as many reps as possible at the target weight.
+
+**Cardio** set kind carries both duration and distance as optional fields. A treadmill target of "20 min, 2.0 km" has both populated. A "just run for 20 minutes" target has only duration.
+
+### Validation rule
+
+Services must enforce that `set_kind` is compatible with the parent exercise's `type` on both plan creation and import. The compatibility matrix above is the authoritative reference. This applies to:
+- `exercise_set_targets.set_kind` vs `exercises.type` (via routine_day_exercises.exercise_id)
+- `logged_sets.set_kind` vs `exercises.type` (via session_exercises.exercise_id)
+- Import validation: each set's `set_kind` must be compatible with its exercise's `type`
 
 ## Set Schemes
 
@@ -314,7 +373,7 @@ Four-tab bottom navigation bar:
 ### Home Tab
 - Active routine name and current day
 - "Start Workout" button
-- Last workout summary (date, day, duration)
+- Last workout summary (date, day, duration) — excludes zero-set sessions
 - Benchmark due alerts
 - Persistent banner if in-progress session exists: "Unfinished workout — Resume or End?" (ending marks the session as finished with `completed_fully = false`, cycle advances only if ≥1 set was logged)
 
@@ -332,7 +391,7 @@ Four-tab bottom navigation bar:
 - **Benchmark Session**: pick exercises, log max weight or max reps or timed hold
 
 ### Dashboard Tab
-- **Overview**: sessions this week/month, total volume trend, recent PRs
+- **Overview**: sessions this week/month (excludes zero-set sessions), total volume trend, recent PRs
 - **Exercise Detail** (tap an exercise): weight over time chart, volume over time chart, best sets history, plan-vs-actual comparison
 - **Benchmark History**: per-exercise trend chart with max weight, max reps, and timed hold lines
 
@@ -352,7 +411,16 @@ Four-tab bottom navigation bar:
 
 ### Finishing a Workout
 - **Finish Workout**: session marked as finished, `completed_fully = true`, cycle advances.
-- **End Early**: session marked as finished, `completed_fully = false`. Cycle advances **only if at least one set was logged.** A zero-set End Early is effectively a cancel — no cycle change, but the session record exists (can be ignored in stats).
+- **End Early**: session marked as finished, `completed_fully = false`. Cycle advances **only if at least one set was logged.** A zero-set End Early is effectively a cancel — no cycle change, session record saved.
+
+### Zero-Set Session Stat Policy
+Zero-set finished sessions (End Early with no logged sets) are **excluded** from:
+- Session counts (Home "last workout", Dashboard "sessions this week/month")
+- Volume calculations
+- PR scans
+- "Recent activity" lists
+
+They remain in the database for auditability but are filtered out by `stats_service` queries. The filter is: `SELECT ... WHERE session has at least one logged_set`.
 
 ### Editing Workouts
 - **Edit any session's sets** — past or present. No append-only restriction.
@@ -398,7 +466,7 @@ Three benchmark methods per exercise:
 - **Routine only**: just the plan structure (routine, days, exercises, set targets). JSON file. For sharing.
 
 ### Import
-- **Full restore**: from backup file. Replaces all data. Confirmation required: "This will replace all existing data."
+- **Full restore**: from backup file. Replaces all data by replacing the entire DB file (not row-by-row mutation). This is compatible with "sessions are never deleted" because restore is a wholesale replacement, not a selective delete. Confirmation required: "This will replace all existing data."
 - **Routine import**: adds a new routine from JSON file. Doesn't touch existing data. This is the path for GPT-generated workout plans.
 
 ### Import JSON Format (Routine)
@@ -471,13 +539,15 @@ Three benchmark methods per exercise:
         "exercise_name": "Bench Press",
         "method": "max_weight",
         "reference_weight": null,
-        "muscle_group_label": "Upper"
+        "muscle_group_label": "Upper",
+        "frequency_weeks": null
       },
       {
         "exercise_name": "Plank",
         "method": "timed_hold",
         "reference_weight": null,
-        "muscle_group_label": "Core"
+        "muscle_group_label": "Core",
+        "frequency_weeks": 8
       }
     ]
   }
@@ -488,6 +558,8 @@ Three benchmark methods per exercise:
 
 **`benchmarking`** block is optional. If present and `enabled = true`, the import creates benchmark definitions alongside the routine.
 
+**`benchmarking.frequency_weeks`** is the default for all items. Each item may override with its own `frequency_weeks` (null = use the top-level default).
+
 ### Import Validation Rules
 
 The importer validates:
@@ -497,7 +569,8 @@ The importer validates:
 - Day labels are unique after normalization
 - Each exercise has a `name` and at least one set
 - Each set has a valid `set_kind`
-- Numeric fields are in sane ranges (reps 1-999, weight 0-9999, duration 1-86400). Reps may be null for AMRAP sets.
+- Each set's `set_kind` is compatible with its exercise's `type` (see compatibility matrix in Exercise Types section)
+- Numeric fields are in sane ranges (reps 1-999, weight 0-9999, duration 1-86400). Reps may be null for AMRAP sets. Cardio sets require at least one of duration/distance.
 - Benchmark items reference exercise names that exist in the plan's exercises or the local catalog
 
 ### Import Exercise Matching
@@ -521,6 +594,57 @@ Before importing, the app shows:
 
 Imported plans never silently overwrite the active plan.
 
+## Database Constraints
+
+### UNIQUE constraints
+
+| Table | Constraint |
+|-------|-----------|
+| exercises | UNIQUE(name) |
+| routine_days | UNIQUE(routine_id, sort_order) |
+| routine_days | UNIQUE(routine_id, label) |
+| routine_day_exercises | UNIQUE(routine_day_id, sort_order) |
+| exercise_set_targets | UNIQUE(routine_day_exercise_id, set_number) |
+| session_exercises | UNIQUE(session_id, sort_order) |
+| logged_sets | UNIQUE(session_exercise_id, set_number) |
+
+### CHECK constraints
+
+| Table | Constraint |
+|-------|-----------|
+| exercises | CHECK(type IN ('reps_weight', 'reps_only', 'time', 'cardio')) |
+| exercises | CHECK(is_archived IN (0, 1)) |
+| routine_day_exercises | CHECK(set_scheme IN ('uniform', 'progressive')) |
+| routine_day_exercises | CHECK(is_optional IN (0, 1)) |
+| exercise_set_targets | CHECK(set_kind IN ('reps_weight', 'reps_only', 'duration', 'cardio', 'amrap')) |
+| exercise_set_targets | CHECK(set_number >= 1) |
+| workout_sessions | CHECK(session_type IN ('routine', 'benchmark')) |
+| workout_sessions | CHECK(status IN ('in_progress', 'finished')) |
+| workout_sessions | CHECK(completed_fully IN (0, 1) OR completed_fully IS NULL) |
+| logged_sets | CHECK(set_kind IN ('reps_weight', 'reps_only', 'duration', 'cardio', 'amrap')) |
+| logged_sets | CHECK(set_number >= 1) |
+| benchmark_definitions | CHECK(method IN ('max_weight', 'max_reps', 'timed_hold')) |
+| benchmark_definitions | CHECK(frequency_weeks >= 1) |
+
+### FK actions
+
+| FK column | Action | Rationale |
+|-----------|--------|-----------|
+| routine_days.routine_id | CASCADE | Deleting a routine removes its days |
+| routine_day_exercises.routine_day_id | CASCADE | Deleting a day removes its exercises |
+| exercise_set_targets.routine_day_exercise_id | CASCADE | Deleting a plan exercise removes its targets |
+| workout_sessions.routine_id | SET NULL | History survives routine deletion |
+| workout_sessions.routine_day_id | SET NULL | History survives day deletion |
+| session_exercises.routine_day_exercise_id | SET NULL | History survives plan exercise deletion |
+| logged_sets.exercise_set_target_id | SET NULL | History survives target deletion |
+| routine_cycle_state.routine_id | CASCADE | Deleting a routine removes its cycle state |
+
+### Service-level invariants (not enforceable by SQLite)
+
+- `routine_cycle_state.current_routine_day_id` must belong to the same routine as `routine_cycle_state.routine_id`. Validated by CycleService on every write. Covered by tests.
+- `set_kind` must be compatible with the exercise's `type` per the compatibility matrix. Validated by RoutineService (plan creation) and ImportExportService (import).
+- Only one routine may have `is_active = 1` at a time. Enforced by RoutineService: deactivate current before activating new.
+
 ## Database Conventions
 
 - All datetimes stored as ISO 8601 text.
@@ -529,18 +653,23 @@ Imported plans never silently overwrite the active plan.
 - Foreign keys enforced: `PRAGMA foreign_keys=ON`.
 - WAL mode: `PRAGMA journal_mode=WAL`.
 - Parameterized queries (`?` placeholders) always. Never format SQL strings.
-- Default FK behavior: `ON DELETE RESTRICT`. Specific overrides:
-  - Exercises use soft-delete (`is_archived`), never hard-deleted.
-  - Sessions are never deleted.
-  - Routines cascade to days/exercises/targets on delete (`ON DELETE CASCADE` on `routine_days.routine_id`, `routine_day_exercises.routine_day_id`, `exercise_set_targets.routine_day_exercise_id`).
-  - Session FKs that reference plan rows use `ON DELETE SET NULL` so workout history survives routine deletion: `workout_sessions.routine_id`, `workout_sessions.routine_day_id`, `session_exercises.routine_day_exercise_id`, `logged_sets.exercise_set_target_id`.
 - Use Kivy's `App.get_running_app().user_data_dir` for DB path on Android, fallback to local dir on desktop.
 
 ## Testing Strategy
 
 - In-memory SQLite (`:memory:`) for all tests.
 - Test services and repositories, not screens (UI tested manually on device).
-- Focus areas: cycle logic edge cases (especially ID-based advance/delete), benchmark due-date calculation, session lifecycle (End Early with 0 sets vs ≥1 set), set scheme handling, import/export round-trip with validation, plan-vs-actual queries, unit conversion.
+- Focus areas:
+  - Cycle logic: ID-based advance, wrap-around, delete current day, cross-routine validation invariant
+  - Session lifecycle: Finish, End Early with ≥1 set, End Early with 0 sets (no cycle advance), `completed_fully` NULL → 0/1 transition
+  - Set scheme handling: uniform creation, progressive creation with defaults, AMRAP sets
+  - Ordering: resequence on delete, insert-at-position, reorder within UNIQUE constraints
+  - Import/export: round-trip, schema_version validation, exercise matching cascade, set_kind compatibility, benchmark frequency override, malformed JSON rejection
+  - Plan-vs-actual: queries with and without exercise_set_target_id links
+  - Edit-after-finish: delete a set from past session, add extra set to past session, edit past session → verify dashboard output changes
+  - Routine deletion: ON DELETE SET NULL preserves session data, ON DELETE CASCADE removes plan hierarchy
+  - Stats: zero-set sessions excluded from all stat queries
+  - Unit conversion: full-DB weight conversion, distance km↔miles display
 
 ## Deferred (Not in This Spec)
 
