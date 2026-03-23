@@ -497,7 +497,7 @@ The importer validates:
 - Day labels are unique after normalization
 - Each exercise has a `name` and at least one set
 - Each set has a valid `set_kind`
-- Numeric fields are in sane ranges (reps 1-999, weight 0-9999, duration 1-86400)
+- Numeric fields are in sane ranges (reps 1-999, weight 0-9999, duration 1-86400). Reps may be null for AMRAP sets.
 - Benchmark items reference exercise names that exist in the plan's exercises or the local catalog
 
 ### Import Exercise Matching
@@ -525,10 +525,15 @@ Imported plans never silently overwrite the active plan.
 
 - All datetimes stored as ISO 8601 text.
 - Weights stored in user's preferred unit (lbs or kg). No per-row unit column.
+- Distances stored in km. Display converts to miles if user prefers imperial. No per-row distance unit column.
 - Foreign keys enforced: `PRAGMA foreign_keys=ON`.
 - WAL mode: `PRAGMA journal_mode=WAL`.
 - Parameterized queries (`?` placeholders) always. Never format SQL strings.
-- Default FK behavior: `ON DELETE RESTRICT`. Exercises use soft-delete (`is_archived`). Sessions are never deleted. Routines cascade to days/exercises/targets on delete.
+- Default FK behavior: `ON DELETE RESTRICT`. Specific overrides:
+  - Exercises use soft-delete (`is_archived`), never hard-deleted.
+  - Sessions are never deleted.
+  - Routines cascade to days/exercises/targets on delete (`ON DELETE CASCADE` on `routine_days.routine_id`, `routine_day_exercises.routine_day_id`, `exercise_set_targets.routine_day_exercise_id`).
+  - Session FKs that reference plan rows use `ON DELETE SET NULL` so workout history survives routine deletion: `workout_sessions.routine_id`, `workout_sessions.routine_day_id`, `session_exercises.routine_day_exercise_id`, `logged_sets.exercise_set_target_id`.
 - Use Kivy's `App.get_running_app().user_data_dir` for DB path on Android, fallback to local dir on desktop.
 
 ## Testing Strategy
