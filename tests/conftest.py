@@ -85,3 +85,17 @@ from src.repositories.settings_repo import SettingsRepo
 @pytest.fixture
 def settings_repo(db_conn):
     return SettingsRepo(db_conn)
+
+
+from src.repositories.benchmark_repo import BenchmarkRepo
+from src.services.benchmark_service import BenchmarkService
+
+
+@pytest.fixture
+def benchmark_repo(db_conn):
+    return BenchmarkRepo(db_conn)
+
+
+@pytest.fixture
+def benchmark_service(benchmark_repo, exercise_repo):
+    return BenchmarkService(benchmark_repo, exercise_repo)
