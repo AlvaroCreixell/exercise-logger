@@ -1,0 +1,96 @@
+#:import BACKGROUND src.theme.BACKGROUND
+#:import TEXT_PRIMARY src.theme.TEXT_PRIMARY
+#:import TEXT_SECONDARY src.theme.TEXT_SECONDARY
+#:import dp kivy.metrics.dp
+
+<ManageSectionItem>:
+    size_hint_y: None
+    height: dp(56)
+    padding: [dp(16), 0, dp(16), 0]
+    md_bg_color: BACKGROUND
+
+    MDBoxLayout:
+        spacing: dp(16)
+
+        MDIcon:
+            icon: root.icon
+            theme_text_color: "Custom"
+            text_color: TEXT_SECONDARY
+            pos_hint: {"center_y": 0.5}
+
+        MDLabel:
+            text: root.label_text
+            theme_text_color: "Custom"
+            text_color: TEXT_PRIMARY
+            font_style: "Title"
+            role: "small"
+            pos_hint: {"center_y": 0.5}
+
+        MDIcon:
+            icon: "chevron-right"
+            theme_text_color: "Custom"
+            text_color: TEXT_SECONDARY
+            pos_hint: {"center_y": 0.5}
+
+
+<ManageSectionList>:
+    md_bg_color: BACKGROUND
+
+    MDBoxLayout:
+        orientation: "vertical"
+
+        MDBoxLayout:
+            size_hint_y: None
+            height: dp(56)
+            padding: [dp(16), 0, dp(16), 0]
+
+            MDLabel:
+                text: "Manage"
+                theme_text_color: "Custom"
+                text_color: TEXT_PRIMARY
+                font_style: "Headline"
+                role: "small"
+                pos_hint: {"center_y": 0.5}
+
+        ScrollView:
+            MDBoxLayout:
+                id: section_list
+                orientation: "vertical"
+                adaptive_height: True
+                spacing: dp(1)
+
+
+<PlaceholderDetailScreen>:
+    md_bg_color: BACKGROUND
+
+    MDBoxLayout:
+        orientation: "vertical"
+
+        MDBoxLayout:
+            size_hint_y: None
+            height: dp(56)
+            padding: [dp(8), 0, dp(16), 0]
+            spacing: dp(8)
+
+            MDIconButton:
+                icon: "arrow-left"
+                theme_icon_color: "Custom"
+                icon_color: TEXT_SECONDARY
+                on_release: root.go_back()
+                pos_hint: {"center_y": 0.5}
+
+            MDLabel:
+                text: root.title_text
+                theme_text_color: "Custom"
+                text_color: TEXT_PRIMARY
+                font_style: "Headline"
+                role: "small"
+                pos_hint: {"center_y": 0.5}
+
+        MDLabel:
+            text: "Coming in Phase 3C"
+            halign: "center"
+            theme_text_color: "Custom"
+            text_color: TEXT_SECONDARY
+            font_style: "Body"
+            role: "large"
