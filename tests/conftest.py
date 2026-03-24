@@ -1,23 +1,14 @@
-from __future__ import annotations
-
-import os
-import sqlite3
-import sys
-
 import pytest
-
-# Ensure src/ is on the path for all test imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
-
-from db.schema import init_db  # noqa: E402
+import sqlite3
+from src.db.schema import init_db
 
 
 @pytest.fixture
 def db_conn():
-    """In-memory SQLite connection with full schema initialised."""
+    """In-memory SQLite database with schema initialized."""
     conn = sqlite3.connect(":memory:")
     conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA foreign_keys = ON")
+    conn.execute("PRAGMA foreign_keys=ON")
     init_db(conn)
     yield conn
     conn.close()
