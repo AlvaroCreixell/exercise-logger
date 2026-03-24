@@ -2,7 +2,10 @@
 name = "exercise-logger"
 version = "0.1.0"
 requires-python = ">=3.10"
-dependencies = []
+dependencies = [
+    "kivy>=2.3.0,<2.4",
+    "kivymd>=2.0.0,<2.1",
+]
 
 [project.optional-dependencies]
 dev = ["pytest>=7.0"]
