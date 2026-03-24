@@ -1,22 +1,15 @@
 """Routine service — routine management, set schemes, validation."""
 from datetime import datetime, timezone
 from typing import List, Optional
-from src.models.exercise import ExerciseType
 from src.models.routine import (
     Routine, RoutineDay, RoutineDayExercise, SetTarget, SetScheme, SetKind,
 )
 from src.repositories.exercise_repo import ExerciseRepo
 from src.repositories.routine_repo import RoutineRepo
 from src.services.cycle_service import CycleService
-
-
-# Compatibility matrix: exercise_type -> allowed set_kinds
-COMPATIBLE_SET_KINDS = {
-    ExerciseType.REPS_WEIGHT: {SetKind.REPS_WEIGHT, SetKind.AMRAP},
-    ExerciseType.REPS_ONLY: {SetKind.REPS_ONLY, SetKind.AMRAP},
-    ExerciseType.TIME: {SetKind.DURATION},
-    ExerciseType.CARDIO: {SetKind.CARDIO},
-}
+from src.services.validation import (
+    COMPATIBLE_SET_KINDS, validate_set_kind, validate_cardio_fields, validate_amrap_fields,
+)
 
 
 class RoutineService:
@@ -187,9 +180,9 @@ class RoutineService:
         if not rde:
             raise ValueError(f"Day exercise {rde_id} not found")
         exercise = self._exercise_repo.get_by_id(rde.exercise_id)
-        self._validate_set_kind(set_kind, exercise.type)
-        self._validate_cardio_fields(set_kind, duration_seconds, distance)
-        self._validate_amrap_fields(set_kind, exercise.type, weight)
+        validate_set_kind(set_kind, exercise.type)
+        validate_cardio_fields(set_kind, duration_seconds, distance)
+        validate_amrap_fields(set_kind, exercise.type, weight)
 
         targets = [
             SetTarget(
@@ -228,9 +221,9 @@ class RoutineService:
                 sk = SetKind(sk)
             elif sk is None:
                 raise ValueError(f"set_kind is required for set {i + 1}")
-            self._validate_set_kind(sk, exercise.type)
-            self._validate_cardio_fields(sk, data.get("duration_seconds"), data.get("distance"))
-            self._validate_amrap_fields(sk, exercise.type, data.get("weight"))
+            validate_set_kind(sk, exercise.type)
+            validate_cardio_fields(sk, data.get("duration_seconds"), data.get("distance"))
+            validate_amrap_fields(sk, exercise.type, data.get("weight"))
 
             targets.append(SetTarget(
                 id=None, routine_day_exercise_id=rde_id,
@@ -254,27 +247,3 @@ class RoutineService:
     def get_targets(self, rde_id: int) -> List[SetTarget]:
         return self._repo.get_targets(rde_id)
 
-    # --- Validation ---
-
-    @staticmethod
-    def _validate_set_kind(set_kind: SetKind, exercise_type: ExerciseType) -> None:
-        allowed = COMPATIBLE_SET_KINDS.get(exercise_type, set())
-        if set_kind not in allowed:
-            raise ValueError(
-                f"Set kind '{set_kind.value}' is not compatible with "
-                f"exercise type '{exercise_type.value}'"
-            )
-
-    @staticmethod
-    def _validate_cardio_fields(set_kind: SetKind, duration_seconds: Optional[int], distance: Optional[float]) -> None:
-        if set_kind == SetKind.CARDIO and duration_seconds is None and distance is None:
-            raise ValueError("Cardio sets require at least one of duration_seconds or distance")
-
-    @staticmethod
-    def _validate_amrap_fields(set_kind: SetKind, exercise_type: ExerciseType, weight: Optional[float]) -> None:
-        if set_kind != SetKind.AMRAP:
-            return
-        if exercise_type == ExerciseType.REPS_WEIGHT and weight is None:
-            raise ValueError("AMRAP sets for reps_weight exercises require a weight")
-        if exercise_type == ExerciseType.REPS_ONLY and weight is not None:
-            raise ValueError("AMRAP sets for reps_only exercises must not have a weight (bodyweight)")
