@@ -118,9 +118,10 @@ class ExerciseLoggerApp(MDApp):
         # Import real screens
         from src.screens.home.home_screen import HomeScreen
         from src.screens.manage.manage_screen import ManageScreen
+        from src.screens.workout.workout_screen import WorkoutScreen
 
         self.tab_manager.add_widget(HomeScreen(name="home"))
-        self.tab_manager.add_widget(PlaceholderScreen("workout"))
+        self.tab_manager.add_widget(WorkoutScreen(name="workout"))
         self.tab_manager.add_widget(PlaceholderScreen("dashboard"))
         self.tab_manager.add_widget(ManageScreen(name="manage"))
 
