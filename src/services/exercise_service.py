@@ -34,7 +34,7 @@ class ExerciseService:
         return self._repo.list_all(include_archived)
 
     def update_exercise(self, exercise: Exercise) -> Exercise:
-        if not exercise.id:
+        if exercise.id is None:
             raise ValueError("Exercise must have an id for update")
         existing = self._repo.get_by_id(exercise.id)
         if not existing:

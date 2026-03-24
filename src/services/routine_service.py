@@ -60,7 +60,9 @@ class RoutineService:
         routine.is_active = True
         routine.updated_at = self._now()
         self._repo.update_routine(routine)
-        self._cycle_service.initialize(routine_id)
+        # Only initialize cycle if no state exists (preserve progress on re-activation)
+        if self._cycle_service.get_current_day(routine_id) is None:
+            self._cycle_service.initialize(routine_id)
         self._repo.commit()
 
     def deactivate_routine(self, routine_id: int) -> None:
