@@ -244,3 +244,54 @@ class WorkoutService:
 
     def get_logged_sets(self, session_exercise_id: int) -> List[LoggedSet]:
         return self._repo.get_logged_sets(session_exercise_id)
+
+    def start_routine_session_with_exercises(self, routine_day_id: int) -> WorkoutSession:
+        """Start a session AND populate it with the day's planned exercises.
+
+        This is the primary entry point for the UI. Creates the session,
+        adds all exercises from the routine day plan, and commits once
+        at the end (single transaction).
+        Returns the created session.
+        """
+        # Block if another session is in progress
+        existing = self._repo.get_in_progress_session()
+        if existing:
+            raise ValueError("Another session is already in progress")
+
+        day = self._routine_repo.get_day(routine_day_id)
+        if not day:
+            raise ValueError(f"Routine day {routine_day_id} not found")
+
+        routine = self._routine_repo.get_routine(day.routine_id)
+
+        session = WorkoutSession(
+            id=None,
+            routine_id=day.routine_id,
+            routine_day_id=routine_day_id,
+            session_type=SessionType.ROUTINE,
+            status=SessionStatus.IN_PROGRESS,
+            completed_fully=None,
+            day_label_snapshot=day.label,
+            day_name_snapshot=day.name,
+            started_at=self._now(),
+        )
+        session.id = self._repo.create_session(session)
+
+        # Add all planned exercises in one transaction
+        rdes = self._routine_repo.get_day_exercises(routine_day_id)
+        for i, rde in enumerate(rdes):
+            exercise = self._exercise_repo.get_by_id(rde.exercise_id)
+            if not exercise:
+                continue
+            se = SessionExercise(
+                id=None,
+                session_id=session.id,
+                exercise_id=rde.exercise_id,
+                routine_day_exercise_id=rde.id,
+                sort_order=i,
+                exercise_name_snapshot=exercise.name,
+            )
+            self._repo.add_session_exercise(se)
+
+        self._repo.commit()  # Single commit for entire bootstrap
+        return session

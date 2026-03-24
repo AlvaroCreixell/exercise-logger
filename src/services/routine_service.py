@@ -168,6 +168,10 @@ class RoutineService:
     def get_day_exercises(self, day_id: int) -> List[RoutineDayExercise]:
         return self._repo.get_day_exercises(day_id)
 
+    def get_day_exercise(self, rde_id: int) -> Optional[RoutineDayExercise]:
+        """Get a single day exercise by ID (for UI display of set_scheme etc.)."""
+        return self._repo.get_day_exercise(rde_id)
+
     # --- Set Targets ---
 
     def set_uniform_targets(
