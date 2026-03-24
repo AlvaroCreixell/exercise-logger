@@ -1,6 +1,7 @@
 import pytest
 from src.models.exercise import ExerciseType
 from src.models.routine import SetScheme, SetKind
+from src.models.benchmark import BenchmarkMethod
 
 
 class TestStatsService:
@@ -137,3 +138,71 @@ class TestStatsService:
 
         best = stats_service.get_exercise_best_set(bench.id)
         assert best["weight"] == 155.0
+
+
+class TestStatsServiceBenchmarkAndPlanVsActual:
+
+    def test_benchmark_history(self, stats_service, benchmark_service, make_exercise):
+        ex = make_exercise("Bench Press")
+        defn = benchmark_service.create_definition(
+            ex.id, BenchmarkMethod.MAX_WEIGHT, "Upper",
+        )
+        benchmark_service.record_result(defn.id, 135.0)
+        benchmark_service.record_result(defn.id, 145.0)
+
+        history = stats_service.get_benchmark_history(defn.id)
+        assert len(history) == 2
+        assert history[0]["result_value"] == 135.0
+        assert history[1]["result_value"] == 145.0
+
+    def test_plan_vs_actual_with_target(self, stats_service, workout_service, routine_service, make_exercise):
+        r = routine_service.create_routine("Test")
+        day = routine_service.add_day(r.id, "A", "Push")
+        ex = make_exercise("Bench Press")
+        rde = routine_service.add_exercise_to_day(day.id, ex.id, SetScheme.UNIFORM)
+        targets = routine_service.set_uniform_targets(rde.id, 3, SetKind.REPS_WEIGHT, 10, 10, 135.0)
+        routine_service.activate_routine(r.id)
+
+        session = workout_service.start_routine_session(day.id)
+        se = workout_service.add_exercise_to_session(session.id, ex.id, routine_day_exercise_id=rde.id)
+        workout_service.log_set(se.id, SetKind.REPS_WEIGHT, exercise_set_target_id=targets[0].id, reps=10, weight=135.0)
+        workout_service.log_set(se.id, SetKind.REPS_WEIGHT, exercise_set_target_id=targets[1].id, reps=8, weight=140.0)
+        workout_service.finish_session(session.id)
+
+        comparison = stats_service.get_plan_vs_actual(se.id)
+        assert len(comparison) == 2
+        assert comparison[0]["has_target"] == 1
+        assert comparison[0]["planned_weight"] == 135.0
+        assert comparison[0]["actual_weight"] == 135.0
+        assert comparison[1]["actual_reps"] == 8
+
+    def test_plan_vs_actual_ad_hoc_no_target(self, stats_service, workout_service, routine_service, make_exercise):
+        r = routine_service.create_routine("Test")
+        day = routine_service.add_day(r.id, "A", "Push")
+        routine_service.activate_routine(r.id)
+        ex = make_exercise("Bench Press")
+
+        session = workout_service.start_routine_session(day.id)
+        se = workout_service.add_exercise_to_session(session.id, ex.id)  # ad-hoc
+        workout_service.log_set(se.id, SetKind.REPS_WEIGHT, reps=10, weight=135.0)
+        workout_service.finish_session(session.id)
+
+        comparison = stats_service.get_plan_vs_actual(se.id)
+        assert len(comparison) == 1
+        assert comparison[0]["has_target"] == 0
+        assert comparison[0]["planned_weight"] is None
+
+    def test_total_volume_trend(self, stats_service, workout_service, routine_service, make_exercise):
+        r = routine_service.create_routine("Test")
+        day = routine_service.add_day(r.id, "A", "Push")
+        ex = make_exercise("Bench Press")
+        routine_service.activate_routine(r.id)
+
+        session = workout_service.start_routine_session(day.id)
+        se = workout_service.add_exercise_to_session(session.id, ex.id)
+        workout_service.log_set(se.id, SetKind.REPS_WEIGHT, reps=10, weight=100.0)
+        workout_service.finish_session(session.id)
+
+        trend = stats_service.get_total_volume_trend(weeks=1)
+        assert len(trend) >= 1
+        assert trend[0]["total_volume"] == 1000.0  # 10 * 100

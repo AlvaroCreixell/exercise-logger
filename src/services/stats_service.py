@@ -95,3 +95,61 @@ class StatsService:
                     "session_date": row["session_started_at"][:10],
                 }
         return best
+
+    def get_benchmark_history(self, defn_id: int) -> List[dict]:
+        """Benchmark results over time for charts.
+
+        Returns list of dicts: {tested_at, result_value, method_snapshot, reference_weight_snapshot}
+        """
+        rows = self._workout_repo._fetchall(
+            """SELECT tested_at, result_value, method_snapshot, reference_weight_snapshot
+               FROM benchmark_results
+               WHERE benchmark_definition_id = ?
+               ORDER BY tested_at""",
+            (defn_id,),
+        )
+        return [dict(r) for r in rows]
+
+    def get_plan_vs_actual(self, session_exercise_id: int) -> List[dict]:
+        """Compare logged sets against their plan targets for a session exercise.
+
+        Returns list of dicts: {set_number, set_kind, planned_reps_min, planned_reps_max,
+        planned_weight, actual_reps, actual_weight, has_target}
+        """
+        rows = self._workout_repo._fetchall(
+            """SELECT ls.set_number, ls.set_kind, ls.reps as actual_reps,
+                      ls.weight as actual_weight, ls.duration_seconds as actual_duration,
+                      ls.distance as actual_distance,
+                      est.target_reps_min as planned_reps_min,
+                      est.target_reps_max as planned_reps_max,
+                      est.target_weight as planned_weight,
+                      est.target_duration_seconds as planned_duration,
+                      est.target_distance as planned_distance,
+                      CASE WHEN est.id IS NOT NULL THEN 1 ELSE 0 END as has_target
+               FROM logged_sets ls
+               LEFT JOIN exercise_set_targets est ON ls.exercise_set_target_id = est.id
+               WHERE ls.session_exercise_id = ?
+               ORDER BY ls.set_number""",
+            (session_exercise_id,),
+        )
+        return [dict(r) for r in rows]
+
+    def get_total_volume_trend(self, weeks: int = 8) -> List[dict]:
+        """Weekly total volume (weight * reps) across all exercises.
+
+        Returns list of dicts: {week, total_volume}
+        """
+        now = datetime.now(timezone.utc)
+        start = now - timedelta(weeks=weeks)
+        rows = self._workout_repo._fetchall(
+            """SELECT strftime('%Y-%W', ws.started_at) as year_week,
+                      SUM(COALESCE(ls.weight, 0) * COALESCE(ls.reps, 0)) as total_volume
+               FROM logged_sets ls
+               JOIN session_exercises se ON ls.session_exercise_id = se.id
+               JOIN workout_sessions ws ON se.session_id = ws.id
+               WHERE ws.status = 'finished' AND ws.started_at >= ?
+               GROUP BY year_week
+               ORDER BY year_week""",
+            (start.isoformat(),),
+        )
+        return [{"week": r["year_week"], "total_volume": r["total_volume"]} for r in rows]
