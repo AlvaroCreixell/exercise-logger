@@ -1,13 +1,12 @@
 from __future__ import annotations
-
 from dataclasses import dataclass
 from enum import Enum
 from typing import Optional
 
 
-class BenchmarkMethod(str, Enum):
+class BenchmarkMethod(Enum):
     MAX_WEIGHT = "max_weight"
-    REPS_TO_FAILURE = "reps_to_failure"
+    MAX_REPS = "max_reps"
     TIMED_HOLD = "timed_hold"
 
 
@@ -15,13 +14,10 @@ class BenchmarkMethod(str, Enum):
 class BenchmarkDefinition:
     id: Optional[int]
     exercise_id: int
-    name: str
     method: BenchmarkMethod
-    target_reps: Optional[int] = None
-    target_weight: Optional[float] = None
-    frequency_weeks: int = 6
-    is_active: bool = True
-    created_at: Optional[str] = None
+    reference_weight: Optional[float]
+    frequency_weeks: int
+    muscle_group_label: str
 
 
 @dataclass
@@ -29,8 +25,7 @@ class BenchmarkResult:
     id: Optional[int]
     benchmark_definition_id: int
     session_id: Optional[int]
-    result_weight: Optional[float] = None
-    result_reps: Optional[int] = None
-    result_duration_sec: Optional[float] = None
-    notes: Optional[str] = None
-    tested_at: Optional[str] = None
+    method_snapshot: BenchmarkMethod
+    reference_weight_snapshot: Optional[float]
+    result_value: float
+    tested_at: str
