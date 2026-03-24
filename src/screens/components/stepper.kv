@@ -1,0 +1,57 @@
+#:import SURFACE src.theme.SURFACE
+#:import PRIMARY src.theme.PRIMARY
+#:import TEXT_PRIMARY src.theme.TEXT_PRIMARY
+#:import TEXT_SECONDARY src.theme.TEXT_SECONDARY
+#:import dp kivy.metrics.dp
+
+<ValueStepper>:
+    size_hint_y: None
+    height: dp(56)
+    spacing: dp(8)
+    padding: [dp(4), 0, dp(4), 0]
+
+    MDIconButton:
+        icon: "minus"
+        theme_icon_color: "Custom"
+        icon_color: TEXT_PRIMARY
+        style: "outlined"
+        size_hint: None, None
+        size: [dp(48), dp(48)]
+        on_release: root.decrement()
+        pos_hint: {"center_y": 0.5}
+
+    MDButton:
+        style: "text"
+        size_hint_x: 1
+        on_release: root.open_input()
+        pos_hint: {"center_y": 0.5}
+
+        MDButtonText:
+            text: root.display_text
+            theme_text_color: "Custom"
+            text_color: TEXT_PRIMARY
+            font_style: "Headline"
+            role: "medium"
+            bold: True
+            halign: "center"
+
+    MDIconButton:
+        icon: "plus"
+        theme_icon_color: "Custom"
+        icon_color: TEXT_PRIMARY
+        style: "outlined"
+        size_hint: None, None
+        size: [dp(48), dp(48)]
+        on_release: root.increment()
+        pos_hint: {"center_y": 0.5}
+
+    MDLabel:
+        text: root.label
+        theme_text_color: "Custom"
+        text_color: TEXT_SECONDARY
+        font_style: "Body"
+        role: "small"
+        size_hint_x: None
+        width: dp(40)
+        halign: "center"
+        pos_hint: {"center_y": 0.5}
