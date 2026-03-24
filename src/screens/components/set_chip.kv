@@ -1,0 +1,23 @@
+#:import PRIMARY src.theme.PRIMARY
+#:import TEXT_SECONDARY src.theme.TEXT_SECONDARY
+#:import BACKGROUND src.theme.BACKGROUND
+#:import dp kivy.metrics.dp
+
+<SetChip>:
+    size_hint: None, None
+    height: dp(32)
+    width: self.minimum_width
+    padding: [dp(12), dp(4), dp(12), dp(4)]
+    radius: [dp(16)]
+    md_bg_color: PRIMARY if root.is_logged else [0, 0, 0, 0]
+    line_color: TEXT_SECONDARY if not root.is_logged else [0, 0, 0, 0]
+    line_width: 1
+
+    MDLabel:
+        text: root.chip_text
+        theme_text_color: "Custom"
+        text_color: BACKGROUND if root.is_logged else TEXT_SECONDARY
+        font_style: "Label"
+        role: "medium"
+        adaptive_width: True
+        halign: "center"
