@@ -77,3 +77,11 @@ def workout_repo(db_conn):
 @pytest.fixture
 def workout_service(workout_repo, routine_repo, exercise_repo, cycle_service):
     return WorkoutService(workout_repo, routine_repo, exercise_repo, cycle_service)
+
+
+from src.repositories.settings_repo import SettingsRepo
+
+
+@pytest.fixture
+def settings_repo(db_conn):
+    return SettingsRepo(db_conn)
