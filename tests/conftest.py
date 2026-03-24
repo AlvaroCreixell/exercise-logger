@@ -35,3 +35,23 @@ def make_exercise(exercise_service):
     def _make(name="Bench Press", type=ExerciseType.REPS_WEIGHT, **kwargs):
         return exercise_service.create_exercise(name=name, type=type, **kwargs)
     return _make
+
+
+from src.repositories.routine_repo import RoutineRepo
+from src.repositories.cycle_repo import CycleRepo
+from src.services.cycle_service import CycleService
+
+
+@pytest.fixture
+def routine_repo(db_conn):
+    return RoutineRepo(db_conn)
+
+
+@pytest.fixture
+def cycle_repo(db_conn):
+    return CycleRepo(db_conn)
+
+
+@pytest.fixture
+def cycle_service(cycle_repo, routine_repo):
+    return CycleService(cycle_repo, routine_repo)
