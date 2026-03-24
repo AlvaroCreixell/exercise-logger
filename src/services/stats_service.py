@@ -134,6 +134,44 @@ class StatsService:
         )
         return [dict(r) for r in rows]
 
+    def get_recent_prs(self, limit: int = 5) -> List[dict]:
+        """Recent personal records — highest weight per exercise, most recent first.
+
+        Returns list of dicts: {exercise_name, weight, reps, session_date}
+        """
+        exercises = self._exercise_repo.list_all()
+        prs = []
+        for ex in exercises:
+            best = self.get_exercise_best_set(ex.id)
+            if best and best.get("weight"):
+                prs.append({
+                    "exercise_name": ex.name,
+                    "weight": best["weight"],
+                    "reps": best.get("reps"),
+                    "session_date": best["session_date"],
+                })
+        # Sort by session_date descending
+        prs.sort(key=lambda x: x["session_date"], reverse=True)
+        return prs[:limit]
+
+    def get_latest_plan_vs_actual_for_exercise(self, exercise_id: int) -> Optional[List[dict]]:
+        """Get plan-vs-actual for the most recent session where this exercise had plan targets.
+
+        Returns None if no plan-linked session found, otherwise the get_plan_vs_actual() result.
+        """
+        # Find recent session_exercises for this exercise that have plan targets
+        row = self._workout_repo._fetchone(
+            """SELECT se.id FROM session_exercises se
+               JOIN workout_sessions ws ON se.session_id = ws.id
+               WHERE se.exercise_id = ? AND se.routine_day_exercise_id IS NOT NULL
+               AND ws.status = 'finished'
+               ORDER BY ws.started_at DESC LIMIT 1""",
+            (exercise_id,),
+        )
+        if not row:
+            return None
+        return self.get_plan_vs_actual(row["id"])
+
     def get_total_volume_trend(self, weeks: int = 8) -> List[dict]:
         """Weekly total volume (weight * reps) across all exercises.
 
