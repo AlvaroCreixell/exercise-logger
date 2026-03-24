@@ -176,7 +176,7 @@ class ImportExportService:
             errors.append(f"Unsupported schema_version: {version}")
             return errors
 
-        if not data.get("name"):
+        if not (data.get("name") or "").strip():
             errors.append("Missing routine name")
 
         days = data.get("days")
@@ -185,15 +185,15 @@ class ImportExportService:
             return errors
 
         labels = [d.get("label", "").strip().upper() for d in days]
-        if len(labels) != len(set(labels)):
+        if len(labels) != len(set(l for l in labels if l)):
             errors.append("Day labels must be unique")
 
         for di, day in enumerate(days):
             day_prefix = f"Day {di + 1}"
 
-            if not day.get("label"):
+            if not (day.get("label") or "").strip():
                 errors.append(f"{day_prefix}: missing label")
-            if not day.get("name"):
+            if not (day.get("name") or "").strip():
                 errors.append(f"{day_prefix}: missing name")
 
             exercises = day.get("exercises")
@@ -204,7 +204,7 @@ class ImportExportService:
             for ei, ex in enumerate(exercises):
                 ex_prefix = f"{day_prefix}, Exercise {ei + 1}"
 
-                if not ex.get("name"):
+                if not (ex.get("name") or "").strip():
                     errors.append(f"{ex_prefix}: missing name")
                     continue
 
@@ -214,6 +214,13 @@ class ImportExportService:
                 except (ValueError, KeyError):
                     errors.append(f"{ex_prefix}: invalid type '{ex_type_str}'")
                     continue
+
+                # Validate set_scheme
+                set_scheme_str = ex.get("set_scheme", "uniform")
+                try:
+                    SetScheme(set_scheme_str)
+                except (ValueError, KeyError):
+                    errors.append(f"{ex_prefix}: invalid set_scheme '{set_scheme_str}'")
 
                 sets = ex.get("sets")
                 if not sets or not isinstance(sets, list):
@@ -270,6 +277,15 @@ class ImportExportService:
                 except (ValueError, KeyError):
                     errors.append(f"{bm_prefix}: invalid method '{method_str}'")
 
+                # Validate frequency
+                item_freq = item.get("frequency_weeks")
+                if item_freq is not None and (not isinstance(item_freq, int) or item_freq < 1):
+                    errors.append(f"{bm_prefix}: frequency_weeks must be >= 1")
+
+            default_freq = benchmarking.get("frequency_weeks", 6)
+            if not isinstance(default_freq, int) or default_freq < 1:
+                errors.append("Benchmarking: default frequency_weeks must be >= 1")
+
         return errors
 
     def _validate_numeric_ranges(self, s: dict, sk: SetKind, prefix: str, errors: list) -> None:
@@ -324,82 +340,86 @@ class ImportExportService:
         now = datetime.now(timezone.utc).isoformat()
         from src.models.routine import Routine, RoutineDay, RoutineDayExercise, SetTarget
 
-        routine = Routine(id=None, name=data["name"], is_active=False, created_at=now, updated_at=now)
-        routine_id = self._routine_repo.create_routine(routine)
+        try:
+            routine = Routine(id=None, name=data["name"].strip(), is_active=False, created_at=now, updated_at=now)
+            routine_id = self._routine_repo.create_routine(routine)
 
-        for di, day_data in enumerate(data["days"]):
-            day = RoutineDay(
-                id=None, routine_id=routine_id,
-                label=day_data["label"].strip(), name=day_data["name"].strip(),
-                sort_order=di,
-            )
-            day_id = self._routine_repo.add_day(day)
-
-            for ei, ex_data in enumerate(day_data["exercises"]):
-                exercise = self._resolve_exercise(
-                    ex_data["name"], ExerciseType(ex_data["type"]), exercise_mapping,
+            for di, day_data in enumerate(data["days"]):
+                day = RoutineDay(
+                    id=None, routine_id=routine_id,
+                    label=day_data["label"].strip(), name=day_data["name"].strip(),
+                    sort_order=di,
                 )
+                day_id = self._routine_repo.add_day(day)
 
-                set_scheme_str = ex_data.get("set_scheme", "uniform")
-                rde = RoutineDayExercise(
-                    id=None, routine_day_id=day_id, exercise_id=exercise.id,
-                    sort_order=ei, set_scheme=SetScheme(set_scheme_str),
-                    notes=ex_data.get("notes"), is_optional=bool(ex_data.get("is_optional", False)),
-                )
-                rde_id = self._routine_repo.add_day_exercise(rde)
+                for ei, ex_data in enumerate(day_data["exercises"]):
+                    exercise = self._resolve_exercise(
+                        ex_data["name"].strip(), ExerciseType(ex_data["type"]), exercise_mapping,
+                    )
 
-                targets = []
-                for si, s in enumerate(ex_data["sets"]):
-                    targets.append(SetTarget(
-                        id=None, routine_day_exercise_id=rde_id,
-                        set_number=si + 1, set_kind=SetKind(s["set_kind"]),
-                        target_reps_min=s.get("reps_min"),
-                        target_reps_max=s.get("reps_max"),
-                        target_weight=s.get("weight"),
-                        target_duration_seconds=s.get("duration_seconds"),
-                        target_distance=s.get("distance"),
-                    ))
-                self._routine_repo.set_targets(rde_id, targets)
+                    set_scheme_str = ex_data.get("set_scheme", "uniform")
+                    rde = RoutineDayExercise(
+                        id=None, routine_day_id=day_id, exercise_id=exercise.id,
+                        sort_order=ei, set_scheme=SetScheme(set_scheme_str),
+                        notes=ex_data.get("notes"), is_optional=bool(ex_data.get("is_optional", False)),
+                    )
+                    rde_id = self._routine_repo.add_day_exercise(rde)
 
-        # Import benchmarks if present — resolve exercises through same mapping path
-        benchmarking = data.get("benchmarking")
-        if benchmarking and benchmarking.get("enabled"):
-            default_freq = benchmarking.get("frequency_weeks", 6)
-            for item in benchmarking.get("items", []):
-                ex_name = item.get("exercise_name", "")
-                # Try mapping first, then name match — same path as routine exercises
-                exercise = self._resolve_exercise(ex_name, ExerciseType.REPS_WEIGHT, exercise_mapping)
+                    targets = []
+                    for si, s in enumerate(ex_data["sets"]):
+                        targets.append(SetTarget(
+                            id=None, routine_day_exercise_id=rde_id,
+                            set_number=si + 1, set_kind=SetKind(s["set_kind"]),
+                            target_reps_min=s.get("reps_min"),
+                            target_reps_max=s.get("reps_max"),
+                            target_weight=s.get("weight"),
+                            target_duration_seconds=s.get("duration_seconds"),
+                            target_distance=s.get("distance"),
+                        ))
+                    self._routine_repo.set_targets(rde_id, targets)
 
-                from src.models.benchmark import BenchmarkDefinition
-                freq = item.get("frequency_weeks") or default_freq
-                defn = BenchmarkDefinition(
-                    id=None,
-                    exercise_id=exercise.id,
-                    method=BenchmarkMethod(item["method"]),
-                    reference_weight=item.get("reference_weight"),
-                    frequency_weeks=freq,
-                    muscle_group_label=item.get("muscle_group_label", ""),
-                )
-                self._benchmark_repo.create_definition(defn)
+            # Import benchmarks if present — resolve exercises through same mapping path
+            benchmarking = data.get("benchmarking")
+            if benchmarking and benchmarking.get("enabled"):
+                default_freq = benchmarking.get("frequency_weeks", 6)
+                for item in benchmarking.get("items", []):
+                    ex_name = item.get("exercise_name", "").strip()
+                    exercise = self._resolve_exercise(ex_name, ExerciseType.REPS_WEIGHT, exercise_mapping)
 
-        if activate:
-            active = self._routine_repo.get_active_routine()
-            if active:
-                active.is_active = False
-                active.updated_at = now
-                self._routine_repo.update_routine(active)
+                    from src.models.benchmark import BenchmarkDefinition
+                    freq = item.get("frequency_weeks") or default_freq
+                    defn = BenchmarkDefinition(
+                        id=None,
+                        exercise_id=exercise.id,
+                        method=BenchmarkMethod(item["method"]),
+                        reference_weight=item.get("reference_weight"),
+                        frequency_weeks=freq,
+                        muscle_group_label=item.get("muscle_group_label", ""),
+                    )
+                    self._benchmark_repo.create_definition(defn)
 
-            routine_obj = self._routine_repo.get_routine(routine_id)
-            routine_obj.is_active = True
-            routine_obj.updated_at = now
-            self._routine_repo.update_routine(routine_obj)
+            if activate:
+                active = self._routine_repo.get_active_routine()
+                if active:
+                    active.is_active = False
+                    active.updated_at = now
+                    self._routine_repo.update_routine(active)
 
-            # Initialize cycle state so the imported routine has a current day
-            if self._cycle_service:
-                self._cycle_service.initialize(routine_id)
+                routine_obj = self._routine_repo.get_routine(routine_id)
+                routine_obj.is_active = True
+                routine_obj.updated_at = now
+                self._routine_repo.update_routine(routine_obj)
 
-        self._routine_repo.commit()
-        return routine_id
+                # Initialize cycle state so the imported routine has a current day
+                if self._cycle_service:
+                    self._cycle_service.initialize(routine_id)
+
+            self._routine_repo.commit()
+            return routine_id
+
+        except Exception:
+            self._routine_repo._conn.rollback()
+            raise
 
     def _resolve_exercise(self, name: str, ex_type: ExerciseType, mapping: Dict[str, int]) -> Exercise:
         """Resolve an exercise name: mapping → name match → create new."""
