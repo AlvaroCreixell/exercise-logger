@@ -1,80 +1,77 @@
-"""Tests for ExerciseService: create, archive, unarchive, list."""
-from __future__ import annotations
-
-import sqlite3
-
-from models.exercise import ExerciseCategory
-from services.exercise_service import ExerciseService
+import pytest
+from src.models.exercise import ExerciseType
 
 
-class TestCreateExercise:
-    def test_create_returns_exercise_with_id(self, db_conn: sqlite3.Connection) -> None:
-        svc = ExerciseService(db_conn)
-        ex = svc.create("Bench Press", ExerciseCategory.WEIGHT)
+class TestExerciseService:
+    def test_create_exercise(self, exercise_service):
+        ex = exercise_service.create_exercise("Bench Press", ExerciseType.REPS_WEIGHT)
         assert ex.id is not None
         assert ex.name == "Bench Press"
-        assert ex.category == ExerciseCategory.WEIGHT
+        assert ex.type == ExerciseType.REPS_WEIGHT
         assert ex.is_archived is False
 
-    def test_create_persisted(self, db_conn: sqlite3.Connection) -> None:
-        svc = ExerciseService(db_conn)
-        ex = svc.create("Squat", ExerciseCategory.WEIGHT)
-        row = db_conn.execute(
-            "SELECT name, category FROM exercises WHERE id = ?", (ex.id,)
-        ).fetchone()
-        assert row["name"] == "Squat"
-        assert row["category"] == "weight"
+    def test_create_with_details(self, exercise_service):
+        ex = exercise_service.create_exercise(
+            "Bench Press", ExerciseType.REPS_WEIGHT,
+            muscle_group="Chest", equipment="Barbell",
+        )
+        assert ex.muscle_group == "Chest"
+        assert ex.equipment == "Barbell"
 
+    def test_duplicate_name_rejected(self, exercise_service):
+        exercise_service.create_exercise("Bench Press", ExerciseType.REPS_WEIGHT)
+        with pytest.raises(ValueError, match="already exists"):
+            exercise_service.create_exercise("Bench Press", ExerciseType.REPS_ONLY)
 
-class TestArchiveUnarchive:
-    def test_archive_hides_from_default_list(self, db_conn: sqlite3.Connection) -> None:
-        svc = ExerciseService(db_conn)
-        ex = svc.create("Bench Press", ExerciseCategory.WEIGHT)
-        svc.archive(ex.id)
-        exercises = svc.get_all()
-        assert all(e.id != ex.id for e in exercises)
+    def test_duplicate_name_case_insensitive(self, exercise_service):
+        exercise_service.create_exercise("Bench Press", ExerciseType.REPS_WEIGHT)
+        with pytest.raises(ValueError, match="already exists"):
+            exercise_service.create_exercise("bench press", ExerciseType.REPS_WEIGHT)
 
-    def test_archived_visible_with_flag(self, db_conn: sqlite3.Connection) -> None:
-        svc = ExerciseService(db_conn)
-        ex = svc.create("Bench Press", ExerciseCategory.WEIGHT)
-        svc.archive(ex.id)
-        exercises = svc.get_all(include_archived=True)
-        assert any(e.id == ex.id for e in exercises)
+    def test_get_exercise(self, exercise_service):
+        created = exercise_service.create_exercise("Bench Press", ExerciseType.REPS_WEIGHT)
+        fetched = exercise_service.get_exercise(created.id)
+        assert fetched.name == "Bench Press"
+        assert fetched.type == ExerciseType.REPS_WEIGHT
 
-    def test_unarchive_restores_to_list(self, db_conn: sqlite3.Connection) -> None:
-        svc = ExerciseService(db_conn)
-        ex = svc.create("Bench Press", ExerciseCategory.WEIGHT)
-        svc.archive(ex.id)
-        svc.unarchive(ex.id)
-        exercises = svc.get_all()
-        assert any(e.id == ex.id for e in exercises)
+    def test_get_nonexistent_returns_none(self, exercise_service):
+        assert exercise_service.get_exercise(999) is None
 
-    def test_archived_flag_persisted(self, db_conn: sqlite3.Connection) -> None:
-        svc = ExerciseService(db_conn)
-        ex = svc.create("Bench Press", ExerciseCategory.WEIGHT)
-        svc.archive(ex.id)
-        row = db_conn.execute(
-            "SELECT is_archived FROM exercises WHERE id = ?", (ex.id,)
-        ).fetchone()
-        assert row["is_archived"] == 1
+    def test_list_exercises(self, exercise_service):
+        exercise_service.create_exercise("Bench Press", ExerciseType.REPS_WEIGHT)
+        exercise_service.create_exercise("Pull-ups", ExerciseType.REPS_ONLY)
+        exercises = exercise_service.list_exercises()
+        assert len(exercises) == 2
 
+    def test_archive_hides_from_default_list(self, exercise_service):
+        ex = exercise_service.create_exercise("Bench Press", ExerciseType.REPS_WEIGHT)
+        exercise_service.archive_exercise(ex.id)
+        assert len(exercise_service.list_exercises()) == 0
+        assert len(exercise_service.list_exercises(include_archived=True)) == 1
 
-class TestGetAll:
-    def test_get_all_returns_active_only_by_default(
-        self, db_conn: sqlite3.Connection
-    ) -> None:
-        svc = ExerciseService(db_conn)
-        active = svc.create("Active", ExerciseCategory.WEIGHT)
-        archived = svc.create("Archived", ExerciseCategory.WEIGHT)
-        svc.archive(archived.id)
-        exercises = svc.get_all()
-        names = [e.name for e in exercises]
-        assert "Active" in names
-        assert "Archived" not in names
+    def test_unarchive(self, exercise_service):
+        ex = exercise_service.create_exercise("Bench Press", ExerciseType.REPS_WEIGHT)
+        exercise_service.archive_exercise(ex.id)
+        exercise_service.unarchive_exercise(ex.id)
+        assert len(exercise_service.list_exercises()) == 1
 
-    def test_get_by_category_filters(self, db_conn: sqlite3.Connection) -> None:
-        svc = ExerciseService(db_conn)
-        svc.create("Bench", ExerciseCategory.WEIGHT)
-        svc.create("Running", ExerciseCategory.CARDIO)
-        weight = svc.get_by_category(ExerciseCategory.WEIGHT)
-        assert all(e.category == ExerciseCategory.WEIGHT for e in weight)
+    def test_update_exercise_name(self, exercise_service):
+        ex = exercise_service.create_exercise("Bench Press", ExerciseType.REPS_WEIGHT)
+        ex.name = "Flat Bench Press"
+        ex.muscle_group = "Chest"
+        updated = exercise_service.update_exercise(ex)
+        assert updated.name == "Flat Bench Press"
+        assert updated.muscle_group == "Chest"
+
+    def test_update_to_duplicate_name_rejected(self, exercise_service):
+        exercise_service.create_exercise("Bench Press", ExerciseType.REPS_WEIGHT)
+        ex2 = exercise_service.create_exercise("Squat", ExerciseType.REPS_WEIGHT)
+        ex2.name = "Bench Press"
+        with pytest.raises(ValueError, match="already exists"):
+            exercise_service.update_exercise(ex2)
+
+    def test_update_same_name_allowed(self, exercise_service):
+        ex = exercise_service.create_exercise("Bench Press", ExerciseType.REPS_WEIGHT)
+        ex.muscle_group = "Chest"
+        updated = exercise_service.update_exercise(ex)
+        assert updated.muscle_group == "Chest"
