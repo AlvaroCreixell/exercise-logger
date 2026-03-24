@@ -1,0 +1,139 @@
+import pytest
+from src.models.exercise import ExerciseType
+from src.models.routine import SetScheme, SetKind
+
+
+class TestStatsService:
+
+    def _create_session_with_sets(self, workout_service, routine_service, make_exercise,
+                                  exercise_name="Bench Press", reps=10, weight=135.0,
+                                  num_sets=1, finish=True):
+        """Helper: create a routine, start session, log sets, optionally finish."""
+        # Reuse or create routine
+        routines = routine_service.list_routines()
+        if routines:
+            r = routines[0]
+            days = routine_service.get_days(r.id)
+            day = days[0]
+        else:
+            r = routine_service.create_routine("Test")
+            day = routine_service.add_day(r.id, "A", "Push")
+            routine_service.activate_routine(r.id)
+
+        ex = make_exercise(exercise_name)
+        session = workout_service.start_routine_session(day.id)
+        se = workout_service.add_exercise_to_session(session.id, ex.id)
+
+        logged = []
+        for _ in range(num_sets):
+            ls = workout_service.log_set(se.id, SetKind.REPS_WEIGHT, reps=reps, weight=weight)
+            logged.append(ls)
+
+        if finish:
+            workout_service.finish_session(session.id)
+
+        return session, se, logged
+
+    def test_zero_set_session_excluded_from_count(self, stats_service, workout_service, routine_service, make_exercise):
+        r = routine_service.create_routine("Test")
+        day = routine_service.add_day(r.id, "A", "Push")
+        routine_service.activate_routine(r.id)
+
+        session = workout_service.start_routine_session(day.id)
+        workout_service.end_early(session.id)  # Zero sets
+
+        assert stats_service.get_session_count() == 0
+
+    def test_session_with_sets_counted(self, stats_service, workout_service, routine_service, make_exercise):
+        self._create_session_with_sets(workout_service, routine_service, make_exercise)
+        assert stats_service.get_session_count() == 1
+
+    def test_last_workout_summary(self, stats_service, workout_service, routine_service, make_exercise):
+        self._create_session_with_sets(workout_service, routine_service, make_exercise)
+        summary = stats_service.get_last_workout_summary()
+        assert summary is not None
+        assert summary["day_label"] == "A"
+        assert summary["day_name"] == "Push"
+        assert summary["duration_minutes"] is not None
+
+    def test_last_workout_excludes_zero_set_sessions(self, stats_service, workout_service, routine_service, make_exercise):
+        # Create session with sets
+        self._create_session_with_sets(workout_service, routine_service, make_exercise)
+
+        # Create zero-set session after
+        days = routine_service.get_days(routine_service.list_routines()[0].id)
+        s2 = workout_service.start_routine_session(days[0].id)
+        workout_service.end_early(s2.id)
+
+        summary = stats_service.get_last_workout_summary()
+        assert summary is not None
+        assert summary["session_id"] != s2.id  # Should be the first session
+
+    def test_no_sessions_returns_none(self, stats_service):
+        assert stats_service.get_last_workout_summary() is None
+
+    def test_exercise_weight_history(self, stats_service, workout_service, routine_service, make_exercise, exercise_repo):
+        self._create_session_with_sets(
+            workout_service, routine_service, make_exercise,
+            reps=10, weight=135.0, num_sets=3,
+        )
+        bench = exercise_repo.get_by_name("Bench Press")
+
+        history = stats_service.get_exercise_weight_history(bench.id)
+        assert len(history) == 1
+        assert history[0]["max_weight"] == 135.0
+        assert history[0]["total_volume"] == 135.0 * 10 * 3
+
+    def test_exercise_best_set(self, stats_service, workout_service, routine_service, make_exercise, exercise_repo):
+        self._create_session_with_sets(
+            workout_service, routine_service, make_exercise,
+            reps=10, weight=135.0,
+        )
+        bench = exercise_repo.get_by_name("Bench Press")
+
+        best = stats_service.get_exercise_best_set(bench.id)
+        assert best is not None
+        assert best["weight"] == 135.0
+        assert best["reps"] == 10
+
+    def test_edit_past_session_updates_stats(self, stats_service, workout_service, routine_service, make_exercise, exercise_repo):
+        """Editing a past set immediately affects stats (never cached)."""
+        session, se, logged = self._create_session_with_sets(
+            workout_service, routine_service, make_exercise,
+            reps=10, weight=135.0,
+        )
+        bench = exercise_repo.get_by_name("Bench Press")
+
+        # Edit the set
+        workout_service.update_set(logged[0].id, weight=200.0)
+
+        best = stats_service.get_exercise_best_set(bench.id)
+        assert best["weight"] == 200.0
+
+    def test_delete_set_updates_stats(self, stats_service, workout_service, routine_service, make_exercise, exercise_repo):
+        """Deleting a set from a session updates stats."""
+        session, se, logged = self._create_session_with_sets(
+            workout_service, routine_service, make_exercise,
+            reps=10, weight=135.0, num_sets=2,
+        )
+        bench = exercise_repo.get_by_name("Bench Press")
+
+        # Delete one set
+        workout_service.delete_set(logged[0].id)
+
+        history = stats_service.get_exercise_weight_history(bench.id)
+        assert history[0]["total_volume"] == 135.0 * 10  # Only one set remains
+
+    def test_add_set_to_past_session(self, stats_service, workout_service, routine_service, make_exercise, exercise_repo):
+        """Can add a set to a finished session (no append-only restriction)."""
+        session, se, logged = self._create_session_with_sets(
+            workout_service, routine_service, make_exercise,
+            reps=10, weight=135.0, num_sets=1,
+        )
+        bench = exercise_repo.get_by_name("Bench Press")
+
+        # Add extra set to finished session
+        workout_service.log_set(se.id, SetKind.REPS_WEIGHT, reps=8, weight=155.0)
+
+        best = stats_service.get_exercise_best_set(bench.id)
+        assert best["weight"] == 155.0

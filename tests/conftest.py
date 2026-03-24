@@ -99,3 +99,11 @@ def benchmark_repo(db_conn):
 @pytest.fixture
 def benchmark_service(benchmark_repo, exercise_repo):
     return BenchmarkService(benchmark_repo, exercise_repo)
+
+
+from src.services.stats_service import StatsService
+
+
+@pytest.fixture
+def stats_service(workout_repo, exercise_repo):
+    return StatsService(workout_repo, exercise_repo)
