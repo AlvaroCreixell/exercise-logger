@@ -63,3 +63,17 @@ from src.services.routine_service import RoutineService
 @pytest.fixture
 def routine_service(routine_repo, exercise_repo, cycle_service):
     return RoutineService(routine_repo, exercise_repo, cycle_service)
+
+
+from src.repositories.workout_repo import WorkoutRepo
+from src.services.workout_service import WorkoutService
+
+
+@pytest.fixture
+def workout_repo(db_conn):
+    return WorkoutRepo(db_conn)
+
+
+@pytest.fixture
+def workout_service(workout_repo, routine_repo, exercise_repo, cycle_service):
+    return WorkoutService(workout_repo, routine_repo, exercise_repo, cycle_service)
