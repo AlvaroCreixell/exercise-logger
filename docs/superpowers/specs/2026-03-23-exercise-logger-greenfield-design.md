@@ -184,7 +184,7 @@ For **progressive** sets: N rows with different targets per set. Defaults: set 1
 
 **Rep ranges:** When `target_reps_min` = `target_reps_max`, it's an exact target (e.g., "10 reps"). When they differ, it's a range (e.g., min=8, max=12 means "8-12 reps"). UI displays "8-12" for ranges, "10" for exact.
 
-**AMRAP sets:** `set_kind = 'amrap'` with `target_weight` set. Reps left open — user does as many as possible. Common pattern: "3 × 8, then 1 AMRAP" = 3 reps_weight sets + 1 amrap set.
+**AMRAP sets:** `set_kind = 'amrap'` with `target_weight` set for `reps_weight` exercises, or `target_weight` null for `reps_only` exercises (bodyweight AMRAP). Reps left open — user does as many as possible. Common pattern: "3 × 8, then 1 AMRAP" = 3 reps_weight sets + 1 amrap set.
 
 **Cardio sets:** `set_kind = 'cardio'` may carry both `target_duration_seconds` and `target_distance` on the same row (e.g., "20 min, 2.0 km"). Either field can be null if the user only cares about one dimension.
 
@@ -269,8 +269,12 @@ Intermediate table between sessions and logged sets. Tracks which exercises were
 | id | INTEGER PK | |
 | benchmark_definition_id | INTEGER FK | → benchmark_definitions |
 | session_id | INTEGER FK | Nullable → workout_sessions |
-| result_value | REAL | Weight achieved, reps achieved, or seconds held (polymorphic based on method) |
+| method_snapshot | TEXT | Captures method at test time (`max_weight`, `max_reps`, `timed_hold`) |
+| reference_weight_snapshot | REAL | Nullable. Captures reference_weight at test time (for max_reps context) |
+| result_value | REAL | Weight achieved, reps achieved, or seconds held (polymorphic based on method_snapshot) |
 | tested_at | TEXT | ISO 8601 |
+
+**Snapshots** preserve benchmark context: if the user changes a max_reps benchmark from 100 lbs to 120 lbs, old results still record that they were tested at 100 lbs. `method_snapshot` + `reference_weight_snapshot` are set at test time and never updated.
 
 ### settings
 
@@ -332,9 +336,9 @@ Set kinds describe what a specific set within an exercise targets:
 | `reps_only` | reps | — | `reps_only` |
 | `duration` | duration_seconds | — | `time` |
 | `cardio` | — | duration_seconds, distance (at least one) | `cardio` |
-| `amrap` | weight | reps (logged after completion) | `reps_weight`, `reps_only` |
+| `amrap` | weight (if reps_weight) | reps (logged after completion) | `reps_weight`, `reps_only` |
 
-**AMRAP** is a set kind, not an exercise type. Any `reps_weight` or `reps_only` exercise can have an AMRAP set — the user does as many reps as possible at the target weight.
+**AMRAP** is a set kind, not an exercise type. Any `reps_weight` or `reps_only` exercise can have an AMRAP set — the user does as many reps as possible, at the target weight if applicable. For `reps_only` exercises (pull-ups, push-ups), AMRAP means max reps at bodyweight — `weight` is null.
 
 **Cardio** set kind carries both duration and distance as optional fields. A treadmill target of "20 min, 2.0 km" has both populated. A "just run for 20 minutes" target has only duration.
 
@@ -618,13 +622,23 @@ Imported plans never silently overwrite the active plan.
 | routine_day_exercises | CHECK(is_optional IN (0, 1)) |
 | exercise_set_targets | CHECK(set_kind IN ('reps_weight', 'reps_only', 'duration', 'cardio', 'amrap')) |
 | exercise_set_targets | CHECK(set_number >= 1) |
+| exercise_set_targets | CHECK(target_reps_min IS NULL OR target_reps_min >= 1) |
+| exercise_set_targets | CHECK(target_reps_max IS NULL OR target_reps_max >= 1) |
+| exercise_set_targets | CHECK(target_reps_min IS NULL OR target_reps_max IS NULL OR target_reps_min <= target_reps_max) |
+| exercise_set_targets | CHECK(target_weight IS NULL OR target_weight >= 0) |
+| exercise_set_targets | CHECK(target_duration_seconds IS NULL OR target_duration_seconds >= 1) |
+| exercise_set_targets | CHECK(target_distance IS NULL OR target_distance > 0) |
 | workout_sessions | CHECK(session_type IN ('routine', 'benchmark')) |
-| workout_sessions | CHECK(status IN ('in_progress', 'finished')) |
-| workout_sessions | CHECK(completed_fully IN (0, 1) OR completed_fully IS NULL) |
+| workout_sessions | CHECK((status = 'in_progress' AND completed_fully IS NULL AND finished_at IS NULL) OR (status = 'finished' AND completed_fully IN (0, 1) AND finished_at IS NOT NULL)) |
 | logged_sets | CHECK(set_kind IN ('reps_weight', 'reps_only', 'duration', 'cardio', 'amrap')) |
 | logged_sets | CHECK(set_number >= 1) |
+| logged_sets | CHECK(reps IS NULL OR reps >= 1) |
+| logged_sets | CHECK(weight IS NULL OR weight >= 0) |
+| logged_sets | CHECK(duration_seconds IS NULL OR duration_seconds >= 1) |
+| logged_sets | CHECK(distance IS NULL OR distance > 0) |
 | benchmark_definitions | CHECK(method IN ('max_weight', 'max_reps', 'timed_hold')) |
 | benchmark_definitions | CHECK(frequency_weeks >= 1) |
+| benchmark_results | CHECK(method_snapshot IN ('max_weight', 'max_reps', 'timed_hold')) |
 
 ### FK actions
 
@@ -638,11 +652,14 @@ Imported plans never silently overwrite the active plan.
 | session_exercises.routine_day_exercise_id | SET NULL | History survives plan exercise deletion |
 | logged_sets.exercise_set_target_id | SET NULL | History survives target deletion |
 | routine_cycle_state.routine_id | CASCADE | Deleting a routine removes its cycle state |
+| routine_cycle_state.current_routine_day_id | NO ACTION | CycleService.handle_day_deleted repairs state before delete; DB blocks accidental orphans |
 
 ### Service-level invariants (not enforceable by SQLite)
 
 - `routine_cycle_state.current_routine_day_id` must belong to the same routine as `routine_cycle_state.routine_id`. Validated by CycleService on every write. Covered by tests.
-- `set_kind` must be compatible with the exercise's `type` per the compatibility matrix. Validated by RoutineService (plan creation) and ImportExportService (import).
+- `set_kind` must be compatible with the exercise's `type` per the compatibility matrix. Validated by RoutineService (plan creation), WorkoutService (set logging and editing), and ImportExportService (import).
+- Cardio sets (`set_kind = 'cardio'`) must have at least one of `duration_seconds` or `distance` populated. Validated by RoutineService (plan creation), WorkoutService (set logging and editing), and ImportExportService (import). Too complex for a single CHECK constraint due to conditional dependency on set_kind.
+- AMRAP sets (`set_kind = 'amrap'`) require `weight` when the parent exercise type is `reps_weight`, and `weight` is null when the parent exercise type is `reps_only`. Validated by RoutineService, WorkoutService, and ImportExportService.
 - Only one routine may have `is_active = 1` at a time. Enforced by RoutineService: deactivate current before activating new.
 
 ## Database Conventions
@@ -682,3 +699,254 @@ Imported plans never silently overwrite the active plan.
 - CSV export
 - Multiple active routines
 - Full plan versioning / immutable snapshots (lightweight snapshots on session rows are sufficient for V1)
+
+---
+
+## Frontend Design Addendum — Minimalist Design Notes
+
+### Design Direction
+
+**Aesthetic:** Industrial minimalism. Dark, dense where it counts, spacious where it breathes. The app is a tool used mid-workout — every pixel earns its place. No decoration, no illustration, no playfulness. Clean data, big touch targets, obvious hierarchy.
+
+**Core principle:** Only two levels of emphasis on any screen — the thing you're doing now (bold/large/primary color) and everything else (smaller/secondary/muted). No intermediate states.
+
+### Color Palette (Dark Theme)
+
+```
+Background:        #121212  (pure dark, not gray)
+Surface/Cards:     #1E1E1E  (subtle lift from background)
+Primary accent:    #4ADE80  (fresh green — logged/success/active states)
+Secondary accent:  #60A5FA  (cool blue — targets/info/benchmarks)
+Destructive:       #F87171  (red — delete/end early, used sparingly)
+Text primary:      #F5F5F5
+Text secondary:    #9CA3AF
+Dividers/borders:  #2A2A2A  (barely visible separation)
+```
+
+**Rationale:** Green as primary accent ties directly to the core action loop — logging a set turns a chip green. This creates a visceral sense of progress as the screen fills with green during a workout. Blue for planned targets creates an immediate plan-vs-actual color language without needing labels. Two accent colors plus red for destructive actions — nothing more.
+
+### Typography Hierarchy
+
+KivyMD uses Roboto by default. Roboto works well for a utility app — just enforce strict hierarchy discipline:
+
+```
+Screen titles:       Headline Small, medium weight, text-primary
+Section labels:      Title Medium, text-secondary
+Exercise names:      Title Small, text-primary, medium weight
+Set values:          Body Large, tabular figures (monospaced digits)
+Chip text:           Label Medium
+Stepper values:      Headline Medium (current reps/weight must be BIG — readable mid-set, one arm holding a dumbbell)
+Timestamps/meta:     Body Small, text-secondary
+```
+
+### Spacing & Touch Targets
+
+```
+Minimum touch target:    48dp (Material guideline, non-negotiable)
+Stepper +/- buttons:     56dp diameter (sweaty fingers, mid-set urgency)
+Card padding:            16dp horizontal, 12dp vertical
+Card gap:                8dp (tight — cards feel like a continuous flow)
+Bottom nav height:       56dp
+Screen edge padding:     16dp
+Bottom sheet radius:     12dp top corners
+```
+
+**Rule:** Generous touch targets on interactive elements, tight spacing on informational elements. The contrast between spacious buttons and compact data rows creates visual rhythm.
+
+### Screen-by-Screen Notes
+
+#### Home Screen
+
+**One-glance test:** User unlocks phone between sets and sees: what day is next + start button.
+
+- Active routine name and current day label/name — this is the hero text, large and centered
+- "Start Workout" — full-width primary button, green, impossible to miss
+- Last workout summary below: single line, muted text ("Mar 21 — Day B Push — 47 min")
+- Benchmark due alerts: small amber-tinted cards below, only shown when due. Don't clutter the screen when nothing is due.
+- In-progress session banner: top of screen, surface-colored with green left border. "Resume" button primary, "End" button text-only/muted. Non-blocking — user can still navigate to other tabs.
+
+**Empty state (no routine):** Centered single line "No routine yet" in text-secondary + "Create Routine" outlined button below. No illustration, no emoji, no paragraph of explanation.
+
+#### Workout Screen — Active Session
+
+This is the most complex and most-used screen. Density management is critical.
+
+**Accordion pattern for exercise cards:**
+- Only the currently-focused exercise card is expanded with steppers and logging controls
+- All other cards show a single compact row: exercise name (left) + chip row (right) + progress fraction ("3/4")
+- Tapping a collapsed card expands it and collapses the previously active one
+- The expanded card has a subtle elevation (shadow) to separate it from the flat collapsed cards
+
+**Expanded exercise card layout (top to bottom):**
+1. Exercise name + set scheme label ("Bench Press — Uniform") + progress ("2/4")
+2. Chip row: logged sets as green filled chips ("135×10"), upcoming targets as dashed gray outlined chips
+3. Stepper row: large `-` / value / `+` for reps and weight (or duration/distance for cardio/time types)
+4. Action row: "Repeat Last" button (primary, green, prominent) and "LOG SET" button (outlined)
+
+**"Repeat Last" prominence:** This should be the most visually dominant action on the expanded card. It represents the 80% use case. Consider making it a full-width green button, with LOG SET as a secondary outlined button below or beside it. Alternatively: single-tap on the card logs a repeat, and the stepper UI is a secondary "modify before logging" mode.
+
+**Stepper behavior:**
+- The current value (reps/weight) should be the largest text element in the stepper area
+- Tapping the number itself opens a keyboard for direct entry (important for large weight values — nobody wants to tap + 30 times to reach 315 lbs)
+- Long-press on +/- should auto-repeat with acceleration
+
+**Bottom bar:**
+- "+ Add Exercise" — left-aligned, text button or small outlined button
+- "End Early" — right side, text-only, text-secondary color (de-emphasized)
+- "Finish Workout" — right side, filled green button (primary action)
+
+**Empty state (no exercises on day):** "No exercises planned for Day A" + "Add Exercise" button. Shouldn't normally happen if routine is set up, but handle it.
+
+#### Dashboard Screen
+
+**Overview section (above fold):**
+- Sessions this week: large number + "this week" label. Simple.
+- Total volume trend: micro sparkline or simple up/down arrow with percentage
+- Recent PRs: list of 2-3 recent PRs, each a single line ("Bench Press — 185 lbs × 8 — Mar 20")
+
+**Exercise detail (drill-in on tap):**
+- Slide-left transition to detail screen
+- Weight-over-time chart (primary)
+- Volume-over-time chart (secondary)
+- Best sets list
+- Plan-vs-actual comparison (if linked to a plan)
+
+**Benchmark history (separate section or tab within dashboard):**
+- Grouped by muscle group label
+- Per-exercise trend line
+
+**Empty state (no sessions):** "No workouts logged yet" + "Start your first workout" button linking to Workout tab.
+
+#### Settings / Manage Tab
+
+**Recommendation:** Rename this tab to "Manage" — it contains first-class features (routine editing, exercise catalog), not just settings.
+
+**Layout:** Flat list of sections, each a tappable row with icon + label + chevron. No inline expansion, no preview data. Clean, scannable.
+
+```
+Sections:
+- Routines           (→ routine list → editor)
+- Exercise Catalog   (→ exercise list → create/archive)
+- Benchmarks         (→ benchmark setup)
+- Import / Export    (→ options)
+- Units              (→ lbs/kg toggle with conversion confirmation)
+```
+
+Each section opens as a full sub-screen (slide-left transition), not an in-page expansion.
+
+### Component Specifications
+
+#### Set Chips
+
+| State | Style | Example |
+|-------|-------|---------|
+| Logged | Filled, `#4ADE80` bg, `#121212` text | `135×10` |
+| Upcoming target | Outlined, dashed border `#9CA3AF`, `#9CA3AF` text | `135×10` |
+| AMRAP logged | Filled, `#4ADE80` bg, `#121212` text | `135×AMRAP 12` |
+| AMRAP target | Outlined, dashed border `#9CA3AF` | `135×AMRAP` |
+
+- Tapping a logged chip opens a bottom sheet with edit/delete options
+- Subtle press animation on tap: scale to 0.95 for 100ms
+- Chip height: 32dp, horizontal padding: 12dp
+
+#### Bottom Navigation
+
+- 4 tabs: Home, Workout, Dashboard, Manage
+- Icons only, no text labels (4 tabs is few enough to identify by icon alone)
+- Active tab: `#4ADE80` icon + thin 2dp top indicator bar
+- Inactive tabs: `#9CA3AF` icons
+- No filled background on active tab — color change only
+
+#### Dialogs & Sheets
+
+Use bottom sheets exclusively — no centered Material dialogs. Bottom sheets are:
+- Thumb-reachable on tall phones
+- Native-feeling on Android
+- Better for forms (more vertical space)
+
+**Style:**
+- 12dp rounded top corners
+- Slight backdrop dim (40% black overlay)
+- Drag handle: small centered pill, `#9CA3AF`, 4dp × 32dp
+- Full-width action buttons pinned to bottom of sheet
+- Destructive actions: `#F87171` text or outlined button (never filled red — too aggressive for a utility app)
+
+#### Confirmation Dialogs
+
+For destructive or irreversible actions (delete set, end early, unit conversion, data import):
+- Bottom sheet with clear description of what will happen
+- Two buttons at bottom: Cancel (text, left) + Confirm (filled, right)
+- Destructive confirms use `#F87171` fill
+
+### Transitions & Animation
+
+| Action | Transition | Duration |
+|--------|-----------|----------|
+| Tab switch | Crossfade or none | 150ms |
+| Drill-in (list → detail) | Slide left | 200ms |
+| Back (detail → list) | Slide right | 200ms |
+| Bottom sheet open | Slide up from bottom | 200ms |
+| Bottom sheet close | Slide down | 150ms |
+| Card expand/collapse | Height animation | 200ms, ease-out |
+| Chip logged (set committed) | Quick scale pulse (1.0 → 1.1 → 1.0) | 150ms |
+
+**Rule:** All transitions under 200ms. Snappy over smooth — this is a gym app, not a meditation app.
+
+### Empty States
+
+Every screen that can be empty gets the same pattern:
+- Centered vertically in available space
+- Single line of text, `text-secondary`, Body Large
+- One action button below (outlined, not filled), if there's a logical next step
+- No illustrations, no icons, no multi-paragraph explanations
+
+| Screen | Text | Action |
+|--------|------|--------|
+| Home (no routine) | "No routine set up" | "Create Routine" |
+| Workout (no active routine) | "Set up a routine to start" | "Go to Routines" |
+| Workout (day has no exercises) | "No exercises on this day" | "Add Exercise" |
+| Dashboard (no sessions) | "No workouts yet" | "Start Workout" |
+| Exercise Catalog (empty) | "No exercises created" | "Add Exercise" |
+| Benchmark (none configured) | "No benchmarks set up" | "Add Benchmark" |
+
+### Chart Styling (Matplotlib)
+
+Matplotlib must be aggressively de-chromed to feel native in the dark theme. Apply these rcParams globally:
+
+```python
+CHART_STYLE = {
+    "figure.facecolor": "#1E1E1E",
+    "axes.facecolor": "#1E1E1E",
+    "axes.edgecolor": "#2A2A2A",
+    "axes.labelcolor": "#9CA3AF",
+    "axes.grid": True,
+    "grid.color": "#2A2A2A",
+    "grid.linewidth": 0.5,
+    "text.color": "#F5F5F5",
+    "xtick.color": "#9CA3AF",
+    "ytick.color": "#9CA3AF",
+    "xtick.labelsize": 9,
+    "ytick.labelsize": 9,
+    "lines.linewidth": 2,
+    "lines.color": "#4ADE80",
+    "figure.autolayout": True,
+    "axes.spines.top": False,
+    "axes.spines.right": False,
+}
+```
+
+- Primary data line: `#4ADE80` (green)
+- Secondary data line: `#60A5FA` (blue)
+- Benchmark reference line: `#9CA3AF` dashed
+- No axis borders on top/right (spines off)
+- Minimal tick labels — dates abbreviated ("Mar 20"), weights rounded
+- No chart titles inside the figure — use Kivy labels above the chart widget instead
+
+For simple metrics (session counts, volume bars), consider drawing directly on Kivy Canvas instead of matplotlib. Reserve matplotlib for trend lines and scatter plots where it adds real value.
+
+### Accessibility Notes
+
+- All interactive elements meet 48dp minimum touch target
+- Color is never the sole indicator — chips use fill vs outline in addition to green vs gray
+- Text contrast ratios: primary text on `#121212` background = 15.3:1 (exceeds AAA). Secondary text `#9CA3AF` on `#121212` = 7.5:1 (exceeds AA).
+- Stepper values are large enough to read without glasses in a dim gym

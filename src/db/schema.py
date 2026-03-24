@@ -102,7 +102,7 @@ _SCHEMA_SQL = [
 
     """CREATE TABLE IF NOT EXISTS routine_cycle_state (
         routine_id INTEGER PRIMARY KEY REFERENCES routines(id) ON DELETE CASCADE,
-        current_routine_day_id INTEGER NOT NULL REFERENCES routine_days(id) ON DELETE CASCADE
+        current_routine_day_id INTEGER NOT NULL REFERENCES routine_days(id)
     )""",
 
     """CREATE TABLE IF NOT EXISTS benchmark_definitions (
