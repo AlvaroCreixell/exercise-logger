@@ -3,6 +3,9 @@
 Two states:
 1. Pre-session: shows day info + Start button
 2. Active session: exercise cards + bottom bar (add, end early, finish)
+
+Edit/delete bottom sheet: tap a logged set chip to edit or delete it.
+Confirmation sheets: End Early and Finish Workout require confirmation.
 """
 import os
 from kivy.lang import Builder
