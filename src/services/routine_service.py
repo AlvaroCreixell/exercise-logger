@@ -128,6 +128,10 @@ class RoutineService:
     def get_days(self, routine_id: int) -> List[RoutineDay]:
         return self._repo.get_days(routine_id)
 
+    def get_day(self, day_id: int) -> Optional[RoutineDay]:
+        """Get a single routine day by ID."""
+        return self._repo.get_day(day_id)
+
     # --- Day Exercises (implemented in Task 8) ---
 
     def add_exercise_to_day(self, day_id: int, exercise_id: int, set_scheme: SetScheme,
@@ -171,6 +175,18 @@ class RoutineService:
     def get_day_exercise(self, rde_id: int) -> Optional[RoutineDayExercise]:
         """Get a single day exercise by ID (for UI display of set_scheme etc.)."""
         return self._repo.get_day_exercise(rde_id)
+
+    def update_day_exercise_scheme(self, rde_id: int, set_scheme: SetScheme) -> None:
+        """Update the set scheme for a day exercise. set_scheme is authoritative per spec L164."""
+        rde = self._repo.get_day_exercise(rde_id)
+        if not rde:
+            raise ValueError(f"Day exercise {rde_id} not found")
+        self._repo.update_day_exercise_scheme(rde_id, set_scheme)
+        day = self._repo.get_day(rde.routine_day_id)
+        routine = self._repo.get_routine(day.routine_id)
+        routine.updated_at = self._now()
+        self._repo.update_routine(routine)
+        self._repo.commit()
 
     # --- Set Targets ---
 

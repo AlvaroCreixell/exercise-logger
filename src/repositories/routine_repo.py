@@ -137,6 +137,12 @@ class RoutineRepo(BaseRepository):
             (rde.routine_day_id, rde.sort_order),
         )
 
+    def update_day_exercise_scheme(self, rde_id: int, set_scheme: SetScheme) -> None:
+        self._execute(
+            "UPDATE routine_day_exercises SET set_scheme = ? WHERE id = ?",
+            (set_scheme.value, rde_id),
+        )
+
     def reorder_day_exercises(self, day_id: int, rde_ids: List[int]) -> None:
         self._execute(
             "UPDATE routine_day_exercises SET sort_order = -(sort_order + 1000) WHERE routine_day_id = ?",
