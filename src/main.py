@@ -1,203 +1,178 @@
-from __future__ import annotations
+"""Exercise Logger — main app entry point.
 
-import flet as ft
+Initializes database, services, screen manager, and bottom navigation.
+"""
+from kivy.metrics import dp
+from kivy.properties import ObjectProperty, StringProperty
+from kivy.uix.screenmanager import ScreenManager, NoTransition, SlideTransition
+from kivymd.app import MDApp
+from kivymd.uix.boxlayout import MDBoxLayout
+from kivymd.uix.label import MDLabel
+from kivymd.uix.navigationbar import (
+    MDNavigationBar,
+    MDNavigationItem,
+    MDNavigationItemIcon,
+)
+from kivymd.uix.screen import MDScreen
 
-from config import APP_NAME
-from db.connection import get_connection
-from db.schema import init_db
-from db.seed import seed_sample_routine
-from services.cycle_service import CycleService
-from services.exercise_service import ExerciseService
-from services.routine_service import RoutineService
-from services.workout_service import WorkoutService
-from views.exercise_catalog_view import build_exercise_catalog_view
-from views.home_view import build_home_view
-from views.routine_editor_view import build_routine_editor_view
-from views.settings_view import build_settings_view
-from views.workout_view import build_workout_view
+from src.theme import setup_theme, BACKGROUND, TEXT_SECONDARY
+from src.config import get_db_path
+from src.db.connection import create_connection
+from src.db.schema import init_db
 
+from src.repositories.exercise_repo import ExerciseRepo
+from src.repositories.routine_repo import RoutineRepo
+from src.repositories.cycle_repo import CycleRepo
+from src.repositories.workout_repo import WorkoutRepo
+from src.repositories.benchmark_repo import BenchmarkRepo
+from src.repositories.settings_repo import SettingsRepo
 
-def _patch_page_compat(page: ft.Page) -> None:
-    """Polyfill page.open/page.close for Flet runtimes that lack them."""
-    if hasattr(page, "open"):
-        return
-
-    def _open(control: ft.Control) -> None:
-        if isinstance(control, ft.SnackBar):
-            page.snack_bar = control
-            page.snack_bar.open = True
-        else:
-            page.dialog = control
-            control.open = True
-        page.update()
-
-    def _close(control: ft.Control) -> None:
-        control.open = False
-        page.update()
-
-    page.open = _open  # type: ignore[attr-defined]
-    page.close = _close  # type: ignore[attr-defined]
+from src.services.exercise_service import ExerciseService
+from src.services.routine_service import RoutineService
+from src.services.cycle_service import CycleService
+from src.services.workout_service import WorkoutService
+from src.services.benchmark_service import BenchmarkService
+from src.services.stats_service import StatsService
+from src.services.import_export_service import ImportExportService
+from src.services.settings_service import SettingsService
 
 
-def main(page: ft.Page) -> None:
-    page.title = APP_NAME
-    page.theme_mode = ft.ThemeMode.DARK
-    page.padding = 0
-    _patch_page_compat(page)
+# Tab name <-> nav icon mapping (order matters — matches nav bar item order)
+TABS = [
+    ("home", "home"),
+    ("workout", "dumbbell"),
+    ("dashboard", "chart-line"),
+    ("manage", "cog"),
+]
 
-    # ── Bootstrap DB ─────────────────────────────────────────────
-    conn = get_connection()
-    init_db(conn)
-    seed_sample_routine(conn)  # No-op if data already exists
 
-    # ── Services ─────────────────────────────────────────────────
-    workout_svc = WorkoutService(conn)
-    cycle_svc = CycleService(conn)
-    routine_svc = RoutineService(conn)
-    exercise_svc = ExerciseService(conn)
+class PlaceholderScreen(MDScreen):
+    """Temporary placeholder for screens not yet built."""
 
-    # ── Navigation ───────────────────────────────────────────────
-    def route_change(e: ft.RouteChangeEvent) -> None:
-        page.views.clear()
-        route = e.route
+    def __init__(self, screen_name, **kwargs):
+        super().__init__(**kwargs)
+        self.name = screen_name
+        self.md_bg_color = BACKGROUND
+        self.add_widget(MDLabel(
+            text=f"{screen_name.title()} — Coming Soon",
+            halign="center",
+            theme_text_color="Custom",
+            text_color=TEXT_SECONDARY,
+        ))
 
-        if route in ("/", "/home"):
-            routine = routine_svc.get_active_routine()
-            all_days = routine_svc.get_days(routine.id) if routine else None
-            current_day = cycle_svc.get_current_day(routine.id) if routine else None
-            in_progress = workout_svc.get_in_progress_session()
-            view = build_home_view(
-                page=page,
-                routine=routine,
-                current_day=current_day,
-                all_days=all_days,
-                in_progress=in_progress,
-                workout_svc=workout_svc,
-                cycle_svc=cycle_svc,
-            )
-            page.views.append(view)
 
-        elif route.startswith("/workout/"):
-            try:
-                session_id = int(route.split("/")[-1])
-            except ValueError:
-                page.go("/home")
-                return
-            session = workout_svc.get_session_by_id(session_id)
-            if session is None:
-                page.go("/home")
-                return
-            from models.workout import SessionStatus
-            if session.status != SessionStatus.IN_PROGRESS:
-                page.go("/home")
-                return
-            view = build_workout_view(
-                page=page,
-                session=session,
-                workout_svc=workout_svc,
-                cycle_svc=cycle_svc,
-            )
-            page.views.append(view)
+class ExerciseLoggerApp(MDApp):
+    """Main application."""
 
-        elif route == "/progress":
-            page.views.append(
-                ft.View(
-                    route="/progress",
-                    controls=[
-                        ft.AppBar(
-                            title=ft.Text("Progress"),
-                            bgcolor=ft.Colors.SURFACE,
-                            automatically_imply_leading=False,
-                        ),
-                        ft.Container(
-                            content=ft.Text(
-                                "Progress charts — coming in Phase 4",
-                                color=ft.Colors.WHITE54,
-                            ),
-                            alignment=ft.alignment.center,
-                            expand=True,
-                        ),
-                    ],
-                    bgcolor=ft.Colors.SURFACE,
-                )
-            )
+    # Services (set during build, accessed by screens via app.X_service)
+    exercise_service = ObjectProperty(None)
+    routine_service = ObjectProperty(None)
+    cycle_service = ObjectProperty(None)
+    workout_service = ObjectProperty(None)
+    benchmark_service = ObjectProperty(None)
+    stats_service = ObjectProperty(None)
+    import_export_service = ObjectProperty(None)
+    settings_service = ObjectProperty(None)
 
-        elif route == "/settings":
-            page.views.append(build_settings_view(page))
+    current_tab = StringProperty("home")
 
-        elif route == "/settings/routine":
-            page.views.append(
-                build_routine_editor_view(page, routine_svc, exercise_svc)
-            )
+    def build(self):
+        self.title = "Exercise Logger"
+        setup_theme(self)
+        self._init_services()
+        return self._build_ui()
 
-        elif route == "/settings/exercises":
-            page.views.append(
-                build_exercise_catalog_view(page, exercise_svc)
-            )
+    def _init_services(self):
+        """Create DB connection and instantiate all services."""
+        db_path = get_db_path()
+        self.conn = create_connection(db_path)
+        init_db(self.conn)
 
-        else:
-            page.go("/home")
-            return
+        # Repos
+        exercise_repo = ExerciseRepo(self.conn)
+        routine_repo = RoutineRepo(self.conn)
+        cycle_repo = CycleRepo(self.conn)
+        workout_repo = WorkoutRepo(self.conn)
+        benchmark_repo = BenchmarkRepo(self.conn)
+        settings_repo = SettingsRepo(self.conn)
 
-        _inject_nav_bar(page)
-        page.update()
-
-    def view_pop(e: ft.ViewPopEvent) -> None:
-        route = page.route
-        if route.startswith("/settings/"):
-            page.go("/settings")
-        elif route.startswith("/workout/"):
-            page.go("/home")
-
-    def _inject_nav_bar(p: ft.Page) -> None:
-        if not p.views:
-            return
-        route = p.views[-1].route
-        # No nav bar during workout or on sub-screens
-        if route and (
-            route.startswith("/workout/")
-            or route.startswith("/settings/")
-        ):
-            return
-
-        selected = 0
-        if route == "/progress":
-            selected = 1
-        elif route == "/settings":
-            selected = 2
-
-        def on_nav_change(e: ft.ControlEvent) -> None:
-            destinations = ["/home", "/progress", "/settings"]
-            p.go(destinations[e.control.selected_index])
-
-        nav_bar = ft.NavigationBar(
-            selected_index=selected,
-            on_change=on_nav_change,
-            bgcolor=ft.Colors.SURFACE,
-            destinations=[
-                ft.NavigationBarDestination(
-                    icon=ft.Icons.HOME_OUTLINED,
-                    selected_icon=ft.Icons.HOME,
-                    label="Home",
-                ),
-                ft.NavigationBarDestination(
-                    icon=ft.Icons.SHOW_CHART_OUTLINED,
-                    selected_icon=ft.Icons.SHOW_CHART,
-                    label="Progress",
-                ),
-                ft.NavigationBarDestination(
-                    icon=ft.Icons.SETTINGS_OUTLINED,
-                    selected_icon=ft.Icons.SETTINGS,
-                    label="Settings",
-                ),
-            ],
+        # Services
+        self.cycle_service = CycleService(cycle_repo, routine_repo)
+        self.exercise_service = ExerciseService(exercise_repo)
+        self.routine_service = RoutineService(routine_repo, exercise_repo, self.cycle_service)
+        self.workout_service = WorkoutService(workout_repo, routine_repo, exercise_repo, self.cycle_service)
+        self.benchmark_service = BenchmarkService(benchmark_repo, exercise_repo)
+        self.stats_service = StatsService(workout_repo, exercise_repo)
+        self.import_export_service = ImportExportService(
+            exercise_repo, routine_repo, benchmark_repo, self.cycle_service,
         )
-        p.views[-1].controls.append(nav_bar)
+        self.settings_service = SettingsService(settings_repo, self.conn)
 
-    page.on_route_change = route_change
-    page.on_view_pop = view_pop
-    page.go("/home")
+    def _build_ui(self):
+        """Assemble root layout: screen manager + bottom nav."""
+        self.root_layout = MDBoxLayout(orientation="vertical")
+
+        # Tab screen manager (top-level, no transition for tab switches)
+        self.tab_manager = ScreenManager(transition=NoTransition())
+
+        # Import real screens
+        from src.screens.home.home_screen import HomeScreen
+        from src.screens.manage.manage_screen import ManageScreen
+
+        self.tab_manager.add_widget(HomeScreen(name="home"))
+        self.tab_manager.add_widget(PlaceholderScreen("workout"))
+        self.tab_manager.add_widget(PlaceholderScreen("dashboard"))
+        self.tab_manager.add_widget(ManageScreen(name="manage"))
+
+        self.root_layout.add_widget(self.tab_manager)
+
+        # Bottom navigation — store items by tab name for direct sync
+        self._nav_items = {}
+        nav_widgets = []
+        for tab_name, icon in TABS:
+            item = MDNavigationItem(
+                MDNavigationItemIcon(icon=icon),
+                active=(tab_name == "home"),
+            )
+            self._nav_items[tab_name] = item
+            nav_widgets.append(item)
+
+        self.nav_bar = MDNavigationBar(
+            *nav_widgets,
+            on_switch_tabs=self._on_nav_switch,
+        )
+        self.root_layout.add_widget(self.nav_bar)
+
+        return self.root_layout
+
+    def _on_nav_switch(self, bar, item, item_icon, item_text):
+        """Handle bottom nav tap."""
+        for tab_name, icon in TABS:
+            if icon == item_icon:
+                self.go_tab(tab_name)
+                break
+
+    # --- Navigation helpers (used by screens) ---
+
+    def go_tab(self, tab_name: str):
+        """Switch to a tab by name. Updates screen manager and nav bar selection."""
+        if tab_name == self.current_tab:
+            return
+        self.tab_manager.current = tab_name
+        self.current_tab = tab_name
+        # Sync nav bar — direct reference, no child-order guessing
+        if tab_name in self._nav_items:
+            self.nav_bar.set_active_item(self._nav_items[tab_name])
+
+    def on_stop(self):
+        """Clean up DB connection."""
+        if hasattr(self, "conn") and self.conn:
+            self.conn.close()
+
+
+def main():
+    ExerciseLoggerApp().run()
 
 
 if __name__ == "__main__":
-    ft.app(target=main)
+    main()
