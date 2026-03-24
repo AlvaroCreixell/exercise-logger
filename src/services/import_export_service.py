@@ -50,10 +50,12 @@ class ImportExportService:
         exercise_repo: ExerciseRepo,
         routine_repo: RoutineRepo,
         benchmark_repo: BenchmarkRepo,
+        cycle_service=None,
     ):
         self._exercise_repo = exercise_repo
         self._routine_repo = routine_repo
         self._benchmark_repo = benchmark_repo
+        self._cycle_service = cycle_service
 
     # --- Export ---
 
@@ -232,7 +234,41 @@ class ImportExportService:
                     except ValueError as e:
                         errors.append(f"{set_prefix}: {e}")
 
+                    try:
+                        validate_amrap_fields(sk, ex_type, s.get("weight"))
+                    except ValueError as e:
+                        errors.append(f"{set_prefix}: {e}")
+
                     self._validate_numeric_ranges(s, sk, set_prefix, errors)
+
+        # Validate benchmark items if present
+        benchmarking = data.get("benchmarking")
+        if benchmarking and benchmarking.get("enabled"):
+            # Collect all exercise names from the plan
+            plan_exercise_names = set()
+            for day in days:
+                for ex in day.get("exercises", []):
+                    if ex.get("name"):
+                        plan_exercise_names.add(ex["name"].lower())
+
+            for bi, item in enumerate(benchmarking.get("items", [])):
+                bm_prefix = f"Benchmark {bi + 1}"
+                ex_name = item.get("exercise_name", "")
+                if not ex_name:
+                    errors.append(f"{bm_prefix}: missing exercise_name")
+                    continue
+
+                # Must reference an exercise in the plan or the local catalog
+                in_plan = ex_name.lower() in plan_exercise_names
+                in_catalog = self._exercise_repo.get_by_name_insensitive(ex_name) is not None
+                if not in_plan and not in_catalog:
+                    errors.append(f"{bm_prefix}: exercise '{ex_name}' not found in plan or catalog")
+
+                method_str = item.get("method")
+                try:
+                    BenchmarkMethod(method_str)
+                except (ValueError, KeyError):
+                    errors.append(f"{bm_prefix}: invalid method '{method_str}'")
 
         return errors
 
@@ -325,14 +361,14 @@ class ImportExportService:
                     ))
                 self._routine_repo.set_targets(rde_id, targets)
 
-        # Import benchmarks if present
+        # Import benchmarks if present — resolve exercises through same mapping path
         benchmarking = data.get("benchmarking")
         if benchmarking and benchmarking.get("enabled"):
             default_freq = benchmarking.get("frequency_weeks", 6)
             for item in benchmarking.get("items", []):
-                exercise = self._exercise_repo.get_by_name_insensitive(item["exercise_name"])
-                if not exercise:
-                    continue
+                ex_name = item.get("exercise_name", "")
+                # Try mapping first, then name match — same path as routine exercises
+                exercise = self._resolve_exercise(ex_name, ExerciseType.REPS_WEIGHT, exercise_mapping)
 
                 from src.models.benchmark import BenchmarkDefinition
                 freq = item.get("frequency_weeks") or default_freq
@@ -357,6 +393,10 @@ class ImportExportService:
             routine_obj.is_active = True
             routine_obj.updated_at = now
             self._routine_repo.update_routine(routine_obj)
+
+            # Initialize cycle state so the imported routine has a current day
+            if self._cycle_service:
+                self._cycle_service.initialize(routine_id)
 
         self._routine_repo.commit()
         return routine_id

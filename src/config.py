@@ -9,7 +9,7 @@ def get_db_path() -> str:
     """Get the database file path.
 
     On Android (Kivy), uses App.get_running_app().user_data_dir.
-    On desktop, falls back to the src/ directory.
+    On desktop, uses ~/.exercise_logger/ (user's home directory).
     """
     try:
         from kivy.app import App
@@ -18,7 +18,10 @@ def get_db_path() -> str:
             return os.path.join(app.user_data_dir, DB_FILENAME)
     except ImportError:
         pass
-    return os.path.join(os.path.dirname(__file__), DB_FILENAME)
+    # Desktop fallback: user home directory
+    app_dir = os.path.join(os.path.expanduser("~"), ".exercise_logger")
+    os.makedirs(app_dir, exist_ok=True)
+    return os.path.join(app_dir, DB_FILENAME)
 
 
 # Defaults

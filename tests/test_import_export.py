@@ -7,8 +7,8 @@ from src.models.benchmark import BenchmarkMethod
 
 
 @pytest.fixture
-def import_export_service(exercise_repo, routine_repo, benchmark_repo):
-    return ImportExportService(exercise_repo, routine_repo, benchmark_repo)
+def import_export_service(exercise_repo, routine_repo, benchmark_repo, cycle_service):
+    return ImportExportService(exercise_repo, routine_repo, benchmark_repo, cycle_service)
 
 
 def _minimal_valid_import():
@@ -288,3 +288,100 @@ class TestExportRoutine:
         assert len(ex_data["sets"]) == 2
         assert ex_data["sets"][0]["weight"] == 50
         assert ex_data["sets"][1]["weight"] == 60
+
+
+class TestImportRegressions:
+    """Regression tests for import bugs found in review."""
+
+    def test_activate_initializes_cycle_state(self, import_export_service, cycle_service, routine_repo):
+        """Import with activate=True must initialize cycle state (not just flip is_active)."""
+        data = _minimal_valid_import()
+        routine_id = import_export_service.import_routine(data, activate=True)
+
+        current = cycle_service.get_current_day(routine_id)
+        assert current is not None
+        assert current.label == "A"
+
+    def test_amrap_without_weight_rejected(self, import_export_service):
+        """AMRAP set on reps_weight exercise must have weight — import must reject."""
+        data = _minimal_valid_import()
+        data["days"][0]["exercises"][0]["sets"] = [
+            {"set_kind": "amrap"},  # Missing weight for reps_weight exercise
+        ]
+        preview = import_export_service.preview_import(data)
+        assert any("require a weight" in e.lower() for e in preview.errors)
+        assert not preview.is_valid
+
+    def test_amrap_reps_only_with_weight_rejected(self, import_export_service):
+        """AMRAP set on reps_only exercise must NOT have weight."""
+        data = {
+            "schema_version": 1, "name": "Test",
+            "days": [{"label": "A", "name": "Pull", "exercises": [
+                {"name": "Pull-ups", "type": "reps_only", "set_scheme": "uniform",
+                 "sets": [{"set_kind": "amrap", "weight": 50.0}]}
+            ]}],
+        }
+        preview = import_export_service.preview_import(data)
+        assert any("must not have a weight" in e.lower() for e in preview.errors)
+
+    def test_benchmark_invalid_exercise_rejected(self, import_export_service):
+        """Benchmark referencing unknown exercise (not in plan or catalog) must error."""
+        data = _minimal_valid_import()
+        data["benchmarking"] = {
+            "enabled": True,
+            "frequency_weeks": 6,
+            "items": [
+                {"exercise_name": "Nonexistent Exercise", "method": "max_weight",
+                 "muscle_group_label": "Upper"},
+            ],
+        }
+        preview = import_export_service.preview_import(data)
+        assert any("not found in plan or catalog" in e for e in preview.errors)
+
+    def test_benchmark_invalid_method_rejected(self, import_export_service):
+        """Benchmark with invalid method must error."""
+        data = _minimal_valid_import()
+        data["benchmarking"] = {
+            "enabled": True,
+            "frequency_weeks": 6,
+            "items": [
+                {"exercise_name": "Bench Press", "method": "invalid_method",
+                 "muscle_group_label": "Upper"},
+            ],
+        }
+        preview = import_export_service.preview_import(data)
+        assert any("invalid method" in e.lower() for e in preview.errors)
+
+    def test_benchmark_exercise_in_plan_passes_validation(self, import_export_service):
+        """Benchmark referencing an exercise in the plan (but not catalog) should pass."""
+        data = _minimal_valid_import()
+        data["benchmarking"] = {
+            "enabled": True,
+            "frequency_weeks": 6,
+            "items": [
+                {"exercise_name": "Bench Press", "method": "max_weight",
+                 "muscle_group_label": "Upper"},
+            ],
+        }
+        preview = import_export_service.preview_import(data)
+        assert preview.is_valid
+
+    def test_benchmark_uses_exercise_mapping(self, import_export_service, make_exercise, benchmark_repo):
+        """Benchmark exercises should resolve through exercise_mapping, not just name lookup."""
+        existing = make_exercise("Flat Bench")
+        data = _minimal_valid_import()
+        data["benchmarking"] = {
+            "enabled": True,
+            "frequency_weeks": 6,
+            "items": [
+                {"exercise_name": "Bench Press", "method": "max_weight",
+                 "muscle_group_label": "Upper"},
+            ],
+        }
+        # Map "Bench Press" to existing "Flat Bench" exercise
+        import_export_service.import_routine(
+            data, exercise_mapping={"Bench Press": existing.id},
+        )
+        defns = benchmark_repo.list_definitions()
+        assert len(defns) == 1
+        assert defns[0].exercise_id == existing.id
