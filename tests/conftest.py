@@ -55,3 +55,11 @@ def cycle_repo(db_conn):
 @pytest.fixture
 def cycle_service(cycle_repo, routine_repo):
     return CycleService(cycle_repo, routine_repo)
+
+
+from src.services.routine_service import RoutineService
+
+
+@pytest.fixture
+def routine_service(routine_repo, exercise_repo, cycle_service):
+    return RoutineService(routine_repo, exercise_repo, cycle_service)
