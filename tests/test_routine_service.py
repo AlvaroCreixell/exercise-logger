@@ -1,3 +1,4 @@
+"""Tests for RoutineService: routine CRUD, days, exercises, set targets, cascade."""
 import pytest
 from src.models.exercise import ExerciseType
 from src.models.routine import SetScheme, SetKind
