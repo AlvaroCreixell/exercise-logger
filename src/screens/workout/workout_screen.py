@@ -9,12 +9,15 @@ Confirmation sheets: End Early and Finish Workout require confirmation.
 """
 import os
 from kivy.lang import Builder
+from kivy.metrics import dp
 from kivy.properties import NumericProperty, ObjectProperty
 from kivymd.uix.boxlayout import MDBoxLayout
+from kivymd.uix.button import MDButton, MDButtonText
 
 from src.screens.base_screen import BaseScreen
 from src.screens.components.exercise_card import ExerciseCard
 from src.models.routine import SetKind
+from src.theme import PRIMARY
 
 Builder.load_file(os.path.join(os.path.dirname(__file__), "workout_screen.kv"))
 
@@ -23,6 +26,10 @@ class WorkoutScreen(BaseScreen):
 
     current_session_id = NumericProperty(0)
     _expanded_card = ObjectProperty(None, allownone=True)
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self._selected_day_override = None  # Set by day picker, cleared on session start
 
     def on_enter(self):
         """Check for in-progress session or show pre-session view."""
@@ -52,18 +59,77 @@ class WorkoutScreen(BaseScreen):
             self.ids.day_info_label.text = "No active routine"
             self.ids.start_session_btn.disabled = True
             self.ids.start_session_btn.opacity = 0.3
+            self.ids.day_picker_container.clear_widgets()
             return
 
         self.ids.start_session_btn.disabled = False
         self.ids.start_session_btn.opacity = 1
 
         current_day = self.app.cycle_service.get_current_day(routine.id)
-        if current_day:
-            self.ids.day_info_label.text = f"Day {current_day.label} — {current_day.name}"
-            self._current_day_id = current_day.id
+
+        # Use manual selection if set, otherwise cycle day
+        effective_day = None
+        if self._selected_day_override:
+            effective_day = self._selected_day_override
+        elif current_day:
+            effective_day = current_day
+
+        self._current_day_id = effective_day.id if effective_day else None
+
+        if effective_day:
+            self.ids.day_info_label.text = f"Day {effective_day.label} — {effective_day.name}"
         else:
             self.ids.day_info_label.text = routine.name
-            self._current_day_id = None
+
+        # Populate day picker buttons (only if routine has >1 day)
+        days = self.app.routine_service.get_days(routine.id)
+        picker = self.ids.day_picker_container
+        picker.clear_widgets()
+        if len(days) > 1:
+            for day in days:
+                is_selected = effective_day and day.id == effective_day.id
+                btn = MDButton(
+                    style="filled" if is_selected else "outlined",
+                    size_hint_x=None,
+                    width=dp(56),
+                )
+                if is_selected:
+                    btn.theme_bg_color = "Custom"
+                    btn.md_bg_color = PRIMARY
+                btn.add_widget(MDButtonText(text=day.label))
+                btn.bind(on_release=lambda *a, d=day: self._select_day(d))
+                picker.add_widget(btn)
+
+    def _select_day(self, day):
+        """Handle day picker button tap — update selection without resetting override."""
+        self._selected_day_override = day
+        self._current_day_id = day.id
+        self.ids.day_info_label.text = f"Day {day.label} — {day.name}"
+        # Rebuild just the picker row to update button states
+        self._rebuild_day_picker(day)
+
+    def _rebuild_day_picker(self, selected_day):
+        """Rebuild day picker buttons to reflect new selection."""
+        routine = self.app.routine_service.get_active_routine()
+        if not routine:
+            return
+        days = self.app.routine_service.get_days(routine.id)
+        picker = self.ids.day_picker_container
+        picker.clear_widgets()
+        if len(days) > 1:
+            for day in days:
+                is_selected = day.id == selected_day.id
+                btn = MDButton(
+                    style="filled" if is_selected else "outlined",
+                    size_hint_x=None,
+                    width=dp(56),
+                )
+                if is_selected:
+                    btn.theme_bg_color = "Custom"
+                    btn.md_bg_color = PRIMARY
+                btn.add_widget(MDButtonText(text=day.label))
+                btn.bind(on_release=lambda *a, d=day: self._select_day(d))
+                picker.add_widget(btn)
 
     def _show_active_session(self, session):
         """Show exercise cards and bottom bar."""
@@ -312,16 +378,20 @@ class WorkoutScreen(BaseScreen):
             print(f"[Workout] Failed to start session: {e}")
             return
 
+        self._selected_day_override = None  # Clear override after starting
         self.current_session_id = session.id
         self._show_active_session(session)
 
     def add_exercise(self):
-        """Open exercise picker to add an ad-hoc exercise.
+        """Open exercise picker to add an ad-hoc exercise."""
+        from src.screens.components.exercise_picker import ExercisePickerSheet
 
-        TODO: Phase 3C will implement an exercise picker dialog.
-        For now, just print a placeholder message.
-        """
-        print("[Workout] Add exercise — picker not yet implemented")
+        def on_select(exercise_id, exercise_name):
+            self.app.workout_service.add_exercise_to_session(self.current_session_id, exercise_id)
+            self._rebuild_cards()
+
+        picker = ExercisePickerSheet(self.app, on_select=on_select, title="Add Exercise")
+        picker.open()
 
     def end_early(self):
         """Confirm before ending session early."""
