@@ -98,3 +98,17 @@ class TestBenchmarkService:
         defn = benchmark_service.create_definition(ex.id, BenchmarkMethod.MAX_WEIGHT, "Upper")
         benchmark_service.delete_definition(defn.id)
         assert benchmark_service.get_definition(defn.id) is None
+
+    def test_delete_definition_with_results(self, benchmark_service, make_exercise):
+        """Deleting a definition also removes its recorded results."""
+        ex = make_exercise("Bench Press")
+        defn = benchmark_service.create_definition(ex.id, BenchmarkMethod.MAX_WEIGHT, "Upper")
+        benchmark_service.record_result(defn.id, 185.0)
+        benchmark_service.record_result(defn.id, 195.0)
+
+        results = benchmark_service.get_results(defn.id)
+        assert len(results) == 2
+
+        benchmark_service.delete_definition(defn.id)
+        assert benchmark_service.get_definition(defn.id) is None
+        assert len(benchmark_service.get_results(defn.id)) == 0
