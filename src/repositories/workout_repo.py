@@ -194,10 +194,6 @@ class WorkoutRepo(BaseRepository):
                JOIN workout_sessions ws ON se.session_id = ws.id
                WHERE se.exercise_id = ?
                AND ws.status = 'finished'
-               AND EXISTS (
-                   SELECT 1 FROM logged_sets ls2
-                   WHERE ls2.session_exercise_id = se.id
-               )
                ORDER BY ws.started_at DESC, ls.set_number
                LIMIT ?""",
             (exercise_id, limit),
