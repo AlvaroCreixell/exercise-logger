@@ -6,6 +6,7 @@ dependencies = [
     "kivy>=2.3.0,<2.4",
     "kivymd>=2.0.0,<2.1",
     "matplotlib>=3.8.0",
+    "filetype>=1.2.0",
 ]
 
 [project.optional-dependencies]
