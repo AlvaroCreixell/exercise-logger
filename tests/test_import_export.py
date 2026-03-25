@@ -289,6 +289,60 @@ class TestExportRoutine:
         assert ex_data["sets"][0]["weight"] == 50
         assert ex_data["sets"][1]["weight"] == 60
 
+    def test_export_includes_benchmarks(self, import_export_service, routine_service, make_exercise, benchmark_service):
+        r = routine_service.create_routine("Bench Routine")
+        day = routine_service.add_day(r.id, "A", "Push")
+        ex = make_exercise("Bench Press")
+        routine_service.add_exercise_to_day(day.id, ex.id, SetScheme.UNIFORM)
+        benchmark_service.create_definition(
+            ex.id, BenchmarkMethod.MAX_WEIGHT, "Upper",
+            reference_weight=100.0, frequency_weeks=8,
+        )
+        exported = import_export_service.export_routine(r.id)
+        assert "benchmarking" in exported
+        bm = exported["benchmarking"]
+        assert bm["enabled"] is True
+        assert bm["frequency_weeks"] == 8
+        assert len(bm["items"]) == 1
+        item = bm["items"][0]
+        assert item["exercise_name"] == "Bench Press"
+        assert item["method"] == "max_weight"
+        assert item["reference_weight"] == 100.0
+        assert item["muscle_group_label"] == "Upper"
+        assert item["frequency_weeks"] == 8
+
+    def test_export_no_benchmarks_omits_section(self, import_export_service, routine_service, make_exercise):
+        r = routine_service.create_routine("No BM")
+        day = routine_service.add_day(r.id, "A", "Push")
+        ex = make_exercise("Squat")
+        routine_service.add_exercise_to_day(day.id, ex.id, SetScheme.UNIFORM)
+        exported = import_export_service.export_routine(r.id)
+        assert "benchmarking" not in exported
+
+    def test_round_trip_with_benchmarks(self, import_export_service, routine_service, make_exercise, benchmark_service, benchmark_repo):
+        r = routine_service.create_routine("BM Round Trip")
+        day = routine_service.add_day(r.id, "A", "Push")
+        ex = make_exercise("OHP")
+        routine_service.add_exercise_to_day(day.id, ex.id, SetScheme.UNIFORM)
+        routine_service.set_uniform_targets(
+            routine_service.get_day_exercises(day.id)[0].id,
+            num_sets=3, set_kind=SetKind.REPS_WEIGHT,
+            reps_min=10, reps_max=10, weight=60,
+        )
+        benchmark_service.create_definition(
+            ex.id, BenchmarkMethod.MAX_REPS, "Upper",
+            reference_weight=50.0, frequency_weeks=4,
+        )
+        exported = import_export_service.export_routine(r.id)
+        new_id = import_export_service.import_routine(exported)
+        new_rdes = routine_service.get_day_exercises(
+            routine_service.get_days(new_id)[0].id
+        )
+        defns = benchmark_repo.get_definitions_for_exercise(new_rdes[0].exercise_id)
+        assert len(defns) >= 1
+        assert defns[0].method == BenchmarkMethod.MAX_REPS
+        assert defns[0].reference_weight == 50.0
+
 
 class TestImportRegressions:
     """Regression tests for import bugs found in review."""

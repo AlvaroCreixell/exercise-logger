@@ -7,6 +7,7 @@ Two-step import API:
 Full backup export/restore (DB file replacement) is handled at the UI layer
 in Phase 3, since it's a file-system operation, not a service-layer concern.
 """
+import collections
 import json
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional
@@ -98,11 +99,40 @@ class ImportExportService:
                 "exercises": exercises_data,
             })
 
-        return {
+        # Collect benchmark definitions for all exercises in the routine
+        benchmark_items = []
+        for day in days:
+            rdes = self._routine_repo.get_day_exercises(day.id)
+            for rde in rdes:
+                exercise = self._exercise_repo.get_by_id(rde.exercise_id)
+                defns = self._benchmark_repo.get_definitions_for_exercise(rde.exercise_id)
+                for defn in defns:
+                    benchmark_items.append({
+                        "exercise_name": exercise.name,
+                        "method": defn.method.value,
+                        "reference_weight": defn.reference_weight,
+                        "muscle_group_label": defn.muscle_group_label,
+                        "frequency_weeks": defn.frequency_weeks,
+                    })
+
+        result = {
             "schema_version": 1,
             "name": routine.name,
             "days": days_data,
         }
+
+        if benchmark_items:
+            freq_counter = collections.Counter(
+                item["frequency_weeks"] for item in benchmark_items
+            )
+            default_freq = freq_counter.most_common(1)[0][0]
+            result["benchmarking"] = {
+                "enabled": True,
+                "frequency_weeks": default_freq,
+                "items": benchmark_items,
+            }
+
+        return result
 
     # --- Step 1: Preview ---
 
