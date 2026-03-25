@@ -16,21 +16,13 @@ from kivymd.uix.textfield import MDTextField, MDTextFieldHintText
 from src.models.exercise import ExerciseType
 from src.models.routine import SetScheme, SetKind
 from src.screens.manage.manage_detail_screen import ManageDetailScreen
+from src.services.validation import DEFAULT_SET_KIND, build_targets_payload
 from src.screens.components.bottom_sheet import AppBottomSheet
 from src.screens.components.stepper import ValueStepper
 from src.theme import TEXT_PRIMARY, TEXT_SECONDARY, SURFACE, DIVIDER, PRIMARY, DESTRUCTIVE
 
 
 # ─── Exercise type helpers ────────────────────────────────────────────────────
-
-# Default SetKind per ExerciseType
-_DEFAULT_SET_KIND = {
-    ExerciseType.REPS_WEIGHT: SetKind.REPS_WEIGHT,
-    ExerciseType.REPS_ONLY: SetKind.REPS_ONLY,
-    ExerciseType.TIME: SetKind.DURATION,
-    ExerciseType.CARDIO: SetKind.CARDIO,
-}
-
 
 def _describe_target(target) -> str:
     """Return a compact human-readable description of a SetTarget."""
@@ -1008,7 +1000,7 @@ class RoutineEditorScreen(ManageDetailScreen):
             # Update scheme (authoritative per spec L164)
             self.app.routine_service.update_day_exercise_scheme(rde.id, new_scheme)
 
-            set_kind = _DEFAULT_SET_KIND.get(ex_type, SetKind.REPS_WEIGHT)
+            set_kind = DEFAULT_SET_KIND.get(ex_type, SetKind.REPS_WEIGHT)
 
             try:
                 if new_scheme == SetScheme.UNIFORM:
