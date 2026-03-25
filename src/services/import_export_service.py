@@ -68,6 +68,8 @@ class ImportExportService:
 
         days = self._routine_repo.get_days(routine_id)
         days_data = []
+        benchmark_items = []
+        seen_exercise_ids: set = set()
         for day in days:
             exercises_data = []
             rdes = self._routine_repo.get_day_exercises(day.id)
@@ -93,27 +95,23 @@ class ImportExportService:
                     "is_optional": rde.is_optional,
                     "sets": sets_data,
                 })
+                # Collect benchmark definitions once per unique exercise
+                if rde.exercise_id not in seen_exercise_ids:
+                    seen_exercise_ids.add(rde.exercise_id)
+                    defns = self._benchmark_repo.get_definitions_for_exercise(rde.exercise_id)
+                    for defn in defns:
+                        benchmark_items.append({
+                            "exercise_name": exercise.name,
+                            "method": defn.method.value,
+                            "reference_weight": defn.reference_weight,
+                            "muscle_group_label": defn.muscle_group_label,
+                            "frequency_weeks": defn.frequency_weeks,
+                        })
             days_data.append({
                 "label": day.label,
                 "name": day.name,
                 "exercises": exercises_data,
             })
-
-        # Collect benchmark definitions for all exercises in the routine
-        benchmark_items = []
-        for day in days:
-            rdes = self._routine_repo.get_day_exercises(day.id)
-            for rde in rdes:
-                exercise = self._exercise_repo.get_by_id(rde.exercise_id)
-                defns = self._benchmark_repo.get_definitions_for_exercise(rde.exercise_id)
-                for defn in defns:
-                    benchmark_items.append({
-                        "exercise_name": exercise.name,
-                        "method": defn.method.value,
-                        "reference_weight": defn.reference_weight,
-                        "muscle_group_label": defn.muscle_group_label,
-                        "frequency_weeks": defn.frequency_weeks,
-                    })
 
         result = {
             "schema_version": 1,
