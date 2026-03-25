@@ -119,10 +119,11 @@ class ExerciseLoggerApp(MDApp):
         from src.screens.home.home_screen import HomeScreen
         from src.screens.manage.manage_screen import ManageScreen
         from src.screens.workout.workout_screen import WorkoutScreen
+        from src.screens.dashboard.dashboard_screen import DashboardScreen
 
         self.tab_manager.add_widget(HomeScreen(name="home"))
         self.tab_manager.add_widget(WorkoutScreen(name="workout"))
-        self.tab_manager.add_widget(PlaceholderScreen("dashboard"))
+        self.tab_manager.add_widget(DashboardScreen(name="dashboard"))
         self.tab_manager.add_widget(ManageScreen(name="manage"))
 
         # Wire Manage detail screens
