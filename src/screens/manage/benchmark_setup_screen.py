@@ -157,8 +157,9 @@ class BenchmarkSetupScreen(ManageDetailScreen):
             adaptive_height=True,
         ))
         method_label = _METHOD_LABELS.get(defn.method, defn.method.value)
+        ref_text = f" at {defn.reference_weight}" if defn.reference_weight else ""
         info_col.add_widget(MDLabel(
-            text=f"{method_label} · every {defn.frequency_weeks}w",
+            text=f"{method_label}{ref_text} · every {defn.frequency_weeks}w",
             theme_text_color="Custom",
             text_color=TEXT_SECONDARY,
             font_style="Body",
@@ -258,6 +259,20 @@ class BenchmarkSetupScreen(ManageDetailScreen):
             method_btns[method].bind(on_release=lambda *a, m=m_ref: select_method(m))
         sheet.add_content(method_row)
 
+        # Reference weight (most relevant for max_reps: "max reps at X lbs")
+        ref_weight_row = MDBoxLayout(size_hint_y=None, height=dp(48), spacing=dp(8))
+        ref_weight_row.add_widget(MDLabel(
+            text="Reference weight:",
+            theme_text_color="Custom", text_color=TEXT_SECONDARY,
+            font_style="Body", role="medium", adaptive_height=True,
+        ))
+        ref_weight_stepper = ValueStepper(
+            value=0, step=5, min_val=0, max_val=999,
+            label="kg/lbs", is_integer=False,
+        )
+        ref_weight_row.add_widget(ref_weight_stepper)
+        sheet.add_content(ref_weight_row)
+
         # Frequency stepper (weeks)
         freq_row = MDBoxLayout(size_hint_y=None, height=dp(48), spacing=dp(8))
         freq_row.add_widget(MDLabel(
@@ -322,11 +337,13 @@ class BenchmarkSetupScreen(ManageDetailScreen):
                 return
             group = muscle_field.text.strip() or muscle_state["value"] or ""
             try:
+                ref_wt = ref_weight_stepper.value if ref_weight_stepper.value > 0 else None
                 self.app.benchmark_service.create_definition(
                     exercise_id=state["exercise_id"],
                     method=state["method"],
                     muscle_group_label=group,
                     frequency_weeks=int(freq_stepper.value),
+                    reference_weight=ref_wt,
                 )
                 sheet.dismiss()
                 self.build_content(container)
@@ -417,6 +434,21 @@ class BenchmarkSetupScreen(ManageDetailScreen):
             method_btns[method].bind(on_release=lambda *a, m=m_ref: select_method(m))
         sheet.add_content(method_row)
 
+        # Reference weight
+        ref_weight_row = MDBoxLayout(size_hint_y=None, height=dp(48), spacing=dp(8))
+        ref_weight_row.add_widget(MDLabel(
+            text="Reference weight:",
+            theme_text_color="Custom", text_color=TEXT_SECONDARY,
+            font_style="Body", role="medium", adaptive_height=True,
+        ))
+        ref_weight_stepper = ValueStepper(
+            value=defn.reference_weight or 0,
+            step=5, min_val=0, max_val=999,
+            label="kg/lbs", is_integer=False,
+        )
+        ref_weight_row.add_widget(ref_weight_stepper)
+        sheet.add_content(ref_weight_row)
+
         # Frequency stepper
         freq_row = MDBoxLayout(size_hint_y=None, height=dp(48), spacing=dp(8))
         freq_row.add_widget(MDLabel(
@@ -489,6 +521,7 @@ class BenchmarkSetupScreen(ManageDetailScreen):
             defn.method = state["method"]
             defn.frequency_weeks = int(freq_stepper.value)
             defn.muscle_group_label = group
+            defn.reference_weight = ref_weight_stepper.value if ref_weight_stepper.value > 0 else None
             try:
                 self.app.benchmark_service.update_definition(defn)
                 sheet.dismiss()
