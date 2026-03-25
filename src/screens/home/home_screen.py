@@ -6,8 +6,7 @@ from kivymd.uix.label import MDLabel
 
 from src.screens.base_screen import BaseScreen
 from src.screens.components.bottom_sheet import AppBottomSheet
-from src.theme import SECONDARY
-from src.theme import TEXT_SECONDARY as _TEXT_SECONDARY
+from src.theme import SECONDARY, TEXT_SECONDARY
 
 Builder.load_file(os.path.join(os.path.dirname(__file__), "home_screen.kv"))
 
@@ -105,12 +104,14 @@ class HomeScreen(BaseScreen):
         if not self._in_progress_session_id:
             return
 
+        session_id = self._in_progress_session_id
+
         sheet = AppBottomSheet(title="End workout early?")
         sheet.set_height(200)
         sheet.add_content(MDLabel(
             text="Your session will be saved. Cycle advances only if you logged at least one set.",
             theme_text_color="Custom",
-            text_color=_TEXT_SECONDARY,
+            text_color=TEXT_SECONDARY,
             font_style="Body",
             role="medium",
             adaptive_height=True,
@@ -121,7 +122,7 @@ class HomeScreen(BaseScreen):
 
         def on_confirm(*a):
             sheet.dismiss()
-            self.app.workout_service.end_early(self._in_progress_session_id)
+            self.app.workout_service.end_early(session_id)
             self._refresh()
 
         sheet.add_spacer()
