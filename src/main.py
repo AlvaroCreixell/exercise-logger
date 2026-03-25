@@ -129,10 +129,14 @@ class ExerciseLoggerApp(MDApp):
         from src.screens.manage.units_screen import UnitsScreen
         from src.screens.manage.exercise_catalog_screen import ExerciseCatalogScreen
         from src.screens.manage.routine_editor_screen import RoutineEditorScreen
+        from src.screens.manage.benchmark_setup_screen import BenchmarkSetupScreen
+        from src.screens.manage.import_export_screen import ImportExportScreen
         manage_screen = self.tab_manager.get_screen("manage")
         manage_screen.add_detail_screen("units", UnitsScreen(name="manage_units"))
         manage_screen.add_detail_screen("exercises", ExerciseCatalogScreen(name="manage_exercises"))
         manage_screen.add_detail_screen("routines", RoutineEditorScreen(name="manage_routines"))
+        manage_screen.add_detail_screen("benchmarks", BenchmarkSetupScreen(name="manage_benchmarks"))
+        manage_screen.add_detail_screen("import_export", ImportExportScreen(name="manage_import_export"))
 
         self.root_layout.add_widget(self.tab_manager)
 
