@@ -5,7 +5,9 @@ from kivy.metrics import dp
 from kivymd.uix.label import MDLabel
 
 from src.screens.base_screen import BaseScreen
+from src.screens.components.bottom_sheet import AppBottomSheet
 from src.theme import SECONDARY
+from src.theme import TEXT_SECONDARY as _TEXT_SECONDARY
 
 Builder.load_file(os.path.join(os.path.dirname(__file__), "home_screen.kv"))
 
@@ -99,11 +101,33 @@ class HomeScreen(BaseScreen):
         self.app.go_tab("workout")
 
     def end_session(self):
-        # TODO: Phase 3B — replace with confirmation bottom sheet per spec L876.
-        # Direct end_early() is an intentional temporary deviation for 3A scaffolding.
-        if self._in_progress_session_id:
+        """End in-progress session with confirmation bottom sheet."""
+        if not self._in_progress_session_id:
+            return
+
+        sheet = AppBottomSheet(title="End workout early?")
+        sheet.set_height(200)
+        sheet.add_content(MDLabel(
+            text="Your session will be saved. Cycle advances only if you logged at least one set.",
+            theme_text_color="Custom",
+            text_color=_TEXT_SECONDARY,
+            font_style="Body",
+            role="medium",
+            adaptive_height=True,
+        ))
+
+        def on_cancel(*a):
+            sheet.dismiss()
+
+        def on_confirm(*a):
+            sheet.dismiss()
             self.app.workout_service.end_early(self._in_progress_session_id)
             self._refresh()
+
+        sheet.add_spacer()
+        sheet.add_action("Cancel", on_cancel)
+        sheet.add_action("End Early", on_confirm, destructive=True)
+        sheet.open()
 
     def go_to_manage(self):
         self.app.go_tab("manage")
