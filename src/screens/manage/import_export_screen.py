@@ -312,6 +312,28 @@ class ImportExportScreen(ManageDetailScreen):
                 adaptive_height=True,
             ))
 
+        # Benchmark summary
+        if preview.benchmark_summary:
+            bm = preview.benchmark_summary
+            container.add_widget(MDLabel(
+                text=f"Benchmarks: {bm['item_count']} definition(s), every {bm['default_frequency_weeks']}w default",
+                theme_text_color="Custom",
+                text_color=TEXT_SECONDARY,
+                font_style="Body",
+                role="small",
+                adaptive_height=True,
+            ))
+            for item in bm.get("items", []):
+                method_label = item.get("method", "").replace("_", " ")
+                container.add_widget(MDLabel(
+                    text=f"  \u2022 {item.get('exercise_name', '?')} ({method_label})",
+                    theme_text_color="Custom",
+                    text_color=TEXT_SECONDARY,
+                    font_style="Body",
+                    role="small",
+                    adaptive_height=True,
+                ))
+
         # Unmatched exercises — with mapping options
         # exercise_mapping: dict mapping name -> exercise_id (or None = create new)
         exercise_mapping = {}  # name -> int id, or absent = create new
