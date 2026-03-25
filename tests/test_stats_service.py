@@ -139,6 +139,39 @@ class TestStatsService:
         best = stats_service.get_exercise_best_set(bench.id)
         assert best["weight"] == 155.0
 
+    def test_session_count_all_time_includes_old_sessions(self, stats_service, workout_service, make_exercise, routine_service):
+        """All-time count includes sessions outside current week/month.
+
+        Regression: dashboard used week+month counts to gate empty state,
+        hiding the dashboard when history existed but not in current period.
+        """
+        ex = make_exercise("Bench Press")
+        r = routine_service.create_routine("Test")
+        routine_service.activate_routine(r.id)
+        day = routine_service.add_day(r.id, "A", "Push")
+        routine_service.add_exercise_to_day(day.id, ex.id, SetScheme.UNIFORM)
+
+        session = workout_service.start_routine_session(day.id)
+        se = workout_service.add_exercise_to_session(session.id, ex.id)
+        workout_service.log_set(se.id, SetKind.REPS_WEIGHT, reps=10, weight=135)
+        workout_service.finish_session(session.id)
+
+        # Backdate the session to 2 months ago so it falls outside this week/month
+        from datetime import datetime, timezone, timedelta
+        old_date = (datetime.now(timezone.utc) - timedelta(days=70)).isoformat()
+        workout_service._repo._execute(
+            "UPDATE workout_sessions SET started_at = ?, finished_at = ? WHERE id = ?",
+            (old_date, old_date, session.id),
+        )
+        workout_service._repo.commit()
+
+        # This week and this month should be 0
+        assert stats_service.get_sessions_this_week() == 0
+        assert stats_service.get_sessions_this_month() == 0
+
+        # But all-time count should still be 1
+        assert stats_service.get_session_count() == 1
+
 
 class TestStatsServiceBenchmarkAndPlanVsActual:
 
