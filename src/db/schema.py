@@ -116,7 +116,7 @@ _SCHEMA_SQL = [
 
     """CREATE TABLE IF NOT EXISTS benchmark_results (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        benchmark_definition_id INTEGER NOT NULL REFERENCES benchmark_definitions(id),
+        benchmark_definition_id INTEGER NOT NULL REFERENCES benchmark_definitions(id) ON DELETE CASCADE,
         session_id INTEGER REFERENCES workout_sessions(id),
         method_snapshot TEXT NOT NULL CHECK(method_snapshot IN ('max_weight', 'max_reps', 'timed_hold')),
         reference_weight_snapshot REAL,

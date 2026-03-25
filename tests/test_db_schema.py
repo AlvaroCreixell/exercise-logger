@@ -112,6 +112,34 @@ class TestSchema:
         row = db_conn.execute("SELECT COUNT(*) as cnt FROM routine_days").fetchone()
         assert row["cnt"] == 0
 
+    def test_cascade_delete_benchmark_definition_removes_results(self, db_conn):
+        """Deleting a benchmark definition cascades to its results."""
+        db_conn.execute(
+            "INSERT INTO exercises (name, type) VALUES (?, ?)",
+            ("Bench Press", "reps_weight"),
+        )
+        ex_id = db_conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+
+        db_conn.execute(
+            "INSERT INTO benchmark_definitions (exercise_id, method, frequency_weeks, muscle_group_label) VALUES (?, ?, ?, ?)",
+            (ex_id, "max_weight", 6, "Upper"),
+        )
+        defn_id = db_conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+
+        db_conn.execute(
+            "INSERT INTO benchmark_results (benchmark_definition_id, method_snapshot, result_value, tested_at) VALUES (?, ?, ?, ?)",
+            (defn_id, "max_weight", 185.0, "2026-01-01T00:00:00"),
+        )
+        db_conn.commit()
+
+        db_conn.execute("DELETE FROM benchmark_definitions WHERE id = ?", (defn_id,))
+        db_conn.commit()
+
+        results = db_conn.execute(
+            "SELECT * FROM benchmark_results WHERE benchmark_definition_id = ?", (defn_id,)
+        ).fetchall()
+        assert len(results) == 0
+
     def test_set_null_on_routine_delete_preserves_session(self, db_conn):
         db_conn.execute(
             "INSERT INTO routines (name, is_active, created_at, updated_at) VALUES (?, ?, ?, ?)",

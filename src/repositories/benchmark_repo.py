@@ -44,7 +44,9 @@ class BenchmarkRepo(BaseRepository):
         )
 
     def delete_definition(self, defn_id: int) -> None:
-        # Delete results first (FK has no CASCADE)
+        # Schema has ON DELETE CASCADE for fresh DBs. Manual delete kept as
+        # belt-and-suspenders for existing DBs where CREATE TABLE IF NOT EXISTS
+        # won't alter the FK constraint. Safe to remove after a proper migration.
         self._execute("DELETE FROM benchmark_results WHERE benchmark_definition_id = ?", (defn_id,))
         self._execute("DELETE FROM benchmark_definitions WHERE id = ?", (defn_id,))
 
