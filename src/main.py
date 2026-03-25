@@ -128,9 +128,11 @@ class ExerciseLoggerApp(MDApp):
         # Wire Manage detail screens
         from src.screens.manage.units_screen import UnitsScreen
         from src.screens.manage.exercise_catalog_screen import ExerciseCatalogScreen
+        from src.screens.manage.routine_editor_screen import RoutineEditorScreen
         manage_screen = self.tab_manager.get_screen("manage")
         manage_screen.add_detail_screen("units", UnitsScreen(name="manage_units"))
         manage_screen.add_detail_screen("exercises", ExerciseCatalogScreen(name="manage_exercises"))
+        manage_screen.add_detail_screen("routines", RoutineEditorScreen(name="manage_routines"))
 
         self.root_layout.add_widget(self.tab_manager)
 
