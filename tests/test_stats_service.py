@@ -317,12 +317,12 @@ class TestStatsServiceTypeAware:
         history = stats_service.get_exercise_history(ex.id)
         assert history[0]["max_duration"] == 90
 
-    def test_recent_prs_includes_non_weight(self, stats_service, workout_service, routine_service, make_exercise):
+    def test_personal_bests_includes_non_weight(self, stats_service, workout_service, routine_service, make_exercise):
         self._create_typed_session(
             workout_service, routine_service, make_exercise,
             "Pullup", ExerciseType.REPS_ONLY, SetKind.REPS_ONLY, reps=20,
         )
-        prs = stats_service.get_recent_prs(10)
+        prs = stats_service.get_personal_bests(10)
         assert len(prs) >= 1
         pr = next(p for p in prs if p["exercise_name"] == "Pullup")
         assert pr["reps"] == 20

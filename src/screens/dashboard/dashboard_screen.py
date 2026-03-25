@@ -126,10 +126,10 @@ class DashboardScreen(BaseScreen):
             content.add_widget(chart)
 
         # --- Recent PRs ---
-        prs = self.app.stats_service.get_recent_prs(3)
+        prs = self.app.stats_service.get_personal_bests(3)
         if prs:
             content.add_widget(MDLabel(
-                text="Recent Personal Records",
+                text="Personal Bests",
                 theme_text_color="Custom", text_color=TEXT_SECONDARY,
                 font_style="Label", role="large",
                 adaptive_height=True,

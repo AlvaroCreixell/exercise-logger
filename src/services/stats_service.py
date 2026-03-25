@@ -192,8 +192,12 @@ class StatsService:
         )
         return [dict(r) for r in rows]
 
-    def get_recent_prs(self, limit: int = 5) -> List[dict]:
-        """Personal records across all exercise types, most recent first."""
+    def get_personal_bests(self, limit: int = 5) -> List[dict]:
+        """Personal bests across all exercise types, most recent first.
+
+        Note: returns all-time bests per exercise, not PR events.
+        True time-series PR detection is deferred to Phase 4.
+        """
         from src.models.exercise import ExerciseType
         exercises = self._exercise_repo.list_all()
         prs = []
@@ -214,6 +218,9 @@ class StatsService:
             prs.append(entry)
         prs.sort(key=lambda x: x["session_date"], reverse=True)
         return prs[:limit]
+
+    # Alias for backward compatibility
+    get_recent_prs = get_personal_bests
 
     def get_latest_plan_vs_actual_for_exercise(self, exercise_id: int) -> Optional[List[dict]]:
         """Get plan-vs-actual for the most recent session where this exercise had plan targets.
