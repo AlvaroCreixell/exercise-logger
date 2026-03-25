@@ -10,7 +10,7 @@ source.exclude_dirs = tests,.github,.buildozer,docs,.superpowers,.worktrees,bin
 
 version = 0.1.0
 
-requirements = python3,kivy,kivymd,matplotlib,pillow,certifi
+requirements = python3,kivy==2.3.1,kivymd==2.0.1,matplotlib,pillow,certifi
 
 android.permissions = WRITE_EXTERNAL_STORAGE,READ_EXTERNAL_STORAGE
 android.api = 34
