@@ -125,6 +125,13 @@ class ExerciseLoggerApp(MDApp):
         self.tab_manager.add_widget(PlaceholderScreen("dashboard"))
         self.tab_manager.add_widget(ManageScreen(name="manage"))
 
+        # Wire Manage detail screens
+        from src.screens.manage.units_screen import UnitsScreen
+        from src.screens.manage.exercise_catalog_screen import ExerciseCatalogScreen
+        manage_screen = self.tab_manager.get_screen("manage")
+        manage_screen.add_detail_screen("units", UnitsScreen(name="manage_units"))
+        manage_screen.add_detail_screen("exercises", ExerciseCatalogScreen(name="manage_exercises"))
+
         self.root_layout.add_widget(self.tab_manager)
 
         # Bottom navigation — store items by tab name for direct sync
