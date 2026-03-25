@@ -72,10 +72,8 @@ class DashboardScreen(BaseScreen):
             spacing=dp(16),
         )
 
-        # Check if there are any sessions — all-time for empty state, period for cards
+        # Check if there are any sessions — all-time for empty state
         total_sessions = self.app.stats_service.get_session_count()
-        week_count = self.app.stats_service.get_sessions_this_week()
-        month_count = self.app.stats_service.get_sessions_this_month()
 
         if total_sessions == 0:
             # --- True empty state: user has never completed a workout ---
@@ -102,6 +100,8 @@ class DashboardScreen(BaseScreen):
             return
 
         # --- Stat cards row (shown even if this week/month are 0) ---
+        week_count = self.app.stats_service.get_sessions_this_week()
+        month_count = self.app.stats_service.get_sessions_this_month()
         stat_row = MDBoxLayout(
             size_hint_y=None, height=dp(80),
             spacing=dp(12),
