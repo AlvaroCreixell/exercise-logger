@@ -790,26 +790,38 @@ class RoutineEditorScreen(ManageDetailScreen):
         state = {
             "num_sets": 3,
             "uniform_reps": 8,
+            "uniform_reps_max": 8,
             "uniform_weight": 0.0,
             "uniform_duration": 60,
             "uniform_distance": 0.0,
-            "progressive_rows": [],  # list of dicts: {reps, weight, duration, distance}
+            "progressive_rows": [],
+            "is_amrap": False,
+            "use_rep_range": False,
         }
 
         # Pre-fill from existing targets
         if existing_targets:
             first = existing_targets[0]
             state["num_sets"] = len(existing_targets)
+            state["is_amrap"] = first.set_kind == SetKind.AMRAP
+            state["use_rep_range"] = (
+                first.target_reps_min is not None
+                and first.target_reps_max is not None
+                and first.target_reps_min != first.target_reps_max
+            )
             state["uniform_reps"] = first.target_reps_min or 8
+            state["uniform_reps_max"] = first.target_reps_max or state["uniform_reps"]
             state["uniform_weight"] = first.target_weight or 0.0
             state["uniform_duration"] = first.target_duration_seconds or 60
             state["uniform_distance"] = first.target_distance or 0.0
             state["progressive_rows"] = [
                 {
                     "reps": t.target_reps_min or 8,
+                    "reps_max": t.target_reps_max or (t.target_reps_min or 8),
                     "weight": t.target_weight or 0.0,
                     "duration": t.target_duration_seconds or 60,
                     "distance": t.target_distance or 0.0,
+                    "is_amrap": t.set_kind == SetKind.AMRAP,
                 }
                 for t in existing_targets
             ]
@@ -817,8 +829,10 @@ class RoutineEditorScreen(ManageDetailScreen):
         # If no progressive rows yet, seed with num_sets copies of uniform values
         if not state["progressive_rows"]:
             state["progressive_rows"] = [
-                {"reps": state["uniform_reps"], "weight": state["uniform_weight"],
-                 "duration": state["uniform_duration"], "distance": state["uniform_distance"]}
+                {"reps": state["uniform_reps"], "reps_max": state["uniform_reps"],
+                 "weight": state["uniform_weight"],
+                 "duration": state["uniform_duration"], "distance": state["uniform_distance"],
+                 "is_amrap": False}
                 for _ in range(state["num_sets"])
             ]
 
@@ -828,6 +842,40 @@ class RoutineEditorScreen(ManageDetailScreen):
             # Update button styles
             uniform_btn.style = "filled" if scheme_state["value"] == SetScheme.UNIFORM else "outlined"
             progressive_btn.style = "filled" if scheme_state["value"] == SetScheme.PROGRESSIVE else "outlined"
+
+            # AMRAP + rep range toggles (only for reps_weight / reps_only in uniform mode)
+            supports_amrap = ex_type in (ExerciseType.REPS_WEIGHT, ExerciseType.REPS_ONLY)
+            if supports_amrap and scheme_state["value"] == SetScheme.UNIFORM:
+                toggle_row = MDBoxLayout(size_hint_y=None, height=dp(40), spacing=dp(8))
+
+                amrap_btn = MDButton(
+                    style="filled" if state["is_amrap"] else "outlined",
+                    size_hint_x=None,
+                )
+                amrap_btn.add_widget(MDButtonText(text="AMRAP"))
+                def toggle_amrap(*a):
+                    state["is_amrap"] = not state["is_amrap"]
+                    if state["is_amrap"]:
+                        state["use_rep_range"] = False
+                    _rebuild_content()
+                amrap_btn.bind(on_release=toggle_amrap)
+                toggle_row.add_widget(amrap_btn)
+
+                if not state["is_amrap"]:
+                    range_btn = MDButton(
+                        style="filled" if state["use_rep_range"] else "outlined",
+                        size_hint_x=None,
+                    )
+                    range_btn.add_widget(MDButtonText(text="Rep Range"))
+                    def toggle_range(*a):
+                        state["use_rep_range"] = not state["use_rep_range"]
+                        if state["use_rep_range"] and state["uniform_reps_max"] == state["uniform_reps"]:
+                            state["uniform_reps_max"] = state["uniform_reps"] + 4
+                        _rebuild_content()
+                    range_btn.bind(on_release=toggle_range)
+                    toggle_row.add_widget(range_btn)
+
+                content_box.add_widget(toggle_row)
 
             if scheme_state["value"] == SetScheme.UNIFORM:
                 _build_uniform_content(content_box)
@@ -859,18 +907,36 @@ class RoutineEditorScreen(ManageDetailScreen):
 
             # Type-specific steppers
             if ex_type == ExerciseType.REPS_WEIGHT:
-                reps_stepper = ValueStepper(value=state["uniform_reps"], step=1, min_val=1, max_val=100, label="reps")
-                reps_stepper.bind(on_value_change=lambda inst, v: state.update({"uniform_reps": int(v)}))
-                box.add_widget(reps_stepper)
+                if not state["is_amrap"]:
+                    if state["use_rep_range"]:
+                        min_s = ValueStepper(value=state["uniform_reps"], step=1, min_val=1, max_val=100, label="min reps")
+                        min_s.bind(on_value_change=lambda inst, v: state.update({"uniform_reps": int(v)}))
+                        box.add_widget(min_s)
+                        max_s = ValueStepper(value=state["uniform_reps_max"], step=1, min_val=1, max_val=100, label="max reps")
+                        max_s.bind(on_value_change=lambda inst, v: state.update({"uniform_reps_max": int(v)}))
+                        box.add_widget(max_s)
+                    else:
+                        reps_stepper = ValueStepper(value=state["uniform_reps"], step=1, min_val=1, max_val=100, label="reps")
+                        reps_stepper.bind(on_value_change=lambda inst, v: state.update({"uniform_reps": int(v)}))
+                        box.add_widget(reps_stepper)
 
                 weight_stepper = ValueStepper(value=state["uniform_weight"], step=2.5, min_val=0, max_val=999, label="kg/lbs", is_integer=False)
                 weight_stepper.bind(on_value_change=lambda inst, v: state.update({"uniform_weight": v}))
                 box.add_widget(weight_stepper)
 
             elif ex_type == ExerciseType.REPS_ONLY:
-                reps_stepper = ValueStepper(value=state["uniform_reps"], step=1, min_val=1, max_val=100, label="reps")
-                reps_stepper.bind(on_value_change=lambda inst, v: state.update({"uniform_reps": int(v)}))
-                box.add_widget(reps_stepper)
+                if not state["is_amrap"]:
+                    if state["use_rep_range"]:
+                        min_s = ValueStepper(value=state["uniform_reps"], step=1, min_val=1, max_val=100, label="min reps")
+                        min_s.bind(on_value_change=lambda inst, v: state.update({"uniform_reps": int(v)}))
+                        box.add_widget(min_s)
+                        max_s = ValueStepper(value=state["uniform_reps_max"], step=1, min_val=1, max_val=100, label="max reps")
+                        max_s.bind(on_value_change=lambda inst, v: state.update({"uniform_reps_max": int(v)}))
+                        box.add_widget(max_s)
+                    else:
+                        reps_stepper = ValueStepper(value=state["uniform_reps"], step=1, min_val=1, max_val=100, label="reps")
+                        reps_stepper.bind(on_value_change=lambda inst, v: state.update({"uniform_reps": int(v)}))
+                        box.add_widget(reps_stepper)
 
             elif ex_type == ExerciseType.TIME:
                 dur_stepper = ValueStepper(value=state["uniform_duration"], step=5, min_val=5, max_val=3600, label="sec")
@@ -912,18 +978,49 @@ class RoutineEditorScreen(ManageDetailScreen):
                 row_ref = row_data  # each row_data is a dict in state["progressive_rows"]
 
                 if ex_type == ExerciseType.REPS_WEIGHT:
-                    reps_s = ValueStepper(value=row_data["reps"], step=1, min_val=1, max_val=100, label="reps")
-                    reps_s.bind(on_value_change=lambda inst, v, r=row_ref: r.update({"reps": int(v)}))
-                    row_box.add_widget(reps_s)
+                    if not row_data.get("is_amrap"):
+                        min_s = ValueStepper(value=row_data["reps"], step=1, min_val=1, max_val=100, label="min")
+                        min_s.bind(on_value_change=lambda inst, v, r=row_ref: r.update({"reps": int(v)}))
+                        row_box.add_widget(min_s)
+                        max_s = ValueStepper(value=row_data.get("reps_max", row_data["reps"]), step=1, min_val=1, max_val=100, label="max")
+                        max_s.bind(on_value_change=lambda inst, v, r=row_ref: r.update({"reps_max": int(v)}))
+                        row_box.add_widget(max_s)
 
                     weight_s = ValueStepper(value=row_data["weight"], step=2.5, min_val=0, max_val=999, label="wt", is_integer=False)
                     weight_s.bind(on_value_change=lambda inst, v, r=row_ref: r.update({"weight": v}))
                     row_box.add_widget(weight_s)
 
+                    # Per-row AMRAP toggle
+                    amrap_btn = MDButton(
+                        style="filled" if row_data.get("is_amrap") else "outlined",
+                        size_hint_x=None,
+                    )
+                    amrap_btn.add_widget(MDButtonText(text="A"))
+                    def _toggle_row_amrap(*a, r=row_ref):
+                        r["is_amrap"] = not r.get("is_amrap", False)
+                        _rebuild_content()
+                    amrap_btn.bind(on_release=_toggle_row_amrap)
+                    row_box.add_widget(amrap_btn)
+
                 elif ex_type == ExerciseType.REPS_ONLY:
-                    reps_s = ValueStepper(value=row_data["reps"], step=1, min_val=1, max_val=100, label="reps")
-                    reps_s.bind(on_value_change=lambda inst, v, r=row_ref: r.update({"reps": int(v)}))
-                    row_box.add_widget(reps_s)
+                    if not row_data.get("is_amrap"):
+                        min_s = ValueStepper(value=row_data["reps"], step=1, min_val=1, max_val=100, label="min")
+                        min_s.bind(on_value_change=lambda inst, v, r=row_ref: r.update({"reps": int(v)}))
+                        row_box.add_widget(min_s)
+                        max_s = ValueStepper(value=row_data.get("reps_max", row_data["reps"]), step=1, min_val=1, max_val=100, label="max")
+                        max_s.bind(on_value_change=lambda inst, v, r=row_ref: r.update({"reps_max": int(v)}))
+                        row_box.add_widget(max_s)
+
+                    amrap_btn = MDButton(
+                        style="filled" if row_data.get("is_amrap") else "outlined",
+                        size_hint_x=None,
+                    )
+                    amrap_btn.add_widget(MDButtonText(text="A"))
+                    def _toggle_row_amrap(*a, r=row_ref):
+                        r["is_amrap"] = not r.get("is_amrap", False)
+                        _rebuild_content()
+                    amrap_btn.bind(on_release=_toggle_row_amrap)
+                    row_box.add_widget(amrap_btn)
 
                 elif ex_type == ExerciseType.TIME:
                     dur_s = ValueStepper(value=row_data["duration"], step=5, min_val=5, max_val=3600, label="sec")
@@ -954,7 +1051,7 @@ class RoutineEditorScreen(ManageDetailScreen):
 
             def on_add_set(*a):
                 last = state["progressive_rows"][-1] if state["progressive_rows"] else {
-                    "reps": 8, "weight": 0.0, "duration": 60, "distance": 0.0
+                    "reps": 8, "reps_max": 8, "weight": 0.0, "duration": 60, "distance": 0.0, "is_amrap": False,
                 }
                 state["progressive_rows"].append(dict(last))
                 _rebuild_content()
@@ -997,45 +1094,24 @@ class RoutineEditorScreen(ManageDetailScreen):
         def on_save(*a):
             error_label.text = ""
             new_scheme = scheme_state["value"]
-            # Update scheme (authoritative per spec L164)
             self.app.routine_service.update_day_exercise_scheme(rde.id, new_scheme)
 
-            set_kind = DEFAULT_SET_KIND.get(ex_type, SetKind.REPS_WEIGHT)
+            # Build state snapshot for the payload builder
+            save_state = dict(state)
+            save_state["scheme"] = new_scheme.value
+
+            payload = build_targets_payload(save_state, ex_type)
 
             try:
                 if new_scheme == SetScheme.UNIFORM:
-                    kwargs = {"rde_id": rde.id, "num_sets": state["num_sets"], "set_kind": set_kind}
-                    if ex_type == ExerciseType.REPS_WEIGHT:
-                        kwargs["reps_min"] = state["uniform_reps"]
-                        kwargs["reps_max"] = state["uniform_reps"]
-                        kwargs["weight"] = state["uniform_weight"]
-                    elif ex_type == ExerciseType.REPS_ONLY:
-                        kwargs["reps_min"] = state["uniform_reps"]
-                        kwargs["reps_max"] = state["uniform_reps"]
-                    elif ex_type == ExerciseType.TIME:
-                        kwargs["duration_seconds"] = state["uniform_duration"]
-                    elif ex_type == ExerciseType.CARDIO:
-                        kwargs["duration_seconds"] = state["uniform_duration"] or None
-                        kwargs["distance"] = state["uniform_distance"] or None
+                    first = payload[0] if payload else {}
+                    kwargs = {"rde_id": rde.id, "num_sets": len(payload), "set_kind": first.get("set_kind", SetKind.REPS_WEIGHT)}
+                    for key in ("reps_min", "reps_max", "weight", "duration_seconds", "distance"):
+                        if key in first:
+                            kwargs[key] = first[key]
                     self.app.routine_service.set_uniform_targets(**kwargs)
                 else:
-                    targets_data = []
-                    for row_data in state["progressive_rows"]:
-                        entry = {"set_kind": set_kind}
-                        if ex_type == ExerciseType.REPS_WEIGHT:
-                            entry["reps_min"] = row_data["reps"]
-                            entry["reps_max"] = row_data["reps"]
-                            entry["weight"] = row_data["weight"]
-                        elif ex_type == ExerciseType.REPS_ONLY:
-                            entry["reps_min"] = row_data["reps"]
-                            entry["reps_max"] = row_data["reps"]
-                        elif ex_type == ExerciseType.TIME:
-                            entry["duration_seconds"] = row_data["duration"]
-                        elif ex_type == ExerciseType.CARDIO:
-                            entry["duration_seconds"] = row_data["duration"] or None
-                            entry["distance"] = row_data["distance"] or None
-                        targets_data.append(entry)
-                    self.app.routine_service.set_progressive_targets(rde.id, targets_data)
+                    self.app.routine_service.set_progressive_targets(rde.id, payload)
             except ValueError as e:
                 error_label.text = str(e)
                 return
