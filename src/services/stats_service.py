@@ -79,21 +79,77 @@ class StatsService:
             for date, data in sorted(sessions.items())
         ]
 
+    def get_exercise_history(self, exercise_id: int) -> List[dict]:
+        """Type-aware exercise history for charts."""
+        from src.models.exercise import ExerciseType
+        exercise = self._exercise_repo.get_by_id(exercise_id)
+        if not exercise:
+            return []
+        rows = self._workout_repo.get_exercise_logged_sets(exercise_id)
+        ex_type = exercise.type
+
+        sessions = {}
+        for row in rows:
+            date = row["session_started_at"][:10]
+            if date not in sessions:
+                sessions[date] = {}
+            d = sessions[date]
+            if ex_type == ExerciseType.REPS_WEIGHT:
+                w = row.get("weight") or 0
+                r = row.get("reps") or 0
+                d["max_weight"] = max(d.get("max_weight", 0), w)
+                d["total_volume"] = d.get("total_volume", 0) + w * r
+            elif ex_type == ExerciseType.REPS_ONLY:
+                r = row.get("reps") or 0
+                d["max_reps"] = max(d.get("max_reps", 0), r)
+                d["total_reps"] = d.get("total_reps", 0) + r
+            elif ex_type == ExerciseType.TIME:
+                dur = row.get("duration_seconds") or 0
+                d["max_duration"] = max(d.get("max_duration", 0), dur)
+            elif ex_type == ExerciseType.CARDIO:
+                dur = row.get("duration_seconds") or 0
+                dist = row.get("distance") or 0
+                d["max_duration"] = max(d.get("max_duration", 0), dur)
+                d["max_distance"] = max(d.get("max_distance", 0), dist)
+
+        return [{"session_date": date, **data} for date, data in sorted(sessions.items())]
+
     def get_exercise_best_set(self, exercise_id: int) -> Optional[dict]:
-        """Best set (highest weight) for an exercise across all sessions."""
+        """Type-aware best set. Sorts by: weight (reps_weight), reps (reps_only),
+        duration (time), distance>0 else duration (cardio)."""
+        from src.models.exercise import ExerciseType
+        exercise = self._exercise_repo.get_by_id(exercise_id)
+        if not exercise:
+            return None
         rows = self._workout_repo.get_exercise_logged_sets(exercise_id)
         if not rows:
             return None
 
+        ex_type = exercise.type
         best = None
         for row in rows:
-            weight = row.get("weight") or 0
-            if best is None or weight > best.get("weight", 0):
-                best = {
-                    "weight": weight,
-                    "reps": row.get("reps"),
-                    "session_date": row["session_started_at"][:10],
-                }
+            date = row["session_started_at"][:10]
+            if ex_type == ExerciseType.REPS_WEIGHT:
+                val = row.get("weight") or 0
+                if best is None or val > best.get("weight", 0):
+                    best = {"weight": val, "reps": row.get("reps"), "session_date": date, "exercise_type": ex_type.value}
+            elif ex_type == ExerciseType.REPS_ONLY:
+                val = row.get("reps") or 0
+                if best is None or val > best.get("reps", 0):
+                    best = {"reps": val, "session_date": date, "exercise_type": ex_type.value}
+            elif ex_type == ExerciseType.TIME:
+                val = row.get("duration_seconds") or 0
+                if best is None or val > best.get("duration_seconds", 0):
+                    best = {"duration_seconds": val, "session_date": date, "exercise_type": ex_type.value}
+            elif ex_type == ExerciseType.CARDIO:
+                dist = row.get("distance") or 0
+                dur = row.get("duration_seconds") or 0
+                if dist > 0:
+                    if best is None or dist > best.get("distance", 0):
+                        best = {"distance": dist, "duration_seconds": dur, "session_date": date, "exercise_type": ex_type.value}
+                else:
+                    if best is None or dur > best.get("duration_seconds", 0):
+                        best = {"duration_seconds": dur, "distance": None, "session_date": date, "exercise_type": ex_type.value}
         return best
 
     def get_benchmark_history(self, defn_id: int) -> List[dict]:
@@ -135,22 +191,25 @@ class StatsService:
         return [dict(r) for r in rows]
 
     def get_recent_prs(self, limit: int = 5) -> List[dict]:
-        """Recent personal records — highest weight per exercise, most recent first.
-
-        Returns list of dicts: {exercise_name, weight, reps, session_date}
-        """
+        """Personal records across all exercise types, most recent first."""
+        from src.models.exercise import ExerciseType
         exercises = self._exercise_repo.list_all()
         prs = []
         for ex in exercises:
             best = self.get_exercise_best_set(ex.id)
-            if best and best.get("weight"):
-                prs.append({
-                    "exercise_name": ex.name,
-                    "weight": best["weight"],
-                    "reps": best.get("reps"),
-                    "session_date": best["session_date"],
-                })
-        # Sort by session_date descending
+            if not best:
+                continue
+            ex_type = ex.type
+            if ex_type == ExerciseType.REPS_WEIGHT and not best.get("weight"):
+                continue
+            if ex_type == ExerciseType.REPS_ONLY and not best.get("reps"):
+                continue
+            if ex_type == ExerciseType.TIME and not best.get("duration_seconds"):
+                continue
+            if ex_type == ExerciseType.CARDIO and not best.get("distance") and not best.get("duration_seconds"):
+                continue
+            entry = {"exercise_name": ex.name, **best}
+            prs.append(entry)
         prs.sort(key=lambda x: x["session_date"], reverse=True)
         return prs[:limit]
 

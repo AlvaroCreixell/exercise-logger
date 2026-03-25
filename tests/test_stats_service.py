@@ -239,3 +239,91 @@ class TestStatsServiceBenchmarkAndPlanVsActual:
         trend = stats_service.get_total_volume_trend(weeks=1)
         assert len(trend) >= 1
         assert trend[0]["total_volume"] == 1000.0  # 10 * 100
+
+
+class TestStatsServiceTypeAware:
+
+    def _create_typed_session(self, workout_service, routine_service, make_exercise,
+                              name, ex_type, set_kind, finish=True, **set_kwargs):
+        routines = routine_service.list_routines()
+        if routines:
+            r = routines[0]
+            days = routine_service.get_days(r.id)
+            day = days[0]
+        else:
+            r = routine_service.create_routine("Test")
+            day = routine_service.add_day(r.id, "A", "Push")
+            routine_service.activate_routine(r.id)
+        ex = make_exercise(name, type=ex_type)
+        session = workout_service.start_routine_session(day.id)
+        se = workout_service.add_exercise_to_session(session.id, ex.id)
+        ls = workout_service.log_set(se.id, set_kind, **set_kwargs)
+        if finish:
+            workout_service.finish_session(session.id)
+        return ex, session, se, ls
+
+    def test_best_set_reps_only(self, stats_service, workout_service, routine_service, make_exercise):
+        ex, *_ = self._create_typed_session(
+            workout_service, routine_service, make_exercise,
+            "Pullup", ExerciseType.REPS_ONLY, SetKind.REPS_ONLY, reps=15,
+        )
+        best = stats_service.get_exercise_best_set(ex.id)
+        assert best is not None
+        assert best["reps"] == 15
+        assert best["exercise_type"] == "reps_only"
+
+    def test_best_set_time(self, stats_service, workout_service, routine_service, make_exercise):
+        ex, *_ = self._create_typed_session(
+            workout_service, routine_service, make_exercise,
+            "Plank", ExerciseType.TIME, SetKind.DURATION, duration_seconds=120,
+        )
+        best = stats_service.get_exercise_best_set(ex.id)
+        assert best["duration_seconds"] == 120
+        assert best["exercise_type"] == "time"
+
+    def test_best_set_cardio_with_distance(self, stats_service, workout_service, routine_service, make_exercise):
+        ex, *_ = self._create_typed_session(
+            workout_service, routine_service, make_exercise,
+            "Treadmill", ExerciseType.CARDIO, SetKind.CARDIO,
+            duration_seconds=1800, distance=5.0,
+        )
+        best = stats_service.get_exercise_best_set(ex.id)
+        assert best["distance"] == 5.0
+        assert best["duration_seconds"] == 1800
+
+    def test_best_set_cardio_duration_only(self, stats_service, workout_service, routine_service, make_exercise):
+        ex, *_ = self._create_typed_session(
+            workout_service, routine_service, make_exercise,
+            "Bike", ExerciseType.CARDIO, SetKind.CARDIO,
+            duration_seconds=2400,
+        )
+        best = stats_service.get_exercise_best_set(ex.id)
+        assert best["duration_seconds"] == 2400
+
+    def test_history_reps_only(self, stats_service, workout_service, routine_service, make_exercise):
+        ex, *_ = self._create_typed_session(
+            workout_service, routine_service, make_exercise,
+            "Pushup", ExerciseType.REPS_ONLY, SetKind.REPS_ONLY, reps=20,
+        )
+        history = stats_service.get_exercise_history(ex.id)
+        assert len(history) == 1
+        assert history[0]["max_reps"] == 20
+
+    def test_history_time(self, stats_service, workout_service, routine_service, make_exercise):
+        ex, *_ = self._create_typed_session(
+            workout_service, routine_service, make_exercise,
+            "Wall Sit", ExerciseType.TIME, SetKind.DURATION, duration_seconds=90,
+        )
+        history = stats_service.get_exercise_history(ex.id)
+        assert history[0]["max_duration"] == 90
+
+    def test_recent_prs_includes_non_weight(self, stats_service, workout_service, routine_service, make_exercise):
+        self._create_typed_session(
+            workout_service, routine_service, make_exercise,
+            "Pullup", ExerciseType.REPS_ONLY, SetKind.REPS_ONLY, reps=20,
+        )
+        prs = stats_service.get_recent_prs(10)
+        assert len(prs) >= 1
+        pr = next(p for p in prs if p["exercise_name"] == "Pullup")
+        assert pr["reps"] == 20
+        assert pr["exercise_type"] == "reps_only"
