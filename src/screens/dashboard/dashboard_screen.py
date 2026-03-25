@@ -140,13 +140,30 @@ class DashboardScreen(BaseScreen):
                     md_bg_color=SURFACE,
                     padding=[dp(12), 0, dp(12), 0],
                 )
-                reps_text = f"×{pr['reps']}" if pr.get("reps") else ""
-                pr_text = f"{pr['exercise_name']} — {pr['weight']}{reps_text} — {pr['session_date']}"
+                et = pr.get("exercise_type", "reps_weight")
+                if et == "reps_weight":
+                    reps_text = f"\u00d7{pr['reps']}" if pr.get("reps") else ""
+                    val_text = f"{pr.get('weight', 0)}{reps_text}"
+                elif et == "reps_only":
+                    val_text = f"{pr.get('reps', 0)} reps"
+                elif et == "time":
+                    secs = pr.get("duration_seconds", 0)
+                    val_text = f"{secs // 60}m {secs % 60}s" if secs >= 60 else f"{secs}s"
+                elif et == "cardio":
+                    parts = []
+                    if pr.get("distance"):
+                        parts.append(f"{pr['distance']}km")
+                    if pr.get("duration_seconds"):
+                        parts.append(f"{pr['duration_seconds'] // 60}m")
+                    val_text = " / ".join(parts) if parts else "\u2014"
+                else:
+                    val_text = "\u2014"
+
+                pr_text = f"{pr['exercise_name']} \u2014 {val_text} \u2014 {pr['session_date']}"
                 pr_row.add_widget(MDLabel(
                     text=pr_text,
                     theme_text_color="Custom", text_color=TEXT_PRIMARY,
-                    font_style="Body", role="medium",
-                    adaptive_height=True,
+                    font_style="Body", role="medium", adaptive_height=True,
                 ))
                 content.add_widget(pr_row)
 

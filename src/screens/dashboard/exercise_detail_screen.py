@@ -33,6 +33,9 @@ class ExerciseDetailScreen(MDScreen):
 
     def _build(self):
         self.clear_widgets()
+        exercise = self.app.exercise_service.get_exercise(self.exercise_id)
+        ex_type = exercise.type if exercise else None
+        from src.models.exercise import ExerciseType
         layout = MDBoxLayout(orientation="vertical", md_bg_color=BACKGROUND)
 
         # --- Header ---
@@ -62,16 +65,14 @@ class ExerciseDetailScreen(MDScreen):
             spacing=dp(16),
         )
 
-        history = self.app.stats_service.get_exercise_weight_history(self.exercise_id)
+        history = self.app.stats_service.get_exercise_history(self.exercise_id)
 
         if not history:
             content.add_widget(Widget(size_hint_y=None, height=dp(48)))
             content.add_widget(MDLabel(
-                text="No data yet",
-                halign="center",
+                text="No data yet", halign="center",
                 theme_text_color="Custom", text_color=TEXT_SECONDARY,
-                font_style="Body", role="large",
-                adaptive_height=True,
+                font_style="Body", role="large", adaptive_height=True,
             ))
             scroll.add_widget(content)
             layout.add_widget(scroll)
@@ -79,59 +80,72 @@ class ExerciseDetailScreen(MDScreen):
             return
 
         dates = [d["session_date"] for d in history]
-        weights = [d["max_weight"] for d in history]
-        volumes = [d["total_volume"] for d in history]
 
-        # --- Weight chart ---
-        content.add_widget(MDLabel(
-            text="Weight Over Time",
-            theme_text_color="Custom", text_color=TEXT_SECONDARY,
-            font_style="Label", role="large",
-            adaptive_height=True,
-        ))
-        weight_chart = ChartWidget()
-        weight_chart.plot_line(dates, weights, ylabel="kg/lbs")
-        content.add_widget(weight_chart)
-
-        # --- Volume chart ---
-        content.add_widget(MDLabel(
-            text="Volume Over Time",
-            theme_text_color="Custom", text_color=TEXT_SECONDARY,
-            font_style="Label", role="large",
-            adaptive_height=True,
-        ))
-        volume_chart = ChartWidget()
-        volume_chart.plot_bar(dates, volumes, ylabel="Volume")
-        content.add_widget(volume_chart)
+        if ex_type == ExerciseType.REPS_WEIGHT:
+            content.add_widget(self._section_label("Weight Over Time"))
+            c1 = ChartWidget()
+            c1.plot_line(dates, [d.get("max_weight", 0) for d in history], ylabel="kg/lbs")
+            content.add_widget(c1)
+            content.add_widget(self._section_label("Volume Over Time"))
+            c2 = ChartWidget()
+            c2.plot_bar(dates, [d.get("total_volume", 0) for d in history], ylabel="Volume")
+            content.add_widget(c2)
+        elif ex_type == ExerciseType.REPS_ONLY:
+            content.add_widget(self._section_label("Max Reps Over Time"))
+            c1 = ChartWidget()
+            c1.plot_line(dates, [d.get("max_reps", 0) for d in history], ylabel="Reps")
+            content.add_widget(c1)
+        elif ex_type == ExerciseType.TIME:
+            content.add_widget(self._section_label("Max Duration Over Time"))
+            c1 = ChartWidget()
+            c1.plot_line(dates, [d.get("max_duration", 0) for d in history], ylabel="Seconds")
+            content.add_widget(c1)
+        elif ex_type == ExerciseType.CARDIO:
+            has_distance = any(d.get("max_distance", 0) > 0 for d in history)
+            if has_distance:
+                content.add_widget(self._section_label("Max Distance Over Time"))
+                c1 = ChartWidget()
+                c1.plot_line(dates, [d.get("max_distance", 0) for d in history], ylabel="km")
+                content.add_widget(c1)
+            else:
+                content.add_widget(self._section_label("Max Duration Over Time"))
+                c1 = ChartWidget()
+                c1.plot_line(dates, [d.get("max_duration", 0) for d in history], ylabel="Seconds")
+                content.add_widget(c1)
 
         # --- Personal Best card ---
         best = self.app.stats_service.get_exercise_best_set(self.exercise_id)
         if best:
-            content.add_widget(MDLabel(
-                text="Personal Best",
-                theme_text_color="Custom", text_color=TEXT_SECONDARY,
-                font_style="Label", role="large",
-                adaptive_height=True,
-            ))
+            content.add_widget(self._section_label("Personal Best"))
             pb_card = MDBoxLayout(
-                size_hint_y=None, height=dp(64),
-                md_bg_color=SURFACE,
-                padding=[dp(16), dp(8), dp(16), dp(8)],
-                spacing=dp(8),
+                size_hint_y=None, height=dp(64), md_bg_color=SURFACE,
+                padding=[dp(16), dp(8), dp(16), dp(8)], spacing=dp(8),
             )
-            reps_text = f" × {best['reps']} reps" if best.get("reps") else ""
+            if ex_type == ExerciseType.REPS_WEIGHT:
+                reps_text = f" \u00d7 {best['reps']} reps" if best.get("reps") else ""
+                pb_text = f"{best.get('weight', 0)}{reps_text}"
+            elif ex_type == ExerciseType.REPS_ONLY:
+                pb_text = f"{best.get('reps', 0)} reps"
+            elif ex_type == ExerciseType.TIME:
+                secs = best.get("duration_seconds", 0)
+                pb_text = f"{secs // 60}m {secs % 60}s" if secs >= 60 else f"{secs}s"
+            elif ex_type == ExerciseType.CARDIO:
+                parts = []
+                if best.get("distance"):
+                    parts.append(f"{best['distance']} km")
+                if best.get("duration_seconds"):
+                    parts.append(f"{best['duration_seconds'] // 60}m")
+                pb_text = " / ".join(parts) if parts else "\u2014"
+            else:
+                pb_text = "\u2014"
             pb_card.add_widget(MDLabel(
-                text=f"{best['weight']}{reps_text}",
-                theme_text_color="Custom", text_color=PRIMARY,
-                font_style="Headline", role="small",
-                adaptive_height=True,
+                text=pb_text, theme_text_color="Custom", text_color=PRIMARY,
+                font_style="Headline", role="small", adaptive_height=True,
             ))
             pb_card.add_widget(MDLabel(
-                text=best.get("session_date", ""),
-                theme_text_color="Custom", text_color=TEXT_SECONDARY,
-                font_style="Body", role="medium",
-                adaptive_height=True,
-                halign="right",
+                text=best.get("session_date", ""), theme_text_color="Custom",
+                text_color=TEXT_SECONDARY, font_style="Body", role="medium",
+                adaptive_height=True, halign="right",
             ))
             content.add_widget(pb_card)
 
@@ -144,13 +158,13 @@ class ExerciseDetailScreen(MDScreen):
                 font_style="Label", role="large",
                 adaptive_height=True,
             ))
-            content.add_widget(self._build_pva_table(pva))
+            content.add_widget(self._build_pva_table(pva, ex_type))
 
         scroll.add_widget(content)
         layout.add_widget(scroll)
         self.add_widget(layout)
 
-    def _build_pva_table(self, pva_rows):
+    def _build_pva_table(self, pva_rows, ex_type=None):
         """Build a plan-vs-actual comparison table."""
         table = MDBoxLayout(
             orientation="vertical",
@@ -177,27 +191,56 @@ class ExerciseDetailScreen(MDScreen):
         # Data rows
         for row in pva_rows:
             set_num = row.get("set_number", "?")
+            row_kind = row.get("set_kind", "")
 
-            planned_w = row.get("planned_weight")
-            planned_r_min = row.get("planned_reps_min")
-            planned_r_max = row.get("planned_reps_max")
-            if planned_w is not None and planned_r_min is not None:
-                reps_str = f"{planned_r_min}" if planned_r_min == planned_r_max else f"{planned_r_min}-{planned_r_max}"
-                planned_text = f"{planned_w} × {reps_str}"
-            elif planned_r_min is not None:
-                reps_str = f"{planned_r_min}" if planned_r_min == planned_r_max else f"{planned_r_min}-{planned_r_max}"
-                planned_text = reps_str
+            if row_kind == "amrap":
+                pw = row.get("planned_weight")
+                planned_text = f"{pw} \u00d7 AMRAP" if pw is not None else "AMRAP"
+                ar = row.get("actual_reps")
+                aw = row.get("actual_weight")
+                if aw is not None and ar is not None:
+                    actual_text = f"{aw} \u00d7 {ar}"
+                elif ar is not None:
+                    actual_text = f"{ar} reps"
+                else:
+                    actual_text = "\u2014"
+            elif row_kind in ("reps_weight", "reps_only"):
+                pr_min = row.get("planned_reps_min")
+                pr_max = row.get("planned_reps_max")
+                pw = row.get("planned_weight")
+                if pr_min is not None:
+                    reps_str = f"{pr_min}" if pr_min == pr_max else f"{pr_min}-{pr_max}"
+                    planned_text = f"{pw} \u00d7 {reps_str}" if pw is not None else reps_str
+                else:
+                    planned_text = "\u2014"
+                ar = row.get("actual_reps")
+                aw = row.get("actual_weight")
+                if aw is not None and ar is not None:
+                    actual_text = f"{aw} \u00d7 {ar}"
+                elif ar is not None:
+                    actual_text = str(ar)
+                else:
+                    actual_text = "\u2014"
+            elif row_kind == "duration":
+                pd = row.get("planned_duration")
+                planned_text = f"{pd}s" if pd is not None else "\u2014"
+                ad = row.get("actual_duration")
+                actual_text = f"{ad}s" if ad is not None else "\u2014"
+            elif row_kind == "cardio":
+                parts_p, parts_a = [], []
+                if row.get("planned_duration") is not None:
+                    parts_p.append(f"{row['planned_duration']}s")
+                if row.get("planned_distance") is not None:
+                    parts_p.append(f"{row['planned_distance']}km")
+                planned_text = " / ".join(parts_p) if parts_p else "\u2014"
+                if row.get("actual_duration") is not None:
+                    parts_a.append(f"{row['actual_duration']}s")
+                if row.get("actual_distance") is not None:
+                    parts_a.append(f"{row['actual_distance']}km")
+                actual_text = " / ".join(parts_a) if parts_a else "\u2014"
             else:
-                planned_text = "—"
-
-            actual_w = row.get("actual_weight")
-            actual_r = row.get("actual_reps")
-            if actual_w is not None and actual_r is not None:
-                actual_text = f"{actual_w} × {actual_r}"
-            elif actual_r is not None:
-                actual_text = str(actual_r)
-            else:
-                actual_text = "—"
+                planned_text = "\u2014"
+                actual_text = "\u2014"
 
             data_row = MDBoxLayout(
                 size_hint_y=None, height=dp(40),
@@ -215,6 +258,12 @@ class ExerciseDetailScreen(MDScreen):
             table.add_widget(data_row)
 
         return table
+
+    def _section_label(self, text):
+        return MDLabel(
+            text=text, theme_text_color="Custom", text_color=TEXT_SECONDARY,
+            font_style="Label", role="large", adaptive_height=True,
+        )
 
     def _go_back(self):
         """Navigate back to dashboard overview."""
