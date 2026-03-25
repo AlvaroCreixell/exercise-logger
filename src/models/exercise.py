@@ -1,12 +1,13 @@
 from __future__ import annotations
-
 from dataclasses import dataclass
 from enum import Enum
 from typing import Optional
 
 
-class ExerciseCategory(str, Enum):
-    WEIGHT = "weight"
+class ExerciseType(Enum):
+    REPS_WEIGHT = "reps_weight"
+    REPS_ONLY = "reps_only"
+    TIME = "time"
     CARDIO = "cardio"
 
 
@@ -14,9 +15,7 @@ class ExerciseCategory(str, Enum):
 class Exercise:
     id: Optional[int]
     name: str
-    category: ExerciseCategory
-    equipment: Optional[str] = None
+    type: ExerciseType
     muscle_group: Optional[str] = None
-    notes: Optional[str] = None
+    equipment: Optional[str] = None
     is_archived: bool = False
-    created_at: Optional[str] = None

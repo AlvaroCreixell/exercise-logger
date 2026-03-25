@@ -1,26 +1,25 @@
-from __future__ import annotations
-
+"""Base repository with common database operations."""
 import sqlite3
-from typing import Any, Optional, Sequence
+from typing import List, Optional
 
 
 class BaseRepository:
-    def __init__(self, conn: sqlite3.Connection) -> None:
+    def __init__(self, conn: sqlite3.Connection):
         self._conn = conn
 
-    def _execute(self, sql: str, params: Sequence[Any] = ()) -> sqlite3.Cursor:
+    def _execute(self, sql: str, params: tuple = ()) -> sqlite3.Cursor:
         return self._conn.execute(sql, params)
 
-    def _fetchone(self, sql: str, params: Sequence[Any] = ()) -> Optional[sqlite3.Row]:
+    def _fetchone(self, sql: str, params: tuple = ()) -> Optional[sqlite3.Row]:
         return self._conn.execute(sql, params).fetchone()
 
-    def _fetchall(self, sql: str, params: Sequence[Any] = ()) -> list[sqlite3.Row]:
+    def _fetchall(self, sql: str, params: tuple = ()) -> List[sqlite3.Row]:
         return self._conn.execute(sql, params).fetchall()
 
-    def _insert(self, sql: str, params: Sequence[Any] = ()) -> int:
-        """Execute an INSERT and return the new row's id. Does NOT commit."""
+    def _insert(self, sql: str, params: tuple = ()) -> int:
+        """Execute an INSERT and return lastrowid."""
         cursor = self._conn.execute(sql, params)
         return cursor.lastrowid
 
-    def _commit(self) -> None:
+    def commit(self) -> None:
         self._conn.commit()

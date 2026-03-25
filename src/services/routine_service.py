@@ -1,149 +1,269 @@
-from __future__ import annotations
-
-import sqlite3
-from typing import Optional
-
-from models.exercise import Exercise
-from models.routine import Routine, RoutineDay, RoutineDayExercise
-from repositories.routine_repo import RoutineRepo
+"""Routine service — routine management, set schemes, validation."""
+from datetime import datetime, timezone
+from typing import List, Optional
+from src.models.routine import (
+    Routine, RoutineDay, RoutineDayExercise, SetTarget, SetScheme, SetKind,
+)
+from src.repositories.exercise_repo import ExerciseRepo
+from src.repositories.routine_repo import RoutineRepo
+from src.services.cycle_service import CycleService
+from src.services.validation import (
+    COMPATIBLE_SET_KINDS, validate_set_kind, validate_cardio_fields, validate_amrap_fields,
+)
 
 
 class RoutineService:
-    def __init__(self, conn: sqlite3.Connection) -> None:
-        self._repo = RoutineRepo(conn)
-        self._conn = conn
+    def __init__(self, routine_repo: RoutineRepo, exercise_repo: ExerciseRepo, cycle_service: CycleService):
+        self._repo = routine_repo
+        self._exercise_repo = exercise_repo
+        self._cycle_service = cycle_service
 
-    # ── Read ─────────────────────────────────────────────────────
+    def _now(self) -> str:
+        return datetime.now(timezone.utc).isoformat()
+
+    # --- Routines ---
+
+    def create_routine(self, name: str) -> Routine:
+        now = self._now()
+        routine = Routine(id=None, name=name, is_active=False, created_at=now, updated_at=now)
+        routine.id = self._repo.create_routine(routine)
+        self._repo.commit()
+        return routine
+
+    def get_routine(self, routine_id: int) -> Optional[Routine]:
+        return self._repo.get_routine(routine_id)
+
+    def list_routines(self) -> List[Routine]:
+        return self._repo.list_routines()
 
     def get_active_routine(self) -> Optional[Routine]:
-        return self._repo.get_active()
+        return self._repo.get_active_routine()
 
-    def get_all_routines(self) -> list[Routine]:
-        return self._repo.get_all()
+    def activate_routine(self, routine_id: int) -> None:
+        routine = self._repo.get_routine(routine_id)
+        if not routine:
+            raise ValueError(f"Routine {routine_id} not found")
 
-    def get_days(self, routine_id: int) -> list[RoutineDay]:
-        return self._repo.get_days(routine_id)
+        current = self._repo.get_active_routine()
+        if current and current.id != routine_id:
+            current.is_active = False
+            current.updated_at = self._now()
+            self._repo.update_routine(current)
 
-    def get_day_exercises(
-        self, day_id: int
-    ) -> list[tuple[RoutineDayExercise, Exercise]]:
-        return self._repo.get_day_exercises_with_detail(day_id)
+        routine.is_active = True
+        routine.updated_at = self._now()
+        self._repo.update_routine(routine)
+        # Only initialize cycle if no state exists (preserve progress on re-activation)
+        if self._cycle_service.get_current_day(routine_id) is None:
+            self._cycle_service.initialize(routine_id)
+        self._repo.commit()
 
-    # ── Routine write ─────────────────────────────────────────────
+    def deactivate_routine(self, routine_id: int) -> None:
+        routine = self._repo.get_routine(routine_id)
+        if not routine:
+            raise ValueError(f"Routine {routine_id} not found")
+        routine.is_active = False
+        routine.updated_at = self._now()
+        self._repo.update_routine(routine)
+        self._repo.commit()
 
-    def create_routine(
-        self, name: str, description: Optional[str] = None
-    ) -> Routine:
-        """Create a new (inactive) routine and return it."""
-        routine = Routine(
-            id=None,
-            name=name,
-            description=description,
-            is_active=False,
-            created_at=None,
-        )
-        new_id = self._repo.insert_routine(routine)
-        self._conn.commit()
-        return self._repo.get_by_id(new_id)
+    def delete_routine(self, routine_id: int) -> None:
+        self._repo.delete_routine(routine_id)
+        self._repo.commit()
 
-    def rename_routine(self, routine_id: int, name: str) -> None:
-        self._repo.update_routine_name(routine_id, name)
-        self._conn.commit()
+    # --- Days ---
 
-    def set_active_routine(self, routine_id: int) -> None:
-        """Make this the one active routine (deactivates all others)."""
-        self._repo.deactivate_all()
-        self._repo.set_active(routine_id)
-        self._conn.commit()
+    def add_day(self, routine_id: int, label: str, name: str) -> RoutineDay:
+        routine = self._repo.get_routine(routine_id)
+        if not routine:
+            raise ValueError(f"Routine {routine_id} not found")
 
-    # ── Day write ─────────────────────────────────────────────────
+        sort_order = self._repo.get_day_count(routine_id)
+        day = RoutineDay(id=None, routine_id=routine_id, label=label, name=name, sort_order=sort_order)
+        day.id = self._repo.add_day(day)
 
-    def add_day(self, routine_id: int, name: str) -> RoutineDay:
-        """Append a new day at the end of the routine."""
-        next_index = self._repo.count_days(routine_id)
-        day = RoutineDay(
-            id=None,
-            routine_id=routine_id,
-            day_index=next_index,
-            name=name,
-        )
-        new_id = self._repo.insert_day(day)
-        self._conn.commit()
-        return self._repo.get_day(new_id)
+        routine.updated_at = self._now()
+        self._repo.update_routine(routine)
+        self._repo.commit()
+        return day
 
-    def rename_day(self, day_id: int, name: str) -> None:
-        self._repo.update_day_name(day_id, name)
-        self._conn.commit()
+    def update_day(self, day_id: int, label: Optional[str] = None, name: Optional[str] = None) -> RoutineDay:
+        day = self._repo.get_day(day_id)
+        if not day:
+            raise ValueError(f"Day {day_id} not found")
+        if label is not None:
+            day.label = label
+        if name is not None:
+            day.name = name
+        self._repo.update_day(day)
+
+        routine = self._repo.get_routine(day.routine_id)
+        routine.updated_at = self._now()
+        self._repo.update_routine(routine)
+        self._repo.commit()
+        return day
 
     def delete_day(self, day_id: int) -> None:
-        """Delete a day and re-sequence all sibling day_indexes."""
         day = self._repo.get_day(day_id)
-        if day is None:
-            return
+        if not day:
+            raise ValueError(f"Day {day_id} not found")
+
+        # Adjust cycle state BEFORE delete (FK would block otherwise)
+        self._cycle_service.handle_day_deleted(day.routine_id, day_id)
+
         self._repo.delete_day(day_id)
-        self._repo.resequence_days_after_delete(day.routine_id, day.day_index)
-        self._conn.commit()
 
-    def move_day_up(self, routine_id: int, day_id: int) -> None:
-        """Swap this day with the one before it (lower day_index)."""
+        routine = self._repo.get_routine(day.routine_id)
+        routine.updated_at = self._now()
+        self._repo.update_routine(routine)
+        self._repo.commit()
+
+    def reorder_days(self, routine_id: int, day_ids: List[int]) -> None:
+        self._repo.reorder_days(routine_id, day_ids)
+        routine = self._repo.get_routine(routine_id)
+        routine.updated_at = self._now()
+        self._repo.update_routine(routine)
+        self._repo.commit()
+
+    def get_days(self, routine_id: int) -> List[RoutineDay]:
+        return self._repo.get_days(routine_id)
+
+    def get_day(self, day_id: int) -> Optional[RoutineDay]:
+        """Get a single routine day by ID."""
+        return self._repo.get_day(day_id)
+
+    # --- Day Exercises (implemented in Task 8) ---
+
+    def add_exercise_to_day(self, day_id: int, exercise_id: int, set_scheme: SetScheme,
+                            notes: Optional[str] = None, is_optional: bool = False) -> RoutineDayExercise:
         day = self._repo.get_day(day_id)
-        if day is None or day.day_index == 0:
-            return
-        other = self._repo.get_day_by_index(routine_id, day.day_index - 1)
-        if other is None:
-            return
-        self._repo.swap_day_indexes(day.id, day.day_index, other.id, other.day_index)
-        self._conn.commit()
+        if not day:
+            raise ValueError(f"Day {day_id} not found")
+        exercise = self._exercise_repo.get_by_id(exercise_id)
+        if not exercise:
+            raise ValueError(f"Exercise {exercise_id} not found")
 
-    def move_day_down(self, routine_id: int, day_id: int) -> None:
-        """Swap this day with the one after it (higher day_index)."""
-        day = self._repo.get_day(day_id)
-        if day is None:
-            return
-        other = self._repo.get_day_by_index(routine_id, day.day_index + 1)
-        if other is None:
-            return
-        self._repo.swap_day_indexes(day.id, day.day_index, other.id, other.day_index)
-        self._conn.commit()
-
-    # ── Exercise write ────────────────────────────────────────────
-
-    def add_exercise_to_day(
-        self,
-        day_id: int,
-        exercise_id: int,
-        target_sets: Optional[int] = None,
-        target_reps: Optional[int] = None,
-        target_weight: Optional[float] = None,
-        target_duration_min: Optional[float] = None,
-        target_distance_km: Optional[float] = None,
-        target_intensity: Optional[str] = None,
-    ) -> RoutineDayExercise:
-        """Append an exercise to the end of a day's list."""
-        existing = self._repo.get_day_exercises(day_id)
-        sort_order = len(existing)
+        sort_order = self._repo.get_day_exercise_count(day_id)
         rde = RoutineDayExercise(
-            id=None,
-            routine_day_id=day_id,
-            exercise_id=exercise_id,
-            sort_order=sort_order,
-            target_sets=target_sets,
-            target_reps=target_reps,
-            target_weight=target_weight,
-            target_duration_min=target_duration_min,
-            target_distance_km=target_distance_km,
-            target_intensity=target_intensity,
-            notes=None,
+            id=None, routine_day_id=day_id, exercise_id=exercise_id,
+            sort_order=sort_order, set_scheme=set_scheme,
+            notes=notes, is_optional=is_optional,
         )
-        new_id = self._repo.insert_day_exercise(rde)
-        self._conn.commit()
-        rde.id = new_id
+        rde.id = self._repo.add_day_exercise(rde)
+
+        routine = self._repo.get_routine(day.routine_id)
+        routine.updated_at = self._now()
+        self._repo.update_routine(routine)
+        self._repo.commit()
         return rde
 
     def remove_exercise_from_day(self, rde_id: int) -> None:
-        rde = self._repo.get_day_exercise_by_id(rde_id)
-        if rde is None:
-            return
+        rde = self._repo.get_day_exercise(rde_id)
+        if not rde:
+            raise ValueError(f"Day exercise {rde_id} not found")
+        day = self._repo.get_day(rde.routine_day_id)
         self._repo.delete_day_exercise(rde_id)
-        self._repo.resequence_exercises_after_delete(rde.routine_day_id, rde.sort_order)
-        self._conn.commit()
+
+        routine = self._repo.get_routine(day.routine_id)
+        routine.updated_at = self._now()
+        self._repo.update_routine(routine)
+        self._repo.commit()
+
+    def get_day_exercises(self, day_id: int) -> List[RoutineDayExercise]:
+        return self._repo.get_day_exercises(day_id)
+
+    def get_day_exercise(self, rde_id: int) -> Optional[RoutineDayExercise]:
+        """Get a single day exercise by ID (for UI display of set_scheme etc.)."""
+        return self._repo.get_day_exercise(rde_id)
+
+    def update_day_exercise_scheme(self, rde_id: int, set_scheme: SetScheme) -> None:
+        """Update the set scheme for a day exercise. set_scheme is authoritative per spec L164."""
+        rde = self._repo.get_day_exercise(rde_id)
+        if not rde:
+            raise ValueError(f"Day exercise {rde_id} not found")
+        self._repo.update_day_exercise_scheme(rde_id, set_scheme)
+        day = self._repo.get_day(rde.routine_day_id)
+        routine = self._repo.get_routine(day.routine_id)
+        routine.updated_at = self._now()
+        self._repo.update_routine(routine)
+        self._repo.commit()
+
+    # --- Set Targets ---
+
+    def set_uniform_targets(
+        self, rde_id: int, num_sets: int, set_kind: SetKind,
+        reps_min: Optional[int] = None, reps_max: Optional[int] = None,
+        weight: Optional[float] = None,
+        duration_seconds: Optional[int] = None, distance: Optional[float] = None,
+    ) -> List[SetTarget]:
+        rde = self._repo.get_day_exercise(rde_id)
+        if not rde:
+            raise ValueError(f"Day exercise {rde_id} not found")
+        exercise = self._exercise_repo.get_by_id(rde.exercise_id)
+        validate_set_kind(set_kind, exercise.type)
+        validate_cardio_fields(set_kind, duration_seconds, distance)
+        validate_amrap_fields(set_kind, exercise.type, weight)
+
+        targets = [
+            SetTarget(
+                id=None, routine_day_exercise_id=rde_id,
+                set_number=i + 1, set_kind=set_kind,
+                target_reps_min=reps_min, target_reps_max=reps_max,
+                target_weight=weight,
+                target_duration_seconds=duration_seconds, target_distance=distance,
+            )
+            for i in range(num_sets)
+        ]
+        self._repo.set_targets(rde_id, targets)
+
+        day = self._repo.get_day(rde.routine_day_id)
+        routine = self._repo.get_routine(day.routine_id)
+        routine.updated_at = self._now()
+        self._repo.update_routine(routine)
+        self._repo.commit()
+        return self._repo.get_targets(rde_id)
+
+    def set_progressive_targets(self, rde_id: int, targets_data: List[dict]) -> List[SetTarget]:
+        """Set progressive targets from a list of dicts.
+
+        Each dict may contain: set_kind, reps_min, reps_max, weight,
+        duration_seconds, distance.
+        """
+        rde = self._repo.get_day_exercise(rde_id)
+        if not rde:
+            raise ValueError(f"Day exercise {rde_id} not found")
+        exercise = self._exercise_repo.get_by_id(rde.exercise_id)
+
+        targets = []
+        for i, data in enumerate(targets_data):
+            sk = data.get("set_kind")
+            if sk is not None and not isinstance(sk, SetKind):
+                sk = SetKind(sk)
+            elif sk is None:
+                raise ValueError(f"set_kind is required for set {i + 1}")
+            validate_set_kind(sk, exercise.type)
+            validate_cardio_fields(sk, data.get("duration_seconds"), data.get("distance"))
+            validate_amrap_fields(sk, exercise.type, data.get("weight"))
+
+            targets.append(SetTarget(
+                id=None, routine_day_exercise_id=rde_id,
+                set_number=i + 1, set_kind=sk,
+                target_reps_min=data.get("reps_min"),
+                target_reps_max=data.get("reps_max"),
+                target_weight=data.get("weight"),
+                target_duration_seconds=data.get("duration_seconds"),
+                target_distance=data.get("distance"),
+            ))
+
+        self._repo.set_targets(rde_id, targets)
+
+        day = self._repo.get_day(rde.routine_day_id)
+        routine = self._repo.get_routine(day.routine_id)
+        routine.updated_at = self._now()
+        self._repo.update_routine(routine)
+        self._repo.commit()
+        return self._repo.get_targets(rde_id)
+
+    def get_targets(self, rde_id: int) -> List[SetTarget]:
+        return self._repo.get_targets(rde_id)
+

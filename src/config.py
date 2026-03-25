@@ -1,21 +1,29 @@
-from __future__ import annotations
-
+"""App configuration constants."""
 import os
-from pathlib import Path
 
-APP_NAME = "Exercise Logger"
-APP_VERSION = "0.1.0"
+# Database
+DB_FILENAME = "exercise_logger.db"
 
-# Database path: use FLET_APP_DATA on Android, local dir on desktop
-_data_dir = os.environ.get("FLET_APP_DATA", str(Path(__file__).parent.parent))
-DB_PATH = os.path.join(_data_dir, "exercise_logger.db")
 
-# Weight units
+def get_db_path() -> str:
+    """Get the database file path.
+
+    On Android (Kivy), uses App.get_running_app().user_data_dir.
+    On desktop, uses ~/.exercise_logger/ (user's home directory).
+    """
+    try:
+        from kivy.app import App
+        app = App.get_running_app()
+        if app is not None:
+            return os.path.join(app.user_data_dir, DB_FILENAME)
+    except ImportError:
+        pass
+    # Desktop fallback: user home directory
+    app_dir = os.path.join(os.path.expanduser("~"), ".exercise_logger")
+    os.makedirs(app_dir, exist_ok=True)
+    return os.path.join(app_dir, DB_FILENAME)
+
+
+# Defaults
 DEFAULT_WEIGHT_UNIT = "lbs"
-WEIGHT_UNIT_KEY = "weight_unit"
-
-# Benchmark defaults
 DEFAULT_BENCHMARK_FREQUENCY_WEEKS = 6
-
-# Cycle
-ROUTINE_CYCLE_START_INDEX = 0

@@ -1,0 +1,142 @@
+#:import BACKGROUND src.theme.BACKGROUND
+#:import SURFACE src.theme.SURFACE
+#:import PRIMARY src.theme.PRIMARY
+#:import SECONDARY src.theme.SECONDARY
+#:import TEXT_PRIMARY src.theme.TEXT_PRIMARY
+#:import TEXT_SECONDARY src.theme.TEXT_SECONDARY
+#:import dp kivy.metrics.dp
+
+<HomeScreen>:
+    md_bg_color: BACKGROUND
+
+    MDBoxLayout:
+        orientation: "vertical"
+        padding: [dp(16), dp(16), dp(16), dp(16)]
+        spacing: dp(16)
+
+        # In-progress session banner
+        MDCard:
+            id: session_banner
+            size_hint_y: None
+            height: 0
+            opacity: 0
+            md_bg_color: SURFACE
+            padding: [dp(12), dp(8), dp(12), dp(8)]
+            radius: [dp(8)]
+
+            MDBoxLayout:
+                spacing: dp(8)
+
+                MDLabel:
+                    text: "Unfinished workout"
+                    theme_text_color: "Custom"
+                    text_color: TEXT_PRIMARY
+                    font_style: "Body"
+                    role: "large"
+                    size_hint_x: 0.5
+
+                MDButton:
+                    style: "filled"
+                    theme_bg_color: "Custom"
+                    md_bg_color: PRIMARY
+                    on_release: root.resume_session()
+                    size_hint_x: 0.25
+
+                    MDButtonText:
+                        text: "Resume"
+                        theme_text_color: "Custom"
+                        text_color: [0.071, 0.071, 0.071, 1]
+
+                MDButton:
+                    style: "text"
+                    on_release: root.end_session()
+                    size_hint_x: 0.25
+
+                    MDButtonText:
+                        text: "End"
+                        theme_text_color: "Custom"
+                        text_color: TEXT_SECONDARY
+
+        # Spacer
+        Widget:
+            size_hint_y: 0.15
+
+        # Hero — routine name + current day
+        MDLabel:
+            id: routine_name_label
+            text: "No routine set up"
+            halign: "center"
+            theme_text_color: "Custom"
+            text_color: TEXT_SECONDARY
+            font_style: "Headline"
+            role: "small"
+            adaptive_height: True
+
+        MDLabel:
+            id: current_day_label
+            text: ""
+            halign: "center"
+            theme_text_color: "Custom"
+            text_color: TEXT_PRIMARY
+            font_style: "Headline"
+            role: "medium"
+            adaptive_height: True
+            bold: True
+
+        # Start Workout button
+        MDButton:
+            id: start_button
+            style: "filled"
+            theme_bg_color: "Custom"
+            md_bg_color: PRIMARY
+            size_hint_x: 1
+            height: dp(56)
+            on_release: root.start_workout()
+
+            MDButtonText:
+                text: "Start Workout"
+                theme_text_color: "Custom"
+                text_color: [0.071, 0.071, 0.071, 1]
+                font_style: "Title"
+                role: "medium"
+                bold: True
+
+        Widget:
+            size_hint_y: 0.05
+
+        # Last workout summary
+        MDLabel:
+            id: last_workout_label
+            text: ""
+            halign: "center"
+            theme_text_color: "Custom"
+            text_color: TEXT_SECONDARY
+            font_style: "Body"
+            role: "medium"
+            adaptive_height: True
+
+        # Benchmark due alerts
+        MDBoxLayout:
+            id: benchmark_alerts
+            orientation: "vertical"
+            spacing: dp(4)
+            adaptive_height: True
+
+        # Empty state action
+        MDButton:
+            id: empty_state_button
+            style: "outlined"
+            size_hint_x: None
+            width: dp(200)
+            pos_hint: {"center_x": 0.5}
+            opacity: 0
+            disabled: True
+            on_release: root.go_to_manage()
+
+            MDButtonText:
+                text: "Create Routine"
+                theme_text_color: "Custom"
+                text_color: TEXT_SECONDARY
+
+        Widget:
+            size_hint_y: 0.3
