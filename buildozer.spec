@@ -12,8 +12,8 @@ source.exclude_dirs = tests,.github,.buildozer,docs,.superpowers,.worktrees,bin
 # Version
 version = 0.1.0
 
-# Requirements — order matters: cython before kivy for pyjnius compilation
-requirements = python3,cython==0.29.36,pyjnius==1.6.1,kivy==2.3.1,kivymd==2.0.1,matplotlib,pillow,certifi
+# Requirements — let p4a handle pyjnius/cython internally
+requirements = python3,kivy==2.3.1,kivymd==2.0.1,matplotlib,pillow,certifi
 
 # Android settings
 android.permissions = WRITE_EXTERNAL_STORAGE,READ_EXTERNAL_STORAGE
