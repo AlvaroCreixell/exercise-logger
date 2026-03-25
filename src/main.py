@@ -102,7 +102,7 @@ class ExerciseLoggerApp(MDApp):
         self.routine_service = RoutineService(routine_repo, exercise_repo, self.cycle_service)
         self.workout_service = WorkoutService(workout_repo, routine_repo, exercise_repo, self.cycle_service)
         self.benchmark_service = BenchmarkService(benchmark_repo, exercise_repo)
-        self.stats_service = StatsService(workout_repo, exercise_repo)
+        self.stats_service = StatsService(workout_repo, exercise_repo, benchmark_repo)
         self.import_export_service = ImportExportService(
             exercise_repo, routine_repo, benchmark_repo, self.cycle_service,
         )

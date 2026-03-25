@@ -7,12 +7,14 @@ from datetime import datetime, timezone, timedelta
 from typing import List, Optional
 from src.repositories.workout_repo import WorkoutRepo
 from src.repositories.exercise_repo import ExerciseRepo
+from src.repositories.benchmark_repo import BenchmarkRepo
 
 
 class StatsService:
-    def __init__(self, workout_repo: WorkoutRepo, exercise_repo: ExerciseRepo):
+    def __init__(self, workout_repo: WorkoutRepo, exercise_repo: ExerciseRepo, benchmark_repo: BenchmarkRepo):
         self._workout_repo = workout_repo
         self._exercise_repo = exercise_repo
+        self._benchmark_repo = benchmark_repo
 
     def get_session_count(self, since: Optional[str] = None) -> int:
         """Count finished sessions with at least one logged set."""
@@ -153,18 +155,18 @@ class StatsService:
         return best
 
     def get_benchmark_history(self, defn_id: int) -> List[dict]:
-        """Benchmark results over time for charts.
-
-        Returns list of dicts: {tested_at, result_value, method_snapshot, reference_weight_snapshot}
-        """
-        rows = self._workout_repo._fetchall(
-            """SELECT tested_at, result_value, method_snapshot, reference_weight_snapshot
-               FROM benchmark_results
-               WHERE benchmark_definition_id = ?
-               ORDER BY tested_at""",
-            (defn_id,),
-        )
-        return [dict(r) for r in rows]
+        """Benchmark results over time for charts."""
+        results = self._benchmark_repo.get_results(defn_id)
+        # get_results returns newest-first (DESC); charts need oldest-first
+        return [
+            {
+                "tested_at": r.tested_at,
+                "result_value": r.result_value,
+                "method_snapshot": r.method_snapshot.value,
+                "reference_weight_snapshot": r.reference_weight_snapshot,
+            }
+            for r in reversed(results)
+        ]
 
     def get_plan_vs_actual(self, session_exercise_id: int) -> List[dict]:
         """Compare logged sets against their plan targets for a session exercise.

@@ -105,5 +105,5 @@ from src.services.stats_service import StatsService
 
 
 @pytest.fixture
-def stats_service(workout_repo, exercise_repo):
-    return StatsService(workout_repo, exercise_repo)
+def stats_service(workout_repo, exercise_repo, benchmark_repo):
+    return StatsService(workout_repo, exercise_repo, benchmark_repo)
