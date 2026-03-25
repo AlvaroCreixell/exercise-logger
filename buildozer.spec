@@ -12,7 +12,7 @@ source.include_patterns = src/**/*.py,src/**/*.kv,main.py
 version = 0.1.0
 
 # Requirements
-requirements = python3,kivy==2.3.1,kivymd==2.0.1,matplotlib,pillow,certifi
+requirements = python3,cython,kivy==2.3.1,kivymd==2.0.1,pyjnius,matplotlib,pillow,certifi
 
 # Android settings
 android.permissions = WRITE_EXTERNAL_STORAGE,READ_EXTERNAL_STORAGE
