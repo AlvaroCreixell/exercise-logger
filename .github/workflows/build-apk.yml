@@ -18,7 +18,9 @@ jobs:
         shell: bash
         run: |
           set -eo pipefail
-          buildozer android debug 2>&1 | tee build.log
+          yes | buildozer android debug 2>&1 | tee build.log || true
+          # Check if APK was actually produced
+          ls bin/*.apk
 
       - name: Upload APK
         if: success()
