@@ -36,9 +36,8 @@ jobs:
           pip install --upgrade pip
           pip install 'buildozer==1.5.0' 'cython<3'
 
-      - name: Patch buildozer.spec to use known-good p4a + pyjnius
+      - name: Patch buildozer.spec
         run: |
-          # Use p4a develop branch which has the Python 3 pyjnius fix
           echo "" >> buildozer.spec
           echo "p4a.branch = develop" >> buildozer.spec
 
@@ -46,19 +45,23 @@ jobs:
         env:
           JAVA_HOME: ${{ env.JAVA_HOME_17_X64 }}
         run: |
-          yes | buildozer android debug 2>&1 | tee build.log | tail -100
-          echo "--- Build complete ---"
+          set -o pipefail
+          yes 2>/dev/null | buildozer android debug 2>&1 | tee build.log
+          echo "--- Build exited with code $? ---"
+
+      - name: Verify APK exists
+        run: |
+          ls -la bin/*.apk || { echo "ERROR: No APK produced. Check build.log artifact."; exit 1; }
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: exercise-logger-debug
           path: bin/*.apk
-          if-no-files-found: error
           retention-days: 30
 
-      - name: Upload build log on failure
-        if: failure()
+      - name: Upload build log (always)
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: build-log
