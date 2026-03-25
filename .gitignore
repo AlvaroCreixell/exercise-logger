@@ -50,3 +50,10 @@ Thumbs.db
 
 # Git worktrees
 .worktrees/
+
+# Superpowers plugin cache
+.superpowers/
+
+# Buildozer
+.buildozer/
+bin/
