@@ -18,7 +18,7 @@ from src.models.routine import SetScheme, SetKind
 from src.screens.manage.manage_detail_screen import ManageDetailScreen
 from src.screens.components.bottom_sheet import AppBottomSheet
 from src.screens.components.stepper import ValueStepper
-from src.theme import TEXT_PRIMARY, TEXT_SECONDARY, SURFACE, DIVIDER, PRIMARY
+from src.theme import TEXT_PRIMARY, TEXT_SECONDARY, SURFACE, DIVIDER, PRIMARY, DESTRUCTIVE
 
 
 # ─── Exercise type helpers ────────────────────────────────────────────────────
@@ -783,6 +783,17 @@ class RoutineEditorScreen(ManageDetailScreen):
         )
         sheet.add_content(content_box)
 
+        # Error display
+        error_label = MDLabel(
+            text="",
+            theme_text_color="Custom",
+            text_color=DESTRUCTIVE,
+            font_style="Body",
+            role="small",
+            adaptive_height=True,
+        )
+        sheet.add_content(error_label)
+
         # State dict shared across closures
         state = {
             "num_sets": 3,
@@ -820,6 +831,7 @@ class RoutineEditorScreen(ManageDetailScreen):
             ]
 
         def _rebuild_content():
+            error_label.text = ""
             content_box.clear_widgets()
             # Update button styles
             uniform_btn.style = "filled" if scheme_state["value"] == SetScheme.UNIFORM else "outlined"
@@ -991,6 +1003,7 @@ class RoutineEditorScreen(ManageDetailScreen):
 
         # ── Action buttons ───────────────────────────────────────────────────
         def on_save(*a):
+            error_label.text = ""
             new_scheme = scheme_state["value"]
             # Update scheme (authoritative per spec L164)
             self.app.routine_service.update_day_exercise_scheme(rde.id, new_scheme)
@@ -1031,8 +1044,9 @@ class RoutineEditorScreen(ManageDetailScreen):
                             entry["distance"] = row_data["distance"] or None
                         targets_data.append(entry)
                     self.app.routine_service.set_progressive_targets(rde.id, targets_data)
-            except ValueError:
-                pass  # Validation failure silently ignores for now
+            except ValueError as e:
+                error_label.text = str(e)
+                return
 
             sheet.dismiss()
             self.build_content(container)
