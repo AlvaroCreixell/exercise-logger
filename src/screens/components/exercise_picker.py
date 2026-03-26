@@ -112,7 +112,7 @@ class ExercisePickerSheet:
         self._sheet.add_content(search_field)
 
         # Scrollable exercise list
-        scroll = MDScrollView(size_hint_y=1)
+        scroll = MDScrollView(size_hint_y=None, height=dp(280))
         self._list_layout = MDBoxLayout(
             orientation="vertical",
             adaptive_height=True,
