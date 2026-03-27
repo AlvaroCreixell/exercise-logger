@@ -98,6 +98,9 @@ class AppStateService:
         if routine is None:
             raise ValueError(f"Routine '{routine_key}' not found in registry")
 
+        if not routine.days:
+            raise ValueError(f"Routine '{routine_key}' has no days")
+
         self._settings.set("active_routine_key", routine_key)
         self._settings.set("current_day_key", routine.days[0].key)
         self._settings.commit()

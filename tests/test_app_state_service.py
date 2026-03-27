@@ -3,6 +3,7 @@
 import pytest
 from datetime import datetime, timezone
 
+from src.models.bundled import Routine
 from src.models.enums import SessionStatus
 from src.models.workout import WorkoutSession
 from tests.conftest import make_routine, make_second_routine
@@ -116,6 +117,16 @@ class TestActiveRoutine:
     def test_set_invalid_routine_raises(self, app_state_service):
         with pytest.raises(ValueError, match="not found"):
             app_state_service.set_active_routine("nonexistent")
+
+    def test_set_routine_with_no_days_raises(self, app_state_service, settings_repo, routine_registry):
+        """Activating a routine with zero days should raise, not IndexError."""
+        empty_routine = Routine(key="empty", name="Empty", description="", days=())
+        from src.registries.routine_registry import RoutineRegistry
+        registry_with_empty = RoutineRegistry([make_routine(), make_second_routine(), empty_routine])
+        from src.services.app_state_service import AppStateService
+        svc = AppStateService(settings_repo, registry_with_empty, app_state_service._workouts)
+        with pytest.raises(ValueError, match="has no days"):
+            svc.set_active_routine("empty")
 
     def test_switch_blocked_during_workout(self, app_state_service,
                                             settings_repo, workout_repo):
