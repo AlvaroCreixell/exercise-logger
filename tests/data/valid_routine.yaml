@@ -1,0 +1,16 @@
+key: test_routine
+name: Test Routine
+description: A test routine for unit tests
+days:
+  - key: day_a
+    label: A
+    name: Day A
+    exercises:
+      - exercise_key: bench_press
+        sets: 3
+        reps: 8-12
+      - exercise_key: plank
+        sets: 3
+        duration_seconds: 60
+      - exercise_key: running
+        sets: 1

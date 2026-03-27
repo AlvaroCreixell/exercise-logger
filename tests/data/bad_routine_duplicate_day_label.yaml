@@ -1,0 +1,16 @@
+key: bad_routine
+name: Bad Routine
+description: Duplicate day labels
+days:
+  - key: day_a
+    label: A
+    name: Day A
+    exercises:
+      - exercise_key: bench_press
+        sets: 3
+  - key: day_b
+    label: A
+    name: Day B
+    exercises:
+      - exercise_key: bench_press
+        sets: 3
