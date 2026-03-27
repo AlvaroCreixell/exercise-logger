@@ -459,14 +459,14 @@ class HomeScreen(BaseScreen):
 - If active routine: look up routine from `self.app.routine_registry` by key. Display routine name. Read `current_day_key` from settings, look up day in the routine. Display "Day {label} - {name}" as hero text.
 
 **`_update_last_workout()`:**
-- Call `self.app.stats_service.get_last_workout_summary()`. Display date + day + duration, same pattern as v1 but field names may differ (use `day_label_snapshot`, `day_name_snapshot` from the returned dict).
+- Call `self.app.stats_service.get_last_workout_summary()`. Display date + day + duration, same pattern as v1. Use `day_label` and `day_name` from the returned dict (not `day_label_snapshot`/`day_name_snapshot`).
 
 **`_update_session_banner()`:**
 - Call `self.app.workout_service.get_in_progress_session()`. If exists, show banner with Resume/End buttons. Same UX as v1.
 
 **`_update_benchmark_alert()`:**
-- Call `self.app.stats_service.get_benchmark_due_summary()`. If any items due, show an amber card: "Benchmarks due ({count})" with tap handler to open benchmark flow.
-- If none due, hide the card.
+- Call `self.app.stats_service.get_benchmark_due_summary()`, which returns a dict `{"total_items": N, "due_count": N, "due_items": [...]}`. Use `due_count` for the alert badge/count. If `due_count > 0`, show an amber card: "Benchmarks due ({due_count})" with tap handler to open benchmark flow.
+- If `due_count == 0`, hide the card.
 
 **`open_settings()`:**
 - Import and open `SettingsSheet`.
@@ -499,7 +499,8 @@ def start_benchmark_flow(self):
     from src.screens.components.stepper import ValueStepper
     ...
 
-    due_items = self.app.stats_service.get_benchmark_due_summary()
+    summary = self.app.stats_service.get_benchmark_due_summary()
+    due_items = summary["due_items"]
     if not due_items:
         return
 
@@ -522,7 +523,7 @@ def start_benchmark_flow(self):
     sheet.open()
 ```
 
-`_open_benchmark_entry()` opens a second bottom sheet with the stepper appropriate for the benchmark method, saves on confirm.
+`_open_benchmark_entry()` opens a second bottom sheet with the stepper appropriate for the benchmark method, saves on confirm. When calling `record_result`, convert bodyweight stepper value 0 to `None` before passing it: `bodyweight = bw_val if bw_val != 0 else None`. This ensures `benchmark_results.bodyweight` is always NULL or > 0, never 0.
 
 ### Task 3B: Settings Sheet
 
