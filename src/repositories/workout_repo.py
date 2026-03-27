@@ -176,16 +176,26 @@ class WorkoutRepo(BaseRepository):
         )
 
     def delete_logged_set(self, set_id: int) -> None:
-        """Delete a logged set and resequence remaining siblings."""
+        """Delete a logged set and resequence remaining siblings.
+
+        Wrapped in an explicit transaction so the delete and resequence
+        are atomic — partial failure cannot leave gaps in set_number.
+        """
         ls = self.get_logged_set(set_id)
         if not ls:
             return
-        self._execute("DELETE FROM logged_sets WHERE id = ?", (set_id,))
-        self._execute(
-            """UPDATE logged_sets SET set_number = set_number - 1
-               WHERE session_exercise_id = ? AND set_number > ?""",
-            (ls.session_exercise_id, ls.set_number),
-        )
+        self._conn.execute("SAVEPOINT delete_logged_set")
+        try:
+            self._execute("DELETE FROM logged_sets WHERE id = ?", (set_id,))
+            self._execute(
+                """UPDATE logged_sets SET set_number = set_number - 1
+                   WHERE session_exercise_id = ? AND set_number > ?""",
+                (ls.session_exercise_id, ls.set_number),
+            )
+            self._conn.execute("RELEASE SAVEPOINT delete_logged_set")
+        except Exception:
+            self._conn.execute("ROLLBACK TO SAVEPOINT delete_logged_set")
+            raise
 
     # --- Stats query helpers ---
 
