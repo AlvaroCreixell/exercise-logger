@@ -152,7 +152,7 @@ class ExerciseCard(MDBoxLayout):
                 app = MDApp.get_running_app()
                 if app and hasattr(app, "settings_service"):
                     weight_label = app.settings_service.get_weight_unit()
-            except Exception:
+            except (AttributeError, TypeError):
                 pass
 
             self._weight_stepper = ValueStepper(
