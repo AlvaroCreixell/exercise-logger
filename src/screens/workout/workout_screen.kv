@@ -32,11 +32,9 @@
             id: pre_session_view
             orientation: "vertical"
             padding: [dp(16), dp(16), dp(16), dp(16)]
-            spacing: dp(16)
+            spacing: dp(12)
 
-            Widget:
-                size_hint_y: 0.2
-
+            # Day header (e.g., "Day A — Push")
             MDLabel:
                 id: day_info_label
                 text: "No active routine"
@@ -47,13 +45,15 @@
                 role: "small"
                 adaptive_height: True
 
-            MDBoxLayout:
-                id: day_picker_container
-                orientation: "horizontal"
-                size_hint_y: None
-                height: dp(48)
-                spacing: dp(8)
+            # Exercise list preview (name + sets x target)
+            ScrollView:
+                MDBoxLayout:
+                    id: preview_container
+                    orientation: "vertical"
+                    adaptive_height: True
+                    spacing: dp(4)
 
+            # Start Workout button
             MDButton:
                 id: start_session_btn
                 style: "filled"
@@ -70,9 +70,6 @@
                     font_style: "Title"
                     role: "medium"
                     bold: True
-
-            Widget:
-                size_hint_y: 0.5
 
         # Active session view (hidden by default)
         MDBoxLayout:
@@ -111,11 +108,13 @@
                 Widget:
 
                 MDButton:
+                    id: cancel_end_btn
                     style: "text"
-                    on_release: root.end_early()
+                    on_release: root.cancel_or_end_early()
 
                     MDButtonText:
-                        text: "End Early"
+                        id: cancel_end_btn_text
+                        text: "Cancel"
                         theme_text_color: "Custom"
                         text_color: TEXT_SECONDARY
 
