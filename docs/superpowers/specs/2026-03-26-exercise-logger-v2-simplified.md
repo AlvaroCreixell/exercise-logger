@@ -36,7 +36,7 @@ Three types. v1's `reps_only` is eliminated — all rep-based exercises are `rep
 |------|---------------------------|-----------------|
 | `reps_weight` | reps + weight (weight defaults 0 for bodyweight) | sets, reps (exact or range), or progressive scheme |
 | `time` | duration in seconds | sets, target duration |
-| `cardio` | duration + distance (both optional) | sets, target duration and/or distance (both optional) |
+| `cardio` | duration and/or distance (at least one required) | sets, target duration and/or distance (both optional in plan) |
 
 Bodyweight exercises (push-ups, pull-ups) are `reps_weight` with weight=0. User CAN enter weight for weighted variations.
 
@@ -198,6 +198,7 @@ Loader failures include:
 - Duplicate exercise keys
 - Duplicate routine keys
 - Duplicate day keys within a routine (day keys are scoped to their routine, not globally unique)
+- Duplicate day labels within a routine
 - Unknown `exercise_key` in routine or benchmark config
 - Invalid exercise type or benchmark method
 - Missing `duration_seconds` for `time` exercises (required in plan)
