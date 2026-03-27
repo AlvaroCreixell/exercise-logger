@@ -9,6 +9,7 @@ from kivymd.uix.label import MDLabel
 from src.screens.base_screen import BaseScreen
 from src.screens.components.exercise_card import ExerciseCard
 from src.theme import PRIMARY, TEXT_PRIMARY, TEXT_SECONDARY
+from src.screens.components.toast import show_error_toast
 
 Builder.load_file(os.path.join(os.path.dirname(__file__), "workout_screen.kv"))
 
@@ -129,7 +130,7 @@ class WorkoutScreen(BaseScreen):
         try:
             session = self.app.workout_service.start_session()
         except ValueError as e:
-            print(f"[Workout] Failed to start: {e}")
+            show_error_toast(str(e))
             return
         self.current_session_id = session.id
         self._show_active_session(session)
@@ -256,7 +257,7 @@ class WorkoutScreen(BaseScreen):
                 distance_km=vals.get("distance_km"),
             )
         except ValueError as e:
-            print(f"[Workout] Failed to log: {e}")
+            show_error_toast(str(e))
             return
         self._refresh_card(card)
         self._update_cancel_end_button()
@@ -314,7 +315,7 @@ class WorkoutScreen(BaseScreen):
             try:
                 if self.app and hasattr(self.app, "settings_service"):
                     weight_label = self.app.settings_service.get_weight_unit()
-            except Exception:
+            except (AttributeError, TypeError):
                 pass
 
             s = ValueStepper(
@@ -360,7 +361,7 @@ class WorkoutScreen(BaseScreen):
             try:
                 self.app.workout_service.edit_set(set_id, **vals)
             except ValueError as e:
-                print(f"[Workout] Failed to update: {e}")
+                show_error_toast(str(e))
             sheet.dismiss()
             self._refresh_card(card_instance)
             self._update_cancel_end_button()
@@ -431,7 +432,7 @@ class WorkoutScreen(BaseScreen):
         try:
             self.app.workout_service.finish_session(self.current_session_id)
         except ValueError as e:
-            print(f"[Workout] Failed to finish: {e}")
+            show_error_toast(str(e))
             return
         self.current_session_id = 0
         self._show_pre_session()
@@ -440,7 +441,7 @@ class WorkoutScreen(BaseScreen):
         try:
             self.app.workout_service.end_early(self.current_session_id)
         except ValueError as e:
-            print(f"[Workout] Failed to end early: {e}")
+            show_error_toast(str(e))
             return
         self.current_session_id = 0
         self._show_pre_session()
@@ -449,7 +450,7 @@ class WorkoutScreen(BaseScreen):
         try:
             self.app.workout_service.cancel_session(self.current_session_id)
         except ValueError as e:
-            print(f"[Workout] Failed to cancel: {e}")
+            show_error_toast(str(e))
             return
         self.current_session_id = 0
         self._show_pre_session()
