@@ -1,6 +1,7 @@
 """Shared test fixtures."""
 import pytest
 import sqlite3
+from datetime import datetime, timezone, timedelta
 
 from src.models.enums import ExerciseType, SetScheme, BenchmarkMethod
 from src.models.bundled import Exercise, DayExercise, RoutineDay, Routine, BenchmarkConfig, BenchmarkItem
@@ -18,22 +19,86 @@ def _make_exercise(key="bench_press", name="Bench Press", type=ExerciseType.REPS
     return Exercise(key=key, name=name, type=type, equipment=equipment, muscle_group=muscle_group)
 
 
-def _make_ppl_routine():
-    """Build a minimal Push/Pull/Legs routine for testing."""
+def make_routine() -> Routine:
+    """Standard test routine: push_pull_legs with 3 days."""
     return Routine(
-        key="ppl", name="Push Pull Legs", description="Test PPL",
+        key="push_pull_legs",
+        name="Push Pull Legs",
+        description="3-day split",
         days=(
-            RoutineDay(key="push", label="A", name="Push", exercises=(
-                DayExercise(exercise_key="bench_press", scheme=SetScheme.UNIFORM, sets=3, reps_min=8, reps_max=12),
-                DayExercise(exercise_key="plank", scheme=SetScheme.UNIFORM, sets=3, duration_seconds=60),
-            )),
-            RoutineDay(key="pull", label="B", name="Pull", exercises=(
-                DayExercise(exercise_key="pull_up", scheme=SetScheme.PROGRESSIVE, sets=3),
-                DayExercise(exercise_key="running", scheme=SetScheme.UNIFORM, sets=1),
-            )),
-            RoutineDay(key="legs", label="C", name="Legs", exercises=(
-                DayExercise(exercise_key="squat", scheme=SetScheme.UNIFORM, sets=4, reps_min=6, reps_max=10),
-            )),
+            RoutineDay(
+                key="push", label="A", name="Push",
+                exercises=(
+                    DayExercise(
+                        exercise_key="barbell_bench_press",
+                        scheme=SetScheme.PROGRESSIVE,
+                        sets=3,
+                    ),
+                    DayExercise(
+                        exercise_key="plank",
+                        scheme=SetScheme.UNIFORM,
+                        sets=3,
+                        duration_seconds=60,
+                    ),
+                ),
+            ),
+            RoutineDay(
+                key="pull", label="B", name="Pull",
+                exercises=(
+                    DayExercise(
+                        exercise_key="pull_up",
+                        scheme=SetScheme.UNIFORM,
+                        sets=4,
+                        reps_min=6, reps_max=10,
+                    ),
+                    DayExercise(
+                        exercise_key="running",
+                        scheme=SetScheme.UNIFORM,
+                        sets=1,
+                    ),
+                ),
+            ),
+            RoutineDay(
+                key="legs", label="C", name="Legs",
+                exercises=(
+                    DayExercise(
+                        exercise_key="barbell_back_squat",
+                        scheme=SetScheme.PROGRESSIVE,
+                        sets=3,
+                    ),
+                ),
+            ),
+        ),
+    )
+
+
+def make_second_routine() -> Routine:
+    """A second routine for testing routine switching."""
+    return Routine(
+        key="upper_lower",
+        name="Upper Lower",
+        description="2-day split",
+        days=(
+            RoutineDay(
+                key="upper", label="A", name="Upper",
+                exercises=(
+                    DayExercise(
+                        exercise_key="barbell_bench_press",
+                        scheme=SetScheme.UNIFORM,
+                        sets=4, reps_min=8, reps_max=12,
+                    ),
+                ),
+            ),
+            RoutineDay(
+                key="lower", label="B", name="Lower",
+                exercises=(
+                    DayExercise(
+                        exercise_key="barbell_back_squat",
+                        scheme=SetScheme.UNIFORM,
+                        sets=4, reps_min=8, reps_max=12,
+                    ),
+                ),
+            ),
         ),
     )
 
@@ -83,9 +148,9 @@ def benchmark_repo(db_conn):
 @pytest.fixture
 def exercise_registry():
     exercises = [
-        _make_exercise("bench_press", "Bench Press", ExerciseType.REPS_WEIGHT, "Barbell", "Chest"),
+        _make_exercise("barbell_bench_press", "Barbell Bench Press", ExerciseType.REPS_WEIGHT, "Barbell", "Chest"),
+        _make_exercise("barbell_back_squat", "Barbell Back Squat", ExerciseType.REPS_WEIGHT, "Barbell", "Legs"),
         _make_exercise("pull_up", "Pull-Up", ExerciseType.REPS_WEIGHT, "Bodyweight", "Back"),
-        _make_exercise("squat", "Barbell Squat", ExerciseType.REPS_WEIGHT, "Barbell", "Legs"),
         _make_exercise("plank", "Plank", ExerciseType.TIME, "Bodyweight", "Core"),
         _make_exercise("running", "Running", ExerciseType.CARDIO, "None", "Cardio"),
     ]
@@ -94,13 +159,13 @@ def exercise_registry():
 
 @pytest.fixture
 def routine_registry():
-    return RoutineRegistry([_make_ppl_routine()])
+    return RoutineRegistry([make_routine(), make_second_routine()])
 
 
 @pytest.fixture
 def benchmark_config():
     return BenchmarkConfig(frequency_weeks=6, items=(
-        BenchmarkItem(exercise_key="bench_press", method=BenchmarkMethod.MAX_WEIGHT),
+        BenchmarkItem(exercise_key="barbell_bench_press", method=BenchmarkMethod.MAX_WEIGHT),
         BenchmarkItem(exercise_key="plank", method=BenchmarkMethod.TIMED_HOLD),
     ))
 
@@ -108,3 +173,25 @@ def benchmark_config():
 @pytest.fixture
 def benchmark_registry(benchmark_config):
     return BenchmarkRegistry(benchmark_config)
+
+
+# ---------------------------------------------------------------------------
+# Service fixtures (imported lazily to allow earlier tasks to pass)
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def app_state_service(settings_repo, routine_registry, workout_repo):
+    from src.services.app_state_service import AppStateService
+    return AppStateService(settings_repo, routine_registry, workout_repo)
+
+
+# ---------------------------------------------------------------------------
+# Time helpers
+# ---------------------------------------------------------------------------
+
+def utc_now() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def days_ago(n: int) -> str:
+    return (datetime.now(timezone.utc) - timedelta(days=n)).isoformat()
