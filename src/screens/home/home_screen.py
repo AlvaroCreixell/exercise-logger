@@ -6,7 +6,7 @@ from kivymd.uix.label import MDLabel
 
 from src.screens.base_screen import BaseScreen
 from src.screens.components.bottom_sheet import AppBottomSheet
-from src.theme import SECONDARY, WARNING, TEXT_SECONDARY
+from src.theme import TEXT_SECONDARY
 
 Builder.load_file(os.path.join(os.path.dirname(__file__), "home_screen.kv"))
 
@@ -199,9 +199,6 @@ class HomeScreen(BaseScreen):
         sheet.add_content(make_bw_stepper())
 
         # Per-item rows
-        from kivy.uix.behaviors import ButtonBehavior
-        from kivy.uix.widget import Widget as KivyWidget
-
         for item in due_items:
             exercise_key = item["exercise_key"]
             exercise_name = item["exercise_name"]
