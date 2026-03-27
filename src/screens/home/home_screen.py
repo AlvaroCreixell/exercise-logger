@@ -6,6 +6,7 @@ from kivymd.uix.label import MDLabel
 
 from src.screens.base_screen import BaseScreen
 from src.screens.components.bottom_sheet import AppBottomSheet
+from src.screens.components.toast import show_error_toast
 from src.theme import TEXT_SECONDARY
 
 Builder.load_file(os.path.join(os.path.dirname(__file__), "home_screen.kv"))
@@ -319,8 +320,8 @@ class HomeScreen(BaseScreen):
                 self.app.benchmark_service.record_result(
                     exercise_key, method, val, bw
                 )
-            except ValueError:
-                pass
+            except ValueError as e:
+                show_error_toast(str(e))
             entry_sheet.dismiss()
 
         entry_sheet.add_spacer()

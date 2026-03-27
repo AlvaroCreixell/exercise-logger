@@ -6,6 +6,7 @@ from kivymd.uix.button import MDButton, MDButtonText
 from kivymd.uix.label import MDLabel
 
 from src.screens.components.bottom_sheet import AppBottomSheet
+from src.screens.components.toast import show_error_toast
 from src.theme import PRIMARY, TEXT_PRIMARY, TEXT_SECONDARY, BACKGROUND
 
 
@@ -110,8 +111,8 @@ class SettingsSheet:
             confirm_sheet.dismiss()
             try:
                 self._app.app_state_service.set_active_routine(routine.key)
-            except ValueError:
-                pass
+            except ValueError as e:
+                show_error_toast(str(e))
             self._sheet.dismiss()
 
         confirm_sheet.add_spacer()
