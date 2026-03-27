@@ -1031,24 +1031,6 @@ class TestStartSession:
         with pytest.raises(ValueError, match="No active routine"):
             workout_service.start_session()
 
-    def test_start_session_with_day_override(
-            self, workout_service, app_state_service):
-        """Start session for a specific day, not current_day_key."""
-        app_state_service.set_active_routine("push_pull_legs")
-        session = workout_service.start_session(day_key="legs")
-        assert session.day_key_snapshot == "legs"
-
-        exercises = workout_service.get_session_exercises(session.id)
-        assert len(exercises) == 1
-        assert exercises[0].exercise_key_snapshot == "barbell_back_squat"
-
-    def test_start_session_day_override_invalid_raises(
-            self, workout_service, app_state_service):
-        app_state_service.set_active_routine("push_pull_legs")
-        with pytest.raises(ValueError, match="not found"):
-            workout_service.start_session(day_key="nonexistent")
-
-
 class TestLogSet:
     """Logging sets during a workout."""
 
@@ -1589,16 +1571,16 @@ class WorkoutService:
     # Session lifecycle
     # ------------------------------------------------------------------
 
-    def start_session(self, day_key: Optional[str] = None) -> WorkoutSession:
+    def start_session(self) -> WorkoutSession:
         """Start a new workout session.
 
         Creates session + snapshots all planned exercises in one transaction.
-        If day_key is provided, uses that day instead of current_day_key.
+        Always reads the current day from settings via app_state_service.
 
         Raises ValueError if:
         - No active routine set
         - Another session is already in progress
-        - day_key is not a valid day in the active routine
+        - No current day set
         """
         # Check no in-progress session
         if self._repo.get_in_progress_session() is not None:
@@ -1609,20 +1591,10 @@ class WorkoutService:
         if routine is None:
             raise ValueError("No active routine set")
 
-        # Resolve day
-        if day_key is not None:
-            day = None
-            for d in routine.days:
-                if d.key == day_key:
-                    day = d
-                    break
-            if day is None:
-                raise ValueError(
-                    f"Day '{day_key}' not found in routine '{routine.key}'")
-        else:
-            day = self._app_state.get_current_day()
-            if day is None:
-                raise ValueError("No current day set")
+        # Resolve day from settings
+        day = self._app_state.get_current_day()
+        if day is None:
+            raise ValueError("No current day set")
 
         # Create session
         session = WorkoutSession(
@@ -3188,7 +3160,7 @@ class StatsService:
 
         Returns a dict with keys:
             exercise_key, session_id, planned_sets, target_reps_min,
-            target_reps_max, target_weight, actual_sets, actual_reps_avg,
+            target_reps_max, actual_sets, actual_reps_avg,
             actual_weight_avg
         Returns None if no finished session contains this exercise.
         """
