@@ -529,3 +529,26 @@ class TestGetInProgressSession:
                                  reps=10, weight=60.0)
         workout_service.finish_session(session.id)
         assert workout_service.get_in_progress_session() is None
+
+
+class TestLifecycleGuards:
+    """Guards against invalid lifecycle transitions."""
+
+    def test_log_set_on_finished_session_raises(self, workout_service, app_state_service):
+        """Cannot add new sets to a finished session."""
+        app_state_service.set_active_routine("push_pull_legs")
+        session = workout_service.start_session()
+        exercises = workout_service.get_session_exercises(session.id)
+        workout_service.log_set(session_exercise_id=exercises[0].id, reps=10, weight=60.0)
+        workout_service.finish_session(session.id)
+
+        with pytest.raises(ValueError, match="finished session"):
+            workout_service.log_set(session_exercise_id=exercises[0].id, reps=8, weight=70.0)
+
+    def test_finish_zero_set_session_raises(self, workout_service, app_state_service):
+        """Cannot finish a session with no logged sets — must cancel instead."""
+        app_state_service.set_active_routine("push_pull_legs")
+        session = workout_service.start_session()
+
+        with pytest.raises(ValueError, match="no logged sets"):
+            workout_service.finish_session(session.id)

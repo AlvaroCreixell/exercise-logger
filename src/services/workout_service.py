@@ -113,6 +113,11 @@ class WorkoutService:
         if session.status != SessionStatus.IN_PROGRESS:
             raise ValueError("Session is not in progress")
 
+        # Prevent finishing a zero-set session (use cancel instead)
+        total_sets = self._repo.get_session_total_set_count(session_id)
+        if total_sets == 0:
+            raise ValueError("Cannot finish a session with no logged sets — use cancel instead")
+
         self._repo.finish_session(session_id, completed_fully=True,
                                   finished_at=self._now())
         self._app_state.advance_day()
@@ -228,6 +233,11 @@ class WorkoutService:
         if se is None:
             raise ValueError(
                 f"Session exercise {session_exercise_id} not found")
+
+        # Only allow logging new sets on in-progress sessions
+        session = self._repo.get_session(se.session_id)
+        if session is None or session.status != SessionStatus.IN_PROGRESS:
+            raise ValueError("Cannot log sets on a finished session")
 
         self._validate_set_fields(se.exercise_type_snapshot,
                                   reps, weight, duration_seconds, distance_km)
