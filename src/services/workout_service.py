@@ -338,6 +338,7 @@ class WorkoutService:
     ) -> None:
         """Validate logged set fields match the exercise type.
 
+        Checks both required-field presence and numeric ranges.
         Raises ValueError with descriptive message on failure.
         """
         # Normalize: accept both ExerciseType enum and string values
@@ -346,6 +347,17 @@ class WorkoutService:
         else:
             type_val = exercise_type
 
+        # --- Range checks (applied to any non-None value) ---
+        if reps is not None and not (1 <= reps <= 999):
+            raise ValueError("reps must be between 1 and 999")
+        if weight is not None and not (0 <= weight <= 9999):
+            raise ValueError("weight must be between 0 and 9999")
+        if duration_seconds is not None and not (1 <= duration_seconds <= 86400):
+            raise ValueError("duration_seconds must be between 1 and 86400")
+        if distance_km is not None and distance_km <= 0:
+            raise ValueError("distance_km must be greater than 0")
+
+        # --- Required-field checks per type ---
         if type_val == "reps_weight":
             if reps is None:
                 raise ValueError(

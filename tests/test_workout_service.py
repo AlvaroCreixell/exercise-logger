@@ -2,6 +2,7 @@
 """Tests for WorkoutService — session lifecycle, set logging, editing."""
 import pytest
 from src.models.enums import SessionStatus, ExerciseSource
+from src.services.workout_service import WorkoutService
 from tests.conftest import days_ago
 
 
@@ -552,3 +553,55 @@ class TestLifecycleGuards:
 
         with pytest.raises(ValueError, match="no logged sets"):
             workout_service.finish_session(session.id)
+
+
+class TestSetFieldRangeValidation:
+    """Range validation in _validate_set_fields (static method)."""
+
+    def test_reps_zero_rejected(self):
+        with pytest.raises(ValueError, match="reps must be between 1 and 999"):
+            WorkoutService._validate_set_fields("reps_weight", reps=0, weight=100, duration_seconds=None, distance_km=None)
+
+    def test_reps_negative_rejected(self):
+        with pytest.raises(ValueError, match="reps must be between 1 and 999"):
+            WorkoutService._validate_set_fields("reps_weight", reps=-1, weight=100, duration_seconds=None, distance_km=None)
+
+    def test_reps_over_999_rejected(self):
+        with pytest.raises(ValueError, match="reps must be between 1 and 999"):
+            WorkoutService._validate_set_fields("reps_weight", reps=1000, weight=100, duration_seconds=None, distance_km=None)
+
+    def test_reps_999_accepted(self):
+        WorkoutService._validate_set_fields("reps_weight", reps=999, weight=100, duration_seconds=None, distance_km=None)
+
+    def test_weight_negative_rejected(self):
+        with pytest.raises(ValueError, match="weight must be between 0 and 9999"):
+            WorkoutService._validate_set_fields("reps_weight", reps=10, weight=-1, duration_seconds=None, distance_km=None)
+
+    def test_weight_over_9999_rejected(self):
+        with pytest.raises(ValueError, match="weight must be between 0 and 9999"):
+            WorkoutService._validate_set_fields("reps_weight", reps=10, weight=10000, duration_seconds=None, distance_km=None)
+
+    def test_weight_zero_accepted(self):
+        WorkoutService._validate_set_fields("reps_weight", reps=10, weight=0, duration_seconds=None, distance_km=None)
+
+    def test_duration_zero_rejected(self):
+        with pytest.raises(ValueError, match="duration_seconds must be between 1 and 86400"):
+            WorkoutService._validate_set_fields("time", reps=None, weight=None, duration_seconds=0, distance_km=None)
+
+    def test_duration_over_86400_rejected(self):
+        with pytest.raises(ValueError, match="duration_seconds must be between 1 and 86400"):
+            WorkoutService._validate_set_fields("time", reps=None, weight=None, duration_seconds=86401, distance_km=None)
+
+    def test_duration_86400_accepted(self):
+        WorkoutService._validate_set_fields("time", reps=None, weight=None, duration_seconds=86400, distance_km=None)
+
+    def test_distance_zero_rejected(self):
+        with pytest.raises(ValueError, match="distance_km must be greater than 0"):
+            WorkoutService._validate_set_fields("cardio", reps=None, weight=None, duration_seconds=None, distance_km=0)
+
+    def test_distance_negative_rejected(self):
+        with pytest.raises(ValueError, match="distance_km must be greater than 0"):
+            WorkoutService._validate_set_fields("cardio", reps=None, weight=None, duration_seconds=None, distance_km=-0.5)
+
+    def test_distance_positive_accepted(self):
+        WorkoutService._validate_set_fields("cardio", reps=None, weight=None, duration_seconds=None, distance_km=0.1)
