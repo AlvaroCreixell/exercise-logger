@@ -61,6 +61,7 @@ wall_sit,Wall Sit,time,Bodyweight,Legs
 running,Running,cardio,None,Cardio
 rowing_machine,Rowing Machine,cardio,Rowing Machine,Cardio
 2km_rowing,2km Rowing,cardio,Rowing Machine,Cardio
+... (truncated — full catalog has ~80 exercises)
 ```
 
 Rules:
@@ -153,9 +154,11 @@ YAML rules:
 |---------------|--------------|---------------|
 | `reps_weight` | `uniform`, `progressive` | `reps` (NULL for progressive) |
 | `time` | `uniform` only | `duration_seconds` required |
-| `cardio` | `uniform` only | `duration_seconds` and/or `distance_km` (at least one required) |
+| `cardio` | `uniform` only | `duration_seconds` and/or `distance_km` (both optional — routine can just say "run") |
 
-**Progressive scheme:** No per-set targets. The protocol is implicit: ~15 reps (3 RIR) → ~8 reps (1-2 RIR) → 4+ reps (to failure). An info tooltip (ⓘ) explains this in the UI. `num_sets` is not constrained to 3 — a user might want a warmup set before the working sets.
+**Progressive scheme = open reps.** No per-set rep targets. The user decides reps and weight each set. The app's ⓘ tooltip *suggests* a common protocol (~15 reps light → ~8 reps moderate → 4+ reps heavy), but this is coaching guidance, not enforced logic. Any number of sets is valid. App behavior for progressive: no reps pre-fill from plan, stepper starts from previous set or last session.
+
+**Cardio planned targets are optional.** A routine can prescribe "run" with no distance or duration — the user decides how far/long. The requirement for "at least one metric" applies only to **logged sets** (see Logged Set Invariants), not to planned targets.
 
 ### Benchmark Config: `src/data/benchmarks.yaml`
 
@@ -192,7 +195,8 @@ Loader failures include:
 - Duplicate routine keys or day keys
 - Unknown `exercise_key` in routine or benchmark config
 - Invalid exercise type or benchmark method
-- Missing required target fields for `time` or `cardio`
+- Missing `duration_seconds` for `time` exercises (required in plan)
+- Note: `cardio` targets are optional in plan — no validation error for targetless cardio
 - Invalid rep syntax
 - `scheme: progressive` on a `time` or `cardio` exercise
 
@@ -302,9 +306,12 @@ CREATE TABLE logged_sets (
     duration_seconds INTEGER CHECK(duration_seconds IS NULL OR duration_seconds >= 1),
     distance_km REAL CHECK(distance_km IS NULL OR distance_km > 0),
     logged_at TEXT NOT NULL,
-    UNIQUE(session_exercise_id, set_number)
+    UNIQUE(session_exercise_id, set_number),
+    CHECK(reps IS NOT NULL OR duration_seconds IS NOT NULL OR distance_km IS NOT NULL)
 );
 ```
+
+The CHECK ensures no row has all measurement fields NULL — at least one actual metric must be recorded.
 
 ### benchmark_results
 
@@ -391,6 +398,7 @@ Current-session and finished-session sets may be edited or deleted.
 - `set_number` must stay contiguous after a delete.
 - Changing a set rewrites the row in place.
 - Exercise type cannot change (comes from catalog snapshot).
+- If deleting reduces a finished session to zero sets, the session is deleted (same cleanup as Cancel). This prevents orphaned zero-set finished sessions from polluting stats.
 
 ### Finish, End Early, Cancel
 
