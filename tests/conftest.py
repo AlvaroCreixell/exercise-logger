@@ -185,6 +185,14 @@ def app_state_service(settings_repo, routine_registry, workout_repo):
     return AppStateService(settings_repo, routine_registry, workout_repo)
 
 
+@pytest.fixture
+def workout_service(workout_repo, settings_repo, exercise_registry,
+                    routine_registry, app_state_service):
+    from src.services.workout_service import WorkoutService
+    return WorkoutService(workout_repo, settings_repo, exercise_registry,
+                          routine_registry, app_state_service)
+
+
 # ---------------------------------------------------------------------------
 # Time helpers
 # ---------------------------------------------------------------------------

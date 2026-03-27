@@ -1,297 +1,354 @@
-"""Workout service — session lifecycle, set logging, editing."""
+# src/services/workout_service.py
+"""WorkoutService — session lifecycle, set logging, editing."""
 from datetime import datetime, timezone
 from typing import List, Optional
-from src.models.exercise import Exercise, ExerciseType
-from src.models.routine import RoutineDay, RoutineDayExercise, SetKind
+
+from src.models.enums import ExerciseType, ExerciseSource, SessionStatus
 from src.models.workout import (
-    WorkoutSession, SessionExercise, LoggedSet, SessionStatus, SessionType,
+    WorkoutSession, SessionExercise, LoggedSet,
 )
-from src.repositories.exercise_repo import ExerciseRepo
-from src.repositories.routine_repo import RoutineRepo
+from src.registries.exercise_registry import ExerciseRegistry
+from src.registries.routine_registry import RoutineRegistry
+from src.repositories.settings_repo import SettingsRepo
 from src.repositories.workout_repo import WorkoutRepo
-from src.services.cycle_service import CycleService
-from src.services.validation import validate_set_kind, validate_cardio_fields, validate_amrap_fields
+from src.services.app_state_service import AppStateService
 
 
 class WorkoutService:
     def __init__(
         self,
         workout_repo: WorkoutRepo,
-        routine_repo: RoutineRepo,
-        exercise_repo: ExerciseRepo,
-        cycle_service: CycleService,
+        settings_repo: SettingsRepo,
+        exercise_registry: ExerciseRegistry,
+        routine_registry: RoutineRegistry,
+        app_state_service: AppStateService,
     ):
         self._repo = workout_repo
-        self._routine_repo = routine_repo
-        self._exercise_repo = exercise_repo
-        self._cycle_service = cycle_service
+        self._settings = settings_repo
+        self._exercises = exercise_registry
+        self._routines = routine_registry
+        self._app_state = app_state_service
 
     def _now(self) -> str:
         return datetime.now(timezone.utc).isoformat()
 
-    # --- Session lifecycle ---
+    # ------------------------------------------------------------------
+    # Session lifecycle
+    # ------------------------------------------------------------------
 
-    def start_routine_session(self, routine_day_id: int) -> WorkoutSession:
-        """Start a new routine workout session for the given day."""
-        # Block if another session is in progress
-        existing = self._repo.get_in_progress_session()
-        if existing:
-            raise ValueError("Another session is already in progress")
+    def start_session(self) -> WorkoutSession:
+        """Start a new workout session.
 
-        day = self._routine_repo.get_day(routine_day_id)
-        if not day:
-            raise ValueError(f"Routine day {routine_day_id} not found")
+        Creates session + snapshots all planned exercises in one transaction.
+        Always reads the current day from settings via app_state_service.
 
-        routine = self._routine_repo.get_routine(day.routine_id)
+        Raises ValueError if:
+        - No active routine set
+        - Another session is already in progress
+        - No current day set
+        """
+        # Check no in-progress session
+        if self._repo.get_in_progress_session() is not None:
+            raise ValueError("A session is already in progress")
+
+        # Get active routine
+        routine = self._app_state.get_active_routine()
+        if routine is None:
+            raise ValueError("No active routine set")
+
+        # Resolve day from settings
+        day = self._app_state.get_current_day()
+        if day is None:
+            raise ValueError("No current day set")
+
+        # Create session
         session = WorkoutSession(
             id=None,
-            routine_id=day.routine_id,
-            routine_day_id=routine_day_id,
-            session_type=SessionType.ROUTINE,
-            status=SessionStatus.IN_PROGRESS,
-            completed_fully=None,
+            routine_key_snapshot=routine.key,
+            routine_name_snapshot=routine.name,
+            day_key_snapshot=day.key,
             day_label_snapshot=day.label,
             day_name_snapshot=day.name,
-            started_at=self._now(),
-        )
-        session.id = self._repo.create_session(session)
-        self._repo.commit()
-        return session
-
-    def start_benchmark_session(self) -> WorkoutSession:
-        """Start a new benchmark session."""
-        existing = self._repo.get_in_progress_session()
-        if existing:
-            raise ValueError("Another session is already in progress")
-
-        session = WorkoutSession(
-            id=None,
-            routine_id=None,
-            routine_day_id=None,
-            session_type=SessionType.BENCHMARK,
             status=SessionStatus.IN_PROGRESS,
             completed_fully=None,
-            day_label_snapshot=None,
-            day_name_snapshot=None,
             started_at=self._now(),
         )
         session.id = self._repo.create_session(session)
+
+        # Snapshot planned exercises
+        for i, de in enumerate(day.exercises):
+            exercise = self._exercises.get(de.exercise_key)
+            if exercise is None:
+                continue  # skip if exercise removed from catalog
+
+            se = SessionExercise(
+                id=None,
+                session_id=session.id,
+                sort_order=i,
+                exercise_key_snapshot=exercise.key,
+                exercise_name_snapshot=exercise.name,
+                exercise_type_snapshot=exercise.type,
+                source=ExerciseSource.PLANNED,
+                scheme_snapshot=de.scheme,
+                planned_sets=de.sets,
+                target_reps_min=de.reps_min,
+                target_reps_max=de.reps_max,
+                target_duration_seconds=de.duration_seconds,
+                target_distance_km=de.distance_km,
+                plan_notes_snapshot=de.notes,
+            )
+            self._repo.add_session_exercise(se)
+
         self._repo.commit()
         return session
 
     def finish_session(self, session_id: int) -> WorkoutSession:
-        """Finish a session (completed_fully=True). Advances cycle for routine sessions."""
+        """Finish a workout. completed_fully=True. Advances cycle.
+
+        Raises ValueError if session not found or not in progress.
+        """
         session = self._repo.get_session(session_id)
-        if not session:
+        if session is None:
             raise ValueError(f"Session {session_id} not found")
         if session.status != SessionStatus.IN_PROGRESS:
             raise ValueError("Session is not in progress")
 
-        self._repo.finish_session(session_id, completed_fully=True, finished_at=self._now())
-
-        # Advance cycle for routine sessions
-        if session.session_type == SessionType.ROUTINE and session.routine_id:
-            self._cycle_service.advance(session.routine_id)
-
+        self._repo.finish_session(session_id, completed_fully=True,
+                                  finished_at=self._now())
+        self._app_state.advance_day()
         self._repo.commit()
         return self._repo.get_session(session_id)
 
     def end_early(self, session_id: int) -> WorkoutSession:
-        """End session early (completed_fully=False). Advances cycle only if ≥1 set logged."""
+        """End session early. completed_fully=False.
+        Requires >=1 logged set. Advances cycle.
+
+        Raises ValueError if session not found, not in progress,
+        or has zero sets.
+        """
         session = self._repo.get_session(session_id)
-        if not session:
+        if session is None:
             raise ValueError(f"Session {session_id} not found")
         if session.status != SessionStatus.IN_PROGRESS:
             raise ValueError("Session is not in progress")
 
-        self._repo.finish_session(session_id, completed_fully=False, finished_at=self._now())
-
-        # Advance cycle only if at least one set was logged
         total_sets = self._repo.get_session_total_set_count(session_id)
-        if (total_sets > 0
-                and session.session_type == SessionType.ROUTINE
-                and session.routine_id):
-            self._cycle_service.advance(session.routine_id)
+        if total_sets == 0:
+            raise ValueError("Cannot end early — session has no logged sets. "
+                             "Use cancel for sessions with at least one set.")
 
+        self._repo.finish_session(session_id, completed_fully=False,
+                                  finished_at=self._now())
+        self._app_state.advance_day()
         self._repo.commit()
         return self._repo.get_session(session_id)
 
-    def get_session(self, session_id: int) -> Optional[WorkoutSession]:
-        return self._repo.get_session(session_id)
+    def cancel_session(self, session_id: int) -> None:
+        """Cancel a workout. Deletes the empty session. Does not advance cycle.
 
-    def get_in_progress_session(self) -> Optional[WorkoutSession]:
-        return self._repo.get_in_progress_session()
-
-    # --- Session exercises ---
-
-    def add_exercise_to_session(
-        self,
-        session_id: int,
-        exercise_id: int,
-        routine_day_exercise_id: Optional[int] = None,
-    ) -> SessionExercise:
-        """Add an exercise to a session. routine_day_exercise_id=None means ad-hoc."""
+        Raises ValueError if session not found, not in progress,
+        or has logged sets.
+        """
         session = self._repo.get_session(session_id)
-        if not session:
+        if session is None:
             raise ValueError(f"Session {session_id} not found")
+        if session.status != SessionStatus.IN_PROGRESS:
+            raise ValueError("Session is not in progress")
 
-        exercise = self._exercise_repo.get_by_id(exercise_id)
-        if not exercise:
-            raise ValueError(f"Exercise {exercise_id} not found")
+        total_sets = self._repo.get_session_total_set_count(session_id)
+        if total_sets > 0:
+            raise ValueError("Cannot cancel — session has logged sets. "
+                             "Use end_early instead.")
 
-        sort_order = self._repo.get_session_exercise_count(session_id)
+        self._repo.delete_session(session_id)
+        self._repo.commit()
+
+    # ------------------------------------------------------------------
+    # Session exercises
+    # ------------------------------------------------------------------
+
+    def get_session_exercises(self, session_id: int) -> List[SessionExercise]:
+        return self._repo.get_session_exercises(session_id)
+
+    def add_ad_hoc_exercise(self, session_id: int,
+                            exercise_key: str) -> SessionExercise:
+        """Add an ad-hoc exercise to an in-progress session.
+
+        Raises ValueError if session not in progress or exercise not found.
+        """
+        session = self._repo.get_session(session_id)
+        if session is None:
+            raise ValueError(f"Session {session_id} not found")
+        if session.status != SessionStatus.IN_PROGRESS:
+            raise ValueError("Session is not in progress")
+
+        exercise = self._exercises.get(exercise_key)
+        if exercise is None:
+            raise ValueError(f"Exercise '{exercise_key}' not found in catalog")
+
+        max_order = self._repo.get_max_sort_order(session_id)
+        next_order = (max_order + 1) if max_order is not None else 0
+
         se = SessionExercise(
             id=None,
             session_id=session_id,
-            exercise_id=exercise_id,
-            routine_day_exercise_id=routine_day_exercise_id,
-            sort_order=sort_order,
+            sort_order=next_order,
+            exercise_key_snapshot=exercise.key,
             exercise_name_snapshot=exercise.name,
+            exercise_type_snapshot=exercise.type,
+            source=ExerciseSource.AD_HOC,
+            scheme_snapshot=None,
+            planned_sets=None,
+            target_reps_min=None,
+            target_reps_max=None,
+            target_duration_seconds=None,
+            target_distance_km=None,
+            plan_notes_snapshot=None,
         )
         se.id = self._repo.add_session_exercise(se)
         self._repo.commit()
         return se
 
-    def get_session_exercises(self, session_id: int) -> List[SessionExercise]:
-        return self._repo.get_session_exercises(session_id)
-
-    # --- Logged sets ---
+    # ------------------------------------------------------------------
+    # Set logging
+    # ------------------------------------------------------------------
 
     def log_set(
         self,
         session_exercise_id: int,
-        set_kind: SetKind,
-        exercise_set_target_id: Optional[int] = None,
         reps: Optional[int] = None,
         weight: Optional[float] = None,
         duration_seconds: Optional[int] = None,
-        distance: Optional[float] = None,
-        notes: Optional[str] = None,
+        distance_km: Optional[float] = None,
     ) -> LoggedSet:
-        """Log a set. Committed to DB immediately (crash safety)."""
+        """Log a set. Validates fields against exercise type.
+        Committed immediately (crash safety).
+        """
         se = self._repo.get_session_exercise(session_exercise_id)
-        if not se:
-            raise ValueError(f"Session exercise {session_exercise_id} not found")
+        if se is None:
+            raise ValueError(
+                f"Session exercise {session_exercise_id} not found")
 
-        # Validate set_kind compatibility
-        exercise = self._exercise_repo.get_by_id(se.exercise_id)
-        validate_set_kind(set_kind, exercise.type)
-        validate_cardio_fields(set_kind, duration_seconds, distance)
-        validate_amrap_fields(set_kind, exercise.type, weight)
+        self._validate_set_fields(se.exercise_type_snapshot,
+                                  reps, weight, duration_seconds, distance_km)
 
-        set_number = self._repo.get_logged_set_count(session_exercise_id) + 1
+        set_number = self._repo.get_next_set_number(session_exercise_id)
         ls = LoggedSet(
             id=None,
             session_exercise_id=session_exercise_id,
-            exercise_set_target_id=exercise_set_target_id,
             set_number=set_number,
-            set_kind=set_kind,
             reps=reps,
             weight=weight,
             duration_seconds=duration_seconds,
-            distance=distance,
-            notes=notes,
+            distance_km=distance_km,
             logged_at=self._now(),
         )
         ls.id = self._repo.add_logged_set(ls)
         self._repo.commit()
         return ls
 
-    def update_set(
+    def edit_set(
         self,
         set_id: int,
-        reps: Optional[int] = None,
-        weight: Optional[float] = None,
-        duration_seconds: Optional[int] = None,
-        distance: Optional[float] = None,
-        notes: Optional[str] = None,
+        reps: Optional[int] = ...,
+        weight: Optional[float] = ...,
+        duration_seconds: Optional[int] = ...,
+        distance_km: Optional[float] = ...,
     ) -> LoggedSet:
-        """Edit a logged set (past or present). Stats derived from current data, never cached."""
+        """Edit a logged set. Only updates fields that are explicitly passed.
+        Uses ... (Ellipsis) as sentinel for "not provided".
+        """
         ls = self._repo.get_logged_set(set_id)
-        if not ls:
+        if ls is None:
             raise ValueError(f"Logged set {set_id} not found")
 
-        # Validate updated fields against exercise type
         se = self._repo.get_session_exercise(ls.session_exercise_id)
-        exercise = self._exercise_repo.get_by_id(se.exercise_id)
 
-        updated_weight = weight if weight is not None else ls.weight
-        updated_duration = duration_seconds if duration_seconds is not None else ls.duration_seconds
-        updated_distance = distance if distance is not None else ls.distance
-
-        validate_cardio_fields(ls.set_kind, updated_duration, updated_distance)
-        validate_amrap_fields(ls.set_kind, exercise.type, updated_weight)
-
-        if reps is not None:
+        # Apply updates (Ellipsis means "not provided")
+        if reps is not ...:
             ls.reps = reps
-        if weight is not None:
+        if weight is not ...:
             ls.weight = weight
-        if duration_seconds is not None:
+        if duration_seconds is not ...:
             ls.duration_seconds = duration_seconds
-        if distance is not None:
-            ls.distance = distance
-        if notes is not None:
-            ls.notes = notes
+        if distance_km is not ...:
+            ls.distance_km = distance_km
+
+        # Validate the final state
+        self._validate_set_fields(se.exercise_type_snapshot,
+                                  ls.reps, ls.weight,
+                                  ls.duration_seconds, ls.distance_km)
 
         self._repo.update_logged_set(ls)
         self._repo.commit()
         return ls
 
     def delete_set(self, set_id: int) -> None:
-        """Delete a logged set and resequence. Works on past or current sessions."""
+        """Delete a logged set and resequence.
+
+        If this was the last set in a finished session, deletes the session
+        (no cycle rewind).
+        """
+        ls = self._repo.get_logged_set(set_id)
+        if ls is None:
+            raise ValueError(f"Logged set {set_id} not found")
+
+        se = self._repo.get_session_exercise(ls.session_exercise_id)
+        session = self._repo.get_session(se.session_id)
+
         self._repo.delete_logged_set(set_id)
+
+        # Check if session is now empty and finished
+        if session.status == SessionStatus.FINISHED:
+            total_remaining = self._repo.get_session_total_set_count(
+                session.id)
+            if total_remaining == 0:
+                self._repo.delete_session(session.id)
+
         self._repo.commit()
 
     def get_logged_sets(self, session_exercise_id: int) -> List[LoggedSet]:
         return self._repo.get_logged_sets(session_exercise_id)
 
-    def start_routine_session_with_exercises(self, routine_day_id: int) -> WorkoutSession:
-        """Start a session AND populate it with the day's planned exercises.
+    def get_in_progress_session(self) -> Optional[WorkoutSession]:
+        """Return the current in-progress session, or None."""
+        return self._repo.get_in_progress_session()
 
-        This is the primary entry point for the UI. Creates the session,
-        adds all exercises from the routine day plan, and commits once
-        at the end (single transaction).
-        Returns the created session.
+    # ------------------------------------------------------------------
+    # Validation
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _validate_set_fields(
+        exercise_type: ExerciseType,
+        reps: Optional[int],
+        weight: Optional[float],
+        duration_seconds: Optional[int],
+        distance_km: Optional[float],
+    ) -> None:
+        """Validate logged set fields match the exercise type.
+
+        Raises ValueError with descriptive message on failure.
         """
-        # Block if another session is in progress
-        existing = self._repo.get_in_progress_session()
-        if existing:
-            raise ValueError("Another session is already in progress")
+        # Normalize: accept both ExerciseType enum and string values
+        if isinstance(exercise_type, ExerciseType):
+            type_val = exercise_type.value
+        else:
+            type_val = exercise_type
 
-        day = self._routine_repo.get_day(routine_day_id)
-        if not day:
-            raise ValueError(f"Routine day {routine_day_id} not found")
-
-        routine = self._routine_repo.get_routine(day.routine_id)
-
-        session = WorkoutSession(
-            id=None,
-            routine_id=day.routine_id,
-            routine_day_id=routine_day_id,
-            session_type=SessionType.ROUTINE,
-            status=SessionStatus.IN_PROGRESS,
-            completed_fully=None,
-            day_label_snapshot=day.label,
-            day_name_snapshot=day.name,
-            started_at=self._now(),
-        )
-        session.id = self._repo.create_session(session)
-
-        # Add all planned exercises in one transaction
-        rdes = self._routine_repo.get_day_exercises(routine_day_id)
-        for i, rde in enumerate(rdes):
-            exercise = self._exercise_repo.get_by_id(rde.exercise_id)
-            if not exercise:
-                continue
-            se = SessionExercise(
-                id=None,
-                session_id=session.id,
-                exercise_id=rde.exercise_id,
-                routine_day_exercise_id=rde.id,
-                sort_order=i,
-                exercise_name_snapshot=exercise.name,
-            )
-            self._repo.add_session_exercise(se)
-
-        self._repo.commit()  # Single commit for entire bootstrap
-        return session
+        if type_val == "reps_weight":
+            if reps is None:
+                raise ValueError(
+                    "reps_weight exercise requires reps")
+            if weight is None:
+                raise ValueError(
+                    "reps_weight exercise requires weight (use 0 for bodyweight)")
+        elif type_val == "time":
+            if duration_seconds is None:
+                raise ValueError(
+                    "time exercise requires duration_seconds")
+        elif type_val == "cardio":
+            if duration_seconds is None and distance_km is None:
+                raise ValueError(
+                    "cardio exercise requires duration_seconds and/or "
+                    "distance_km (at least one)")
