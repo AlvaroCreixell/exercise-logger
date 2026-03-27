@@ -2,6 +2,7 @@
 #:import SURFACE src.theme.SURFACE
 #:import PRIMARY src.theme.PRIMARY
 #:import SECONDARY src.theme.SECONDARY
+#:import WARNING src.theme.WARNING
 #:import TEXT_PRIMARY src.theme.TEXT_PRIMARY
 #:import TEXT_SECONDARY src.theme.TEXT_SECONDARY
 #:import dp kivy.metrics.dp
@@ -11,10 +12,22 @@
 
     MDBoxLayout:
         orientation: "vertical"
-        padding: [dp(16), dp(16), dp(16), dp(16)]
-        spacing: dp(16)
 
-        # In-progress session banner
+        # Top bar with settings gear (right-aligned)
+        MDBoxLayout:
+            size_hint_y: None
+            height: dp(56)
+            padding: [dp(16), 0, dp(8), 0]
+
+            Widget:
+
+            MDIconButton:
+                icon: "cog"
+                theme_icon_color: "Custom"
+                icon_color: TEXT_SECONDARY
+                on_release: root.open_settings()
+
+        # In-progress session banner (hidden by default)
         MDCard:
             id: session_banner
             size_hint_y: None
@@ -59,12 +72,12 @@
 
         # Spacer
         Widget:
-            size_hint_y: 0.15
+            size_hint_y: 0.1
 
         # Hero — routine name + current day
         MDLabel:
             id: routine_name_label
-            text: "No routine set up"
+            text: "No routine selected"
             halign: "center"
             theme_text_color: "Custom"
             text_color: TEXT_SECONDARY
@@ -115,28 +128,32 @@
             role: "medium"
             adaptive_height: True
 
-        # Benchmark due alerts
-        MDBoxLayout:
-            id: benchmark_alerts
-            orientation: "vertical"
-            spacing: dp(4)
-            adaptive_height: True
-
-        # Empty state action
-        MDButton:
-            id: empty_state_button
-            style: "outlined"
-            size_hint_x: None
-            width: dp(200)
-            pos_hint: {"center_x": 0.5}
+        # Benchmark due alert card (amber accent, tappable)
+        MDCard:
+            id: benchmark_alert_card
+            size_hint_y: None
+            height: 0
             opacity: 0
-            disabled: True
-            on_release: root.go_to_manage()
+            md_bg_color: SURFACE
+            padding: [dp(16), dp(12), dp(16), dp(12)]
+            radius: [dp(8)]
+            on_release: root.start_benchmark_flow()
 
-            MDButtonText:
-                text: "Create Routine"
+            MDLabel:
+                id: benchmark_alert_label
+                text: ""
                 theme_text_color: "Custom"
-                text_color: TEXT_SECONDARY
+                text_color: WARNING
+                font_style: "Body"
+                role: "large"
+                halign: "center"
+
+        # Empty state container
+        MDBoxLayout:
+            id: empty_state_container
+            orientation: "vertical"
+            adaptive_height: True
+            padding: [0, dp(8), 0, 0]
 
         Widget:
             size_hint_y: 0.3
