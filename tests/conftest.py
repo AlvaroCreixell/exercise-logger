@@ -208,6 +208,12 @@ def stats_service(workout_repo, benchmark_repo, exercise_registry,
                         benchmark_registry)
 
 
+@pytest.fixture
+def settings_service(settings_repo, db_conn):
+    from src.services.settings_service import SettingsService
+    return SettingsService(settings_repo, db_conn)
+
+
 # ---------------------------------------------------------------------------
 # Time helpers
 # ---------------------------------------------------------------------------
