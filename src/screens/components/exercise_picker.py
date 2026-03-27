@@ -7,7 +7,7 @@ Usage:
     picker = ExercisePickerSheet(app, on_select=my_callback, title="Add Exercise")
     picker.open()
 
-    def my_callback(exercise_id, exercise_name):
+    def my_callback(exercise_key, exercise_name):
         ...
 """
 from kivy.metrics import dp
@@ -18,7 +18,7 @@ from kivymd.uix.label import MDLabel
 from kivymd.uix.scrollview import MDScrollView
 from kivymd.uix.textfield import MDTextField, MDTextFieldHintText
 
-from src.models.exercise import ExerciseType
+from src.models.enums import ExerciseType
 from src.screens.components.bottom_sheet import AppBottomSheet
 from src.theme import TEXT_PRIMARY, TEXT_SECONDARY, SURFACE, PRIMARY
 
@@ -26,7 +26,6 @@ from src.theme import TEXT_PRIMARY, TEXT_SECONDARY, SURFACE, PRIMARY
 # Human-readable labels for exercise types
 _TYPE_LABELS = {
     ExerciseType.REPS_WEIGHT: "Reps + Weight",
-    ExerciseType.REPS_ONLY: "Reps Only",
     ExerciseType.TIME: "Time",
     ExerciseType.CARDIO: "Cardio",
 }
@@ -36,13 +35,13 @@ class _PickerRow(ButtonBehavior, MDBoxLayout):
     """A single tappable exercise row in the picker list.
 
     Attributes:
-        exercise_id: The exercise's database ID (plain int, not a Kivy property).
+        exercise_key: The exercise's registry key (plain str, not a Kivy property).
         exercise_name: The exercise's display name (plain str, not a Kivy property).
     """
 
-    def __init__(self, exercise_id, exercise_name, exercise_type, on_select, sheet, **kwargs):
+    def __init__(self, exercise_key, exercise_name, exercise_type, on_select, sheet, **kwargs):
         super().__init__(**kwargs)
-        self.exercise_id = exercise_id
+        self.exercise_key = exercise_key
         self.exercise_name = exercise_name
         self._on_select = on_select
         self._sheet = sheet
@@ -80,7 +79,7 @@ class _PickerRow(ButtonBehavior, MDBoxLayout):
         self.bind(on_release=self._handle_tap)
 
     def _handle_tap(self, *args):
-        self._on_select(self.exercise_id, self.exercise_name)
+        self._on_select(self.exercise_key, self.exercise_name)
         self._sheet.dismiss()
 
 
@@ -100,7 +99,7 @@ class ExercisePickerSheet:
 
     def open(self):
         """Fetch exercises and open the picker sheet."""
-        self._all_exercises = self._app.exercise_service.list_exercises()
+        self._all_exercises = list(self._app.exercise_registry.list_all())
 
         self._sheet = AppBottomSheet(title=self._title)
         self._sheet.set_height(400)
@@ -152,7 +151,7 @@ class ExercisePickerSheet:
 
         for ex in exercises:
             row = _PickerRow(
-                exercise_id=ex.id,
+                exercise_key=ex.key,
                 exercise_name=ex.name,
                 exercise_type=ex.type,
                 on_select=self._on_select,
