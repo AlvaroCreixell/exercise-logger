@@ -166,6 +166,7 @@ def routine_registry():
 def benchmark_config():
     return BenchmarkConfig(frequency_weeks=6, items=(
         BenchmarkItem(exercise_key="barbell_bench_press", method=BenchmarkMethod.MAX_WEIGHT),
+        BenchmarkItem(exercise_key="pull_up", method=BenchmarkMethod.MAX_REPS),
         BenchmarkItem(exercise_key="plank", method=BenchmarkMethod.TIMED_HOLD),
     ))
 
@@ -191,6 +192,12 @@ def workout_service(workout_repo, settings_repo, exercise_registry,
     from src.services.workout_service import WorkoutService
     return WorkoutService(workout_repo, settings_repo, exercise_registry,
                           routine_registry, app_state_service)
+
+
+@pytest.fixture
+def benchmark_service(benchmark_repo, benchmark_registry, exercise_registry):
+    from src.services.benchmark_service import BenchmarkService
+    return BenchmarkService(benchmark_repo, benchmark_registry, exercise_registry)
 
 
 # ---------------------------------------------------------------------------
