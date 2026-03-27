@@ -275,9 +275,11 @@ class StatsService:
         session containing this exercise.
 
         Returns a dict with keys:
-            exercise_key, session_id, planned_sets, target_reps_min,
-            target_reps_max, actual_sets, actual_reps_avg,
-            actual_weight_avg
+            exercise_key, session_id, planned_sets,
+            target_reps_min, target_reps_max,
+            target_duration_seconds, target_distance_km,
+            actual_sets, actual_reps_avg, actual_weight_avg,
+            actual_duration_avg, actual_distance_avg
         Returns None if no finished session contains this exercise.
         """
         return self._workouts.get_latest_plan_vs_actual(exercise_key)

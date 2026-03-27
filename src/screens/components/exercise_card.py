@@ -104,14 +104,10 @@ class ExerciseCard(MDBoxLayout):
             remaining = self.planned_sets - logged_count
             for _ in range(max(0, remaining)):
                 if self.scheme == "progressive":
-                    # Progressive: gray chips show no specific values (just placeholder)
+                    # Progressive: neutral placeholder chip (shows "—")
                     chip = SetChip(
                         is_logged=False,
-                        set_kind=self.exercise_type,
-                        reps=0,
-                        weight=0,
-                        duration_seconds=0,
-                        distance_km=0,
+                        set_kind="placeholder",
                     )
                 else:
                     # Uniform: gray chips show target values
@@ -129,7 +125,7 @@ class ExerciseCard(MDBoxLayout):
         if self.planned_sets > 0:
             self.progress_text = f"{logged_count}/{self.planned_sets}"
         else:
-            self.progress_text = f"{logged_count}" if logged_count else ""
+            self.progress_text = f"{logged_count}"
 
     def _setup_steppers(self):
         """Create steppers based on exercise type."""

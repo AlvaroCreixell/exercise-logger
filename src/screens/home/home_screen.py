@@ -236,6 +236,11 @@ class HomeScreen(BaseScreen):
             ))
             sheet.add_content(row_btn)
 
+        def on_done(*a):
+            sheet.dismiss()
+            self._refresh()
+
+        sheet.add_action("Done", on_done, style="filled")
         sheet.open()
 
     def _open_benchmark_entry(
@@ -317,8 +322,6 @@ class HomeScreen(BaseScreen):
             except ValueError:
                 pass
             entry_sheet.dismiss()
-            parent_sheet.dismiss()
-            self._refresh()
 
         entry_sheet.add_spacer()
         entry_sheet.add_action("Cancel", on_cancel)

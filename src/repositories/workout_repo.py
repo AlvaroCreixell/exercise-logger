@@ -284,16 +284,19 @@ class WorkoutRepo(BaseRepository):
         containing this exercise.
 
         Returns dict with exercise_key, session_id, planned_sets,
-        target_reps_min, target_reps_max, actual_sets, actual_reps_avg,
-        actual_weight_avg. Or None.
+        target fields, and actual aggregates for all exercise types.
+        Or None.
         """
         row = self._fetchone(
             """SELECT se.session_id, se.planned_sets,
                       se.target_reps_min, se.target_reps_max,
+                      se.target_duration_seconds, se.target_distance_km,
                       se.exercise_key_snapshot,
                       COUNT(ls.id) as actual_sets,
                       AVG(ls.reps) as actual_reps_avg,
-                      AVG(ls.weight) as actual_weight_avg
+                      AVG(ls.weight) as actual_weight_avg,
+                      AVG(ls.duration_seconds) as actual_duration_avg,
+                      AVG(ls.distance_km) as actual_distance_avg
                FROM session_exercises se
                JOIN workout_sessions ws ON se.session_id = ws.id
                JOIN logged_sets ls ON ls.session_exercise_id = se.id
@@ -312,9 +315,13 @@ class WorkoutRepo(BaseRepository):
             "planned_sets": row["planned_sets"],
             "target_reps_min": row["target_reps_min"],
             "target_reps_max": row["target_reps_max"],
+            "target_duration_seconds": row["target_duration_seconds"],
+            "target_distance_km": row["target_distance_km"],
             "actual_sets": row["actual_sets"],
             "actual_reps_avg": row["actual_reps_avg"],
             "actual_weight_avg": row["actual_weight_avg"],
+            "actual_duration_avg": row["actual_duration_avg"],
+            "actual_distance_avg": row["actual_distance_avg"],
         }
 
     # --- Row converters ---

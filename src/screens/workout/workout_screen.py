@@ -478,7 +478,10 @@ class WorkoutScreen(BaseScreen):
 
         sheet.add_spacer()
         sheet.add_action("Cancel", on_cancel)
-        sheet.add_action(confirm_text, on_ok, style="filled", destructive=is_destructive)
+        if is_destructive:
+            sheet.add_action(confirm_text, on_ok, destructive=True)
+        else:
+            sheet.add_action(confirm_text, on_ok, style="filled")
         sheet.open()
 
     # ------------------------------------------------------------------

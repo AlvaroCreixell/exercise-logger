@@ -237,8 +237,71 @@ class ExerciseDetailScreen(MDScreen):
             ))
             card.add_widget(weight_row)
 
-        # For time/cardio, the repo aggregation only covers reps/weight,
-        # so detailed metrics are only meaningful for reps_weight.
+        elif ex_type == ExerciseType.TIME:
+            target_dur = pva.get("target_duration_seconds")
+            actual_dur = pva.get("actual_duration_avg")
+
+            dur_row = MDBoxLayout(size_hint_y=None, height=dp(32), spacing=dp(8))
+            dur_row.add_widget(MDLabel(
+                text="Duration:",
+                theme_text_color="Custom", text_color=TEXT_SECONDARY,
+                font_style="Label", role="large",
+                adaptive_height=True,
+                size_hint_x=None, width=dp(80),
+            ))
+            target_str = f"{target_dur}s" if target_dur is not None else "\u2014"
+            act_str = f"{actual_dur:.0f}s" if actual_dur is not None else "\u2014"
+            dur_row.add_widget(MDLabel(
+                text=f"Target {target_str}  \u2192  Avg {act_str}",
+                theme_text_color="Custom", text_color=TEXT_PRIMARY,
+                font_style="Body", role="medium",
+                adaptive_height=True,
+            ))
+            card.add_widget(dur_row)
+
+        elif ex_type == ExerciseType.CARDIO:
+            target_dur = pva.get("target_duration_seconds")
+            target_dist = pva.get("target_distance_km")
+            actual_dur = pva.get("actual_duration_avg")
+            actual_dist = pva.get("actual_distance_avg")
+
+            if target_dur is not None or actual_dur is not None:
+                dur_row = MDBoxLayout(size_hint_y=None, height=dp(32), spacing=dp(8))
+                dur_row.add_widget(MDLabel(
+                    text="Duration:",
+                    theme_text_color="Custom", text_color=TEXT_SECONDARY,
+                    font_style="Label", role="large",
+                    adaptive_height=True,
+                    size_hint_x=None, width=dp(80),
+                ))
+                t_str = f"{target_dur}s" if target_dur is not None else "\u2014"
+                a_str = f"{actual_dur:.0f}s" if actual_dur is not None else "\u2014"
+                dur_row.add_widget(MDLabel(
+                    text=f"Target {t_str}  \u2192  Avg {a_str}",
+                    theme_text_color="Custom", text_color=TEXT_PRIMARY,
+                    font_style="Body", role="medium",
+                    adaptive_height=True,
+                ))
+                card.add_widget(dur_row)
+
+            if target_dist is not None or actual_dist is not None:
+                dist_row = MDBoxLayout(size_hint_y=None, height=dp(32), spacing=dp(8))
+                dist_row.add_widget(MDLabel(
+                    text="Distance:",
+                    theme_text_color="Custom", text_color=TEXT_SECONDARY,
+                    font_style="Label", role="large",
+                    adaptive_height=True,
+                    size_hint_x=None, width=dp(80),
+                ))
+                t_str = f"{target_dist}km" if target_dist is not None else "\u2014"
+                a_str = f"{actual_dist:.2f}km" if actual_dist is not None else "\u2014"
+                dist_row.add_widget(MDLabel(
+                    text=f"Target {t_str}  \u2192  Avg {a_str}",
+                    theme_text_color="Custom", text_color=TEXT_PRIMARY,
+                    font_style="Body", role="medium",
+                    adaptive_height=True,
+                ))
+                card.add_widget(dist_row)
 
         return card
 
