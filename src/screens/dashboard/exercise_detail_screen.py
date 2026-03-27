@@ -237,50 +237,8 @@ class ExerciseDetailScreen(MDScreen):
             ))
             card.add_widget(weight_row)
 
-        elif ex_type == ExerciseType.TIME:
-            avg_reps = pva.get("actual_reps_avg")
-            target_rmin = pva.get("target_reps_min")
-
-            dur_row = MDBoxLayout(size_hint_y=None, height=dp(32), spacing=dp(8))
-            dur_row.add_widget(MDLabel(
-                text="Duration:",
-                theme_text_color="Custom", text_color=TEXT_SECONDARY,
-                font_style="Label", role="large",
-                adaptive_height=True,
-                size_hint_x=None, width=dp(80),
-            ))
-            target_str = f"{target_rmin}s" if target_rmin is not None else "\u2014"
-            act_str = f"{avg_reps:.0f}s" if avg_reps is not None else "\u2014"
-            dur_row.add_widget(MDLabel(
-                text=f"Target {target_str}  \u2192  Avg {act_str}",
-                theme_text_color="Custom", text_color=TEXT_PRIMARY,
-                font_style="Body", role="medium",
-                adaptive_height=True,
-            ))
-            card.add_widget(dur_row)
-
-        elif ex_type == ExerciseType.CARDIO:
-            avg_reps = pva.get("actual_reps_avg")
-            avg_weight = pva.get("actual_weight_avg")
-            target_rmin = pva.get("target_reps_min")
-
-            dist_row = MDBoxLayout(size_hint_y=None, height=dp(32), spacing=dp(8))
-            dist_row.add_widget(MDLabel(
-                text="Distance:",
-                theme_text_color="Custom", text_color=TEXT_SECONDARY,
-                font_style="Label", role="large",
-                adaptive_height=True,
-                size_hint_x=None, width=dp(80),
-            ))
-            target_str = f"{target_rmin}km" if target_rmin is not None else "\u2014"
-            act_str = f"{avg_weight:.2f}km" if avg_weight is not None else "\u2014"
-            dist_row.add_widget(MDLabel(
-                text=f"Target {target_str}  \u2192  Avg {act_str}",
-                theme_text_color="Custom", text_color=TEXT_PRIMARY,
-                font_style="Body", role="medium",
-                adaptive_height=True,
-            ))
-            card.add_widget(dist_row)
+        # For time/cardio, the repo aggregation only covers reps/weight,
+        # so detailed metrics are only meaningful for reps_weight.
 
         return card
 

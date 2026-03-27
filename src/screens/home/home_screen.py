@@ -115,16 +115,29 @@ class HomeScreen(BaseScreen):
         self.app.go_tab("workout")
 
     def end_session(self):
-        """End in-progress session with confirmation bottom sheet."""
+        """End or cancel in-progress session with confirmation bottom sheet."""
         if not self._in_progress_session_id:
             return
 
         session_id = self._in_progress_session_id
 
-        sheet = AppBottomSheet(title="End workout early?")
+        def on_cancel(*a):
+            sheet.dismiss()
+
+        def on_confirm(*a):
+            sheet.dismiss()
+            try:
+                self.app.workout_service.end_early(session_id)
+            except ValueError:
+                # Zero sets — cancel instead
+                self.app.workout_service.cancel_session(session_id)
+            self._refresh()
+
+        sheet = AppBottomSheet(title="End workout?")
         sheet.set_height(200)
         sheet.add_content(MDLabel(
-            text="Your session will be saved. Cycle advances only if you logged at least one set.",
+            text="If you logged sets, the session will be saved and cycle advances. "
+                 "If no sets were logged, the empty session will be deleted.",
             theme_text_color="Custom",
             text_color=TEXT_SECONDARY,
             font_style="Body",
@@ -132,17 +145,9 @@ class HomeScreen(BaseScreen):
             adaptive_height=True,
         ))
 
-        def on_cancel(*a):
-            sheet.dismiss()
-
-        def on_confirm(*a):
-            sheet.dismiss()
-            self.app.workout_service.end_early(session_id)
-            self._refresh()
-
         sheet.add_spacer()
         sheet.add_action("Cancel", on_cancel)
-        sheet.add_action("End Early", on_confirm, destructive=True)
+        sheet.add_action("End Workout", on_confirm, destructive=True)
         sheet.open()
 
     def start_benchmark_flow(self):

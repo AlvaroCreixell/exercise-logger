@@ -31,6 +31,16 @@
             shorten: True
             shorten_from: "right"
 
+        MDIconButton:
+            icon: "information-outline"
+            theme_icon_color: "Custom"
+            icon_color: TEXT_SECONDARY
+            size_hint: None, None
+            size: [dp(32), dp(32)]
+            on_release: root.show_progressive_tooltip()
+            opacity: 1 if root.scheme == "progressive" else 0
+            disabled: root.scheme != "progressive"
+
         MDLabel:
             text: root.progress_text
             theme_text_color: "Custom"
@@ -40,6 +50,18 @@
             halign: "right"
             size_hint_x: None
             width: dp(40)
+
+    # Plan notes — visible only when non-empty
+    MDLabel:
+        text: root.plan_notes
+        theme_text_color: "Custom"
+        text_color: TEXT_SECONDARY
+        font_style: "Body"
+        role: "small"
+        adaptive_height: True
+        size_hint_y: None
+        height: self.texture_size[1] if root.plan_notes else 0
+        opacity: 1 if root.plan_notes else 0
 
     # Chip row — always visible
     MDBoxLayout:
@@ -78,6 +100,8 @@
                 md_bg_color: PRIMARY
                 size_hint_x: 0.6
                 on_release: root.repeat_last()
+                opacity: 1 if len(root.logged_sets) > 0 else 0
+                disabled: len(root.logged_sets) == 0
 
                 MDButtonText:
                     text: "Repeat Last"
