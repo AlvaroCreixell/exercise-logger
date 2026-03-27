@@ -198,3 +198,19 @@ class TestUnitToggle:
 
         br_reps = benchmark_repo.get_result(ids["br_reps_id"])
         assert br_reps.bodyweight == round(180.0 * LB_TO_KG, 2)
+
+
+class TestWeightUnitValidation:
+    def test_invalid_unit_rejected(self, settings_service):
+        with pytest.raises(ValueError, match="must be 'lb' or 'kg'"):
+            settings_service.set_weight_unit("stone")
+
+    def test_empty_string_rejected(self, settings_service):
+        with pytest.raises(ValueError, match="must be 'lb' or 'kg'"):
+            settings_service.set_weight_unit("")
+
+    def test_lb_accepted(self, settings_service):
+        settings_service.set_weight_unit("lb")  # should not raise
+
+    def test_kg_accepted(self, settings_service):
+        settings_service.set_weight_unit("kg")  # should not raise

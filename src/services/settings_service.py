@@ -42,16 +42,18 @@ class SettingsService:
         """Set weight unit and convert all DB weights.
 
         Returns number of rows converted. 0 if already the target unit.
-        convert_all_weights_v2 does NOT commit; we commit here after both
-        the weight conversion and the setting update succeed atomically.
+        Raises ValueError if unit is not 'lb' or 'kg'.
         """
+        if unit not in ("lb", "kg"):
+            raise ValueError(f"Invalid weight unit '{unit}': must be 'lb' or 'kg'")
+
         current = self.get_weight_unit()
         if current == unit:
             return 0
 
         total = convert_all_weights_v2(self._conn, current, unit)
         self._repo.set("weight_unit", unit)
-        self._repo.commit()  # single commit covers both conversion and setting update
+        self._repo.commit()
         return total
 
     def toggle_weight_unit(self) -> dict:
