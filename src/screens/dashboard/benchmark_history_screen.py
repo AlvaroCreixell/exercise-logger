@@ -1,7 +1,7 @@
-"""Benchmark history screen — trend charts grouped by muscle group.
+"""Benchmark history screen — trend charts per benchmark item.
 
-Drill-in from dashboard overview. Shows all benchmark definitions with
-their latest result and a trend chart per definition.
+Drill-in from dashboard overview. Shows all benchmark config items with
+their latest result and a trend chart per exercise.
 """
 from kivy.metrics import dp
 from kivy.uix.widget import Widget
@@ -11,7 +11,7 @@ from kivymd.uix.label import MDLabel
 from kivymd.uix.screen import MDScreen
 from kivymd.uix.scrollview import MDScrollView
 
-from src.models.benchmark import BenchmarkMethod
+from src.models.enums import BenchmarkMethod
 from src.screens.components.chart_widget import ChartWidget
 from src.theme import BACKGROUND, SURFACE, TEXT_PRIMARY, TEXT_SECONDARY, PRIMARY
 
@@ -23,13 +23,9 @@ _METHOD_LABELS = {
     BenchmarkMethod.TIMED_HOLD: "Timed Hold",
 }
 
-# Known muscle group ordering
-_MUSCLE_GROUPS = ["Upper", "Lower", "Back", "Core"]
-_DEFAULT_GROUP = "Ungrouped"
-
 
 class BenchmarkHistoryScreen(MDScreen):
-    """Benchmark history — all definitions grouped by muscle group with trend charts."""
+    """Benchmark history — all config items with trend charts."""
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -74,9 +70,9 @@ class BenchmarkHistoryScreen(MDScreen):
             spacing=dp(16),
         )
 
-        definitions = self.app.benchmark_service.list_definitions()
+        items = self.app.benchmark_registry.list_items()
 
-        if not definitions:
+        if not items:
             content.add_widget(Widget(size_hint_y=None, height=dp(48)))
             content.add_widget(MDLabel(
                 text="No benchmarks defined yet",
@@ -90,42 +86,15 @@ class BenchmarkHistoryScreen(MDScreen):
             self.add_widget(layout)
             return
 
-        # Group by muscle_group_label
-        groups = {}
-        for defn in definitions:
-            group = defn.muscle_group_label or _DEFAULT_GROUP
-            groups.setdefault(group, []).append(defn)
-
-        # Sort: known groups first, then alphabetical
-        known_order = {g: i for i, g in enumerate(_MUSCLE_GROUPS)}
-        sorted_groups = sorted(
-            groups.keys(),
-            key=lambda g: (known_order.get(g, len(_MUSCLE_GROUPS)), g),
-        )
-
-        for group_name in sorted_groups:
-            # Group header
-            group_header = MDBoxLayout(
-                size_hint_y=None, height=dp(36),
-                padding=[dp(4), 0, dp(4), 0],
-            )
-            group_header.add_widget(MDLabel(
-                text=group_name,
-                theme_text_color="Custom", text_color=TEXT_SECONDARY,
-                font_style="Label", role="large",
-                adaptive_height=True,
-            ))
-            content.add_widget(group_header)
-
-            for defn in groups[group_name]:
-                content.add_widget(self._build_defn_card(defn))
+        for item in items:
+            content.add_widget(self._build_item_card(item))
 
         scroll.add_widget(content)
         layout.add_widget(scroll)
         self.add_widget(layout)
 
-    def _build_defn_card(self, defn):
-        """Build a benchmark definition card with latest result and trend chart."""
+    def _build_item_card(self, item):
+        """Build a benchmark item card with latest result and trend chart."""
         card = MDBoxLayout(
             orientation="vertical",
             adaptive_height=True,
@@ -135,13 +104,10 @@ class BenchmarkHistoryScreen(MDScreen):
         )
 
         # Resolve exercise name
-        try:
-            exercise = self.app.exercise_service.get_exercise(defn.exercise_id)
-            ex_name = exercise.name if exercise else f"Exercise #{defn.exercise_id}"
-        except Exception:
-            ex_name = f"Exercise #{defn.exercise_id}"
+        exercise = self.app.exercise_registry.get(item.exercise_key)
+        ex_name = exercise.name if exercise else item.exercise_key
 
-        method_label = _METHOD_LABELS.get(defn.method, defn.method.value)
+        method_label = _METHOD_LABELS.get(item.method, item.method.value)
 
         # Card header row: exercise name + method
         header_row = MDBoxLayout(
@@ -164,8 +130,8 @@ class BenchmarkHistoryScreen(MDScreen):
         header_row.add_widget(name_col)
         card.add_widget(header_row)
 
-        # Fetch history
-        history = self.app.stats_service.get_benchmark_history(defn.id)
+        # Fetch history (list of dicts: result_value, bodyweight, tested_at, method)
+        history = self.app.stats_service.get_benchmark_history(item.exercise_key)
 
         if not history:
             card.add_widget(MDLabel(
@@ -180,6 +146,7 @@ class BenchmarkHistoryScreen(MDScreen):
         latest = history[-1]
         result_val = latest.get("result_value")
         tested_at = (latest.get("tested_at") or "")[:10]
+        bodyweight = latest.get("bodyweight")
 
         latest_row = MDBoxLayout(
             size_hint_y=None, height=dp(32),
@@ -192,8 +159,10 @@ class BenchmarkHistoryScreen(MDScreen):
             adaptive_height=True,
             size_hint_x=None, width=dp(56),
         ))
+        result_str = f"{result_val}" if result_val is not None else "\u2014"
+        bw_str = f"  (BW: {bodyweight})" if bodyweight is not None else ""
         latest_row.add_widget(MDLabel(
-            text=f"{result_val}  ({tested_at})" if result_val is not None else "—",
+            text=f"{result_str}{bw_str}  ({tested_at})" if tested_at else result_str + bw_str,
             theme_text_color="Custom", text_color=PRIMARY,
             font_style="Body", role="medium",
             adaptive_height=True,
@@ -204,8 +173,17 @@ class BenchmarkHistoryScreen(MDScreen):
         if len(history) >= 2:
             dates = [(r.get("tested_at") or "")[:10] for r in history]
             values = [r.get("result_value") or 0 for r in history]
+
+            # Optional secondary line for bodyweight if any data point has it
+            bodyweights = [r.get("bodyweight") for r in history]
+            has_bodyweight = any(bw is not None for bw in bodyweights)
+
             chart = ChartWidget()
-            chart.plot_line(dates, values, ylabel=method_label)
+            if has_bodyweight:
+                bw_values = [bw or 0 for bw in bodyweights]
+                chart.plot_line(dates, values, ylabel=method_label, secondary_data=bw_values)
+            else:
+                chart.plot_line(dates, values, ylabel=method_label)
             card.add_widget(chart)
 
         return card

@@ -2,6 +2,8 @@
 
 Uses an internal ScreenManager for drill-in navigation (same pattern as ManageScreen).
 """
+from datetime import datetime, timezone, timedelta
+
 from kivy.metrics import dp
 from kivy.uix.behaviors import ButtonBehavior
 from kivy.uix.screenmanager import ScreenManager, SlideTransition
@@ -100,8 +102,17 @@ class DashboardScreen(BaseScreen):
             return
 
         # --- Stat cards row (shown even if this week/month are 0) ---
-        week_count = self.app.stats_service.get_sessions_this_week()
-        month_count = self.app.stats_service.get_sessions_this_month()
+        now = datetime.now(timezone.utc)
+        week_start = (now - timedelta(days=now.weekday())).replace(
+            hour=0, minute=0, second=0, microsecond=0
+        ).isoformat()
+        month_start = now.replace(
+            day=1, hour=0, minute=0, second=0, microsecond=0
+        ).isoformat()
+
+        week_count = self.app.stats_service.get_session_count(since=week_start)
+        month_count = self.app.stats_service.get_session_count(since=month_start)
+
         stat_row = MDBoxLayout(
             size_hint_y=None, height=dp(80),
             spacing=dp(12),
@@ -125,8 +136,8 @@ class DashboardScreen(BaseScreen):
             chart.plot_bar(labels, values, ylabel="Volume")
             content.add_widget(chart)
 
-        # --- Recent PRs ---
-        prs = self.app.stats_service.get_personal_bests(3)
+        # --- Recent Personal Bests ---
+        prs = self.app.stats_service.get_personal_bests(limit=3)
         if prs:
             content.add_widget(MDLabel(
                 text="Personal Bests",
@@ -142,17 +153,15 @@ class DashboardScreen(BaseScreen):
                 )
                 et = pr.get("exercise_type", "reps_weight")
                 if et == "reps_weight":
-                    reps_text = f"\u00d7{pr['reps']}" if pr.get("reps") else ""
+                    reps_text = f" \u00d7 {pr['reps']}" if pr.get("reps") else ""
                     val_text = f"{pr.get('weight', 0)}{reps_text}"
-                elif et == "reps_only":
-                    val_text = f"{pr.get('reps', 0)} reps"
                 elif et == "time":
-                    secs = pr.get("duration_seconds", 0)
+                    secs = pr.get("duration_seconds", 0) or 0
                     val_text = f"{secs // 60}m {secs % 60}s" if secs >= 60 else f"{secs}s"
                 elif et == "cardio":
                     parts = []
-                    if pr.get("distance"):
-                        parts.append(f"{pr['distance']}km")
+                    if pr.get("distance_km"):
+                        parts.append(f"{pr['distance_km']}km")
                     if pr.get("duration_seconds"):
                         parts.append(f"{pr['duration_seconds'] // 60}m")
                     val_text = " / ".join(parts) if parts else "\u2014"
@@ -168,8 +177,8 @@ class DashboardScreen(BaseScreen):
                 content.add_widget(pr_row)
 
         # --- Benchmark history link ---
-        due_benchmarks = self.app.benchmark_service.get_due_benchmarks()
-        due_count = len(due_benchmarks)
+        due_summary = self.app.stats_service.get_benchmark_due_summary()
+        due_count = due_summary.get("due_count", 0)
         bm_label = f"Benchmark History ({due_count} due)" if due_count > 0 else "Benchmark History"
 
         bm_tap = _TapBox(
@@ -193,16 +202,19 @@ class DashboardScreen(BaseScreen):
         bm_tap.bind(on_release=lambda *a: self.show_benchmark_history())
         content.add_widget(bm_tap)
 
-        # --- Exercise list for drill-in ---
-        exercises = self.app.exercise_service.list_exercises(include_archived=False)
-        if exercises:
+        # --- Exercise list for drill-in (only exercises with history) ---
+        exercise_keys = self.app.stats_service.get_exercises_with_history()
+        if exercise_keys:
             content.add_widget(MDLabel(
                 text="Exercises",
                 theme_text_color="Custom", text_color=TEXT_SECONDARY,
                 font_style="Label", role="large",
                 adaptive_height=True,
             ))
-            for ex in exercises:
+            for key in exercise_keys:
+                ex = self.app.exercise_registry.get(key)
+                if ex is None:
+                    continue
                 ex_tap = _TapBox(
                     size_hint_y=None, height=dp(52),
                     md_bg_color=SURFACE,
@@ -220,9 +232,9 @@ class DashboardScreen(BaseScreen):
                     theme_icon_color="Custom", icon_color=TEXT_SECONDARY,
                     size_hint_x=None,
                 ))
-                ex_id = ex.id
+                ex_key = ex.key
                 ex_name = ex.name
-                ex_tap.bind(on_release=lambda *a, eid=ex_id, ename=ex_name: self.show_exercise_detail(eid, ename))
+                ex_tap.bind(on_release=lambda *a, k=ex_key, n=ex_name: self.show_exercise_detail(k, n))
                 content.add_widget(ex_tap)
 
         scroll.add_widget(content)
@@ -259,14 +271,14 @@ class DashboardScreen(BaseScreen):
 
     # --- Navigation ---
 
-    def show_exercise_detail(self, exercise_id: int, name: str):
+    def show_exercise_detail(self, exercise_key: str, name: str):
         """Drill into exercise detail screen."""
         from src.screens.dashboard.exercise_detail_screen import ExerciseDetailScreen
 
-        screen_name = f"dash_exercise_{exercise_id}"
+        screen_name = f"dash_exercise_{exercise_key}"
         if not self._sub_manager.has_screen(screen_name):
             detail = ExerciseDetailScreen(
-                exercise_id=exercise_id,
+                exercise_key=exercise_key,
                 exercise_name=name,
                 name=screen_name,
             )
