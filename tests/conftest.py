@@ -200,6 +200,14 @@ def benchmark_service(benchmark_repo, benchmark_registry, exercise_registry):
     return BenchmarkService(benchmark_repo, benchmark_registry, exercise_registry)
 
 
+@pytest.fixture
+def stats_service(workout_repo, benchmark_repo, exercise_registry,
+                  benchmark_registry):
+    from src.services.stats_service import StatsService
+    return StatsService(workout_repo, benchmark_repo, exercise_registry,
+                        benchmark_registry)
+
+
 # ---------------------------------------------------------------------------
 # Time helpers
 # ---------------------------------------------------------------------------

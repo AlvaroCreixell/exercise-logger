@@ -187,6 +187,136 @@ class WorkoutRepo(BaseRepository):
             (ls.session_exercise_id, ls.set_number),
         )
 
+    # --- Stats query helpers ---
+
+    def get_session_count_with_sets(self, since: Optional[str] = None) -> int:
+        """Count finished sessions that have at least one logged set."""
+        if since:
+            row = self._fetchone(
+                """SELECT COUNT(*) as cnt FROM workout_sessions ws
+                   WHERE ws.status = 'finished' AND ws.started_at >= ?
+                   AND EXISTS (
+                       SELECT 1 FROM logged_sets ls
+                       JOIN session_exercises se ON ls.session_exercise_id = se.id
+                       WHERE se.session_id = ws.id
+                   )""",
+                (since,),
+            )
+        else:
+            row = self._fetchone(
+                """SELECT COUNT(*) as cnt FROM workout_sessions ws
+                   WHERE ws.status = 'finished'
+                   AND EXISTS (
+                       SELECT 1 FROM logged_sets ls
+                       JOIN session_exercises se ON ls.session_exercise_id = se.id
+                       WHERE se.session_id = ws.id
+                   )""",
+            )
+        return row["cnt"] if row else 0
+
+    def get_last_session_with_sets(self) -> Optional[WorkoutSession]:
+        """Get the most recent finished session that has at least one logged set."""
+        row = self._fetchone(
+            """SELECT ws.* FROM workout_sessions ws
+               WHERE ws.status = 'finished'
+               AND EXISTS (
+                   SELECT 1 FROM logged_sets ls
+                   JOIN session_exercises se ON ls.session_exercise_id = se.id
+                   WHERE se.session_id = ws.id
+               )
+               ORDER BY ws.started_at DESC LIMIT 1""",
+        )
+        return self._to_session(row) if row else None
+
+    def get_exercise_logged_sets(self, exercise_key: str, limit: int = 200) -> list:
+        """Get logged sets for an exercise key across finished sessions.
+
+        Returns list of dicts with set fields plus session_started_at.
+        Ordered by session started_at DESC, then set_number ASC.
+        """
+        rows = self._fetchall(
+            """SELECT ls.*, se.exercise_key_snapshot, se.exercise_type_snapshot,
+                      ws.started_at as session_started_at
+               FROM logged_sets ls
+               JOIN session_exercises se ON ls.session_exercise_id = se.id
+               JOIN workout_sessions ws ON se.session_id = ws.id
+               WHERE se.exercise_key_snapshot = ?
+               AND ws.status = 'finished'
+               ORDER BY ws.started_at DESC, ls.set_number DESC
+               LIMIT ?""",
+            (exercise_key, limit),
+        )
+        return [dict(r) for r in rows]
+
+    def get_volume_by_week(self, since: str) -> list:
+        """Weekly total volume (weight * reps) for reps_weight exercises.
+
+        Returns list of dicts: {year_week, total_volume}.
+        """
+        rows = self._fetchall(
+            """SELECT strftime('%Y-%W', ws.started_at) as year_week,
+                      SUM(COALESCE(ls.weight, 0) * COALESCE(ls.reps, 0)) as total_volume
+               FROM logged_sets ls
+               JOIN session_exercises se ON ls.session_exercise_id = se.id
+               JOIN workout_sessions ws ON se.session_id = ws.id
+               WHERE ws.status = 'finished' AND ws.started_at >= ?
+               AND se.exercise_type_snapshot = 'reps_weight'
+               GROUP BY year_week
+               ORDER BY year_week""",
+            (since,),
+        )
+        return [dict(r) for r in rows]
+
+    def get_exercise_keys_with_logged_sets(self) -> list:
+        """Return distinct exercise keys that have logged sets in finished sessions."""
+        rows = self._fetchall(
+            """SELECT DISTINCT se.exercise_key_snapshot
+               FROM session_exercises se
+               JOIN workout_sessions ws ON se.session_id = ws.id
+               JOIN logged_sets ls ON ls.session_exercise_id = se.id
+               WHERE ws.status = 'finished'
+               ORDER BY se.exercise_key_snapshot""",
+        )
+        return [r["exercise_key_snapshot"] for r in rows]
+
+    def get_latest_plan_vs_actual(self, exercise_key: str) -> Optional[dict]:
+        """Plan targets vs actual for the most recent finished session
+        containing this exercise.
+
+        Returns dict with exercise_key, session_id, planned_sets,
+        target_reps_min, target_reps_max, actual_sets, actual_reps_avg,
+        actual_weight_avg. Or None.
+        """
+        row = self._fetchone(
+            """SELECT se.session_id, se.planned_sets,
+                      se.target_reps_min, se.target_reps_max,
+                      se.exercise_key_snapshot,
+                      COUNT(ls.id) as actual_sets,
+                      AVG(ls.reps) as actual_reps_avg,
+                      AVG(ls.weight) as actual_weight_avg
+               FROM session_exercises se
+               JOIN workout_sessions ws ON se.session_id = ws.id
+               JOIN logged_sets ls ON ls.session_exercise_id = se.id
+               WHERE se.exercise_key_snapshot = ?
+               AND ws.status = 'finished'
+               GROUP BY se.id
+               ORDER BY ws.started_at DESC
+               LIMIT 1""",
+            (exercise_key,),
+        )
+        if not row:
+            return None
+        return {
+            "exercise_key": row["exercise_key_snapshot"],
+            "session_id": row["session_id"],
+            "planned_sets": row["planned_sets"],
+            "target_reps_min": row["target_reps_min"],
+            "target_reps_max": row["target_reps_max"],
+            "actual_sets": row["actual_sets"],
+            "actual_reps_avg": row["actual_reps_avg"],
+            "actual_weight_avg": row["actual_weight_avg"],
+        }
+
     # --- Row converters ---
 
     @staticmethod
