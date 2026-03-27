@@ -1,6 +1,7 @@
 key: push_pull_legs
 name: Push Pull Legs
 description: 3-day split focused on basic compounds and accessories
+
 days:
   - key: push
     label: A
@@ -9,6 +10,10 @@ days:
       - exercise_key: barbell_bench_press
         scheme: progressive
         sets: 3
+      - exercise_key: incline_dumbbell_press
+        scheme: uniform
+        sets: 3
+        reps: 8-12
       - exercise_key: dumbbell_shoulder_press
         scheme: uniform
         sets: 4
@@ -17,6 +22,12 @@ days:
         sets: 3
         reps: 12-15
         notes: Squeeze at peak contraction
+      - exercise_key: dumbbell_lateral_raise
+        sets: 3
+        reps: 12-15
+      - exercise_key: tricep_pushdown
+        sets: 3
+        reps: 10-12
       - exercise_key: plank
         sets: 3
         duration_seconds: 60
@@ -33,12 +44,25 @@ days:
       - exercise_key: pull_up
         sets: 4
         reps: 6-10
+        notes: Add weight if you can do 10+ reps easily
+      - exercise_key: barbell_row
+        sets: 4
+        reps: 8-12
       - exercise_key: seated_cable_row
         sets: 3
         reps: 8-12
-      - exercise_key: 2km_rowing
+      - exercise_key: face_pull
         sets: 3
-        distance_km: 2.0
+        reps: 15-20
+      - exercise_key: barbell_curl
+        sets: 3
+        reps: 8-12
+      - exercise_key: hammer_curl
+        sets: 3
+        reps: 10-12
+      - exercise_key: dead_hang
+        sets: 3
+        duration_seconds: 45
 
   - key: legs
     label: C
@@ -50,9 +74,22 @@ days:
       - exercise_key: leg_press
         sets: 4
         reps: 10-15
+      - exercise_key: barbell_romanian_deadlift
+        sets: 3
+        reps: 8-12
+        notes: Feel the stretch in hamstrings, hinge at hips
       - exercise_key: leg_curl
         sets: 3
         reps: 10-12
+      - exercise_key: leg_extension
+        sets: 3
+        reps: 10-15
       - exercise_key: calf_raise_machine
         sets: 4
         reps: 12-15
+      - exercise_key: wall_sit
+        sets: 3
+        duration_seconds: 45
+      - exercise_key: 2km_rowing
+        sets: 1
+        distance_km: 2.0

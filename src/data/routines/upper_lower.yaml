@@ -1,0 +1,66 @@
+key: upper_lower
+name: Upper / Lower
+description: 2-day upper/lower split, good for 3-4 sessions per week
+
+days:
+  - key: upper
+    label: A
+    name: Upper Body
+    exercises:
+      - exercise_key: barbell_bench_press
+        scheme: progressive
+        sets: 3
+      - exercise_key: barbell_row
+        scheme: progressive
+        sets: 3
+      - exercise_key: barbell_overhead_press
+        sets: 4
+        reps: 6-10
+      - exercise_key: lat_pulldown
+        sets: 4
+        reps: 8-12
+      - exercise_key: dumbbell_flyes
+        sets: 3
+        reps: 10-15
+      - exercise_key: face_pull
+        sets: 3
+        reps: 15-20
+      - exercise_key: dumbbell_curl
+        sets: 3
+        reps: 10-12
+      - exercise_key: tricep_pushdown
+        sets: 3
+        reps: 10-12
+      - exercise_key: plank
+        sets: 3
+        duration_seconds: 60
+        notes: Engage core, don't let hips sag
+
+  - key: lower
+    label: B
+    name: Lower Body
+    exercises:
+      - exercise_key: barbell_back_squat
+        scheme: progressive
+        sets: 3
+      - exercise_key: barbell_deadlift
+        scheme: progressive
+        sets: 3
+      - exercise_key: leg_press
+        sets: 4
+        reps: 10-15
+      - exercise_key: leg_curl
+        sets: 3
+        reps: 10-12
+      - exercise_key: barbell_hip_thrust
+        sets: 3
+        reps: 8-12
+      - exercise_key: calf_raise_machine
+        sets: 4
+        reps: 12-15
+      - exercise_key: cable_crunch
+        sets: 3
+        reps: 15-20
+      - exercise_key: stationary_bike
+        sets: 1
+        duration_seconds: 600
