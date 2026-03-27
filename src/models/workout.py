@@ -1,56 +1,49 @@
+"""Mutable workout data models — stored in SQLite."""
 from __future__ import annotations
 from dataclasses import dataclass
-from enum import Enum
 from typing import Optional
-from src.models.routine import SetKind
-
-
-class SessionStatus(Enum):
-    IN_PROGRESS = "in_progress"
-    FINISHED = "finished"
-
-
-class SessionType(Enum):
-    ROUTINE = "routine"
-    BENCHMARK = "benchmark"
+from src.models.enums import ExerciseType, SetScheme, SessionStatus, ExerciseSource
 
 
 @dataclass
 class WorkoutSession:
     id: Optional[int]
-    routine_id: Optional[int]
-    routine_day_id: Optional[int]
-    session_type: SessionType
+    routine_key_snapshot: str
+    routine_name_snapshot: str
+    day_key_snapshot: str
+    day_label_snapshot: str
+    day_name_snapshot: str
     status: SessionStatus
-    completed_fully: Optional[bool]
-    day_label_snapshot: Optional[str]
-    day_name_snapshot: Optional[str]
     started_at: str
+    completed_fully: Optional[bool] = None
     finished_at: Optional[str] = None
-    notes: Optional[str] = None
 
 
 @dataclass
 class SessionExercise:
     id: Optional[int]
     session_id: int
-    exercise_id: int
-    routine_day_exercise_id: Optional[int]
     sort_order: int
+    exercise_key_snapshot: str
     exercise_name_snapshot: str
-    notes: Optional[str] = None
+    exercise_type_snapshot: ExerciseType
+    source: ExerciseSource
+    scheme_snapshot: Optional[SetScheme] = None
+    planned_sets: Optional[int] = None
+    target_reps_min: Optional[int] = None
+    target_reps_max: Optional[int] = None
+    target_duration_seconds: Optional[int] = None
+    target_distance_km: Optional[float] = None
+    plan_notes_snapshot: Optional[str] = None
 
 
 @dataclass
 class LoggedSet:
     id: Optional[int]
     session_exercise_id: int
-    exercise_set_target_id: Optional[int]
     set_number: int
-    set_kind: SetKind
+    logged_at: str
     reps: Optional[int] = None
     weight: Optional[float] = None
     duration_seconds: Optional[int] = None
-    distance: Optional[float] = None
-    notes: Optional[str] = None
-    logged_at: Optional[str] = None
+    distance_km: Optional[float] = None
