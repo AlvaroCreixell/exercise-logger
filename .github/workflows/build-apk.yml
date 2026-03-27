@@ -20,9 +20,9 @@ jobs:
           path: |
             /github/home/.buildozer/android/packages
             /github/home/.buildozer/android/platform
-          key: ${{ runner.os }}-buildozer-android-v1-${{ hashFiles('buildozer.spec', '.github/workflows/build-apk.yml') }}
+          key: ${{ runner.os }}-buildozer-android-v2-${{ hashFiles('buildozer.spec', '.github/workflows/build-apk.yml') }}
           restore-keys: |
-            ${{ runner.os }}-buildozer-android-v1-
+            ${{ runner.os }}-buildozer-android-v2-
 
       - name: Mark workspace as safe for git
         shell: bash
