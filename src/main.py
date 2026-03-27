@@ -1,39 +1,38 @@
 """Exercise Logger — main app entry point.
 
-Initializes database, services, screen manager, and bottom navigation.
+Initializes registries, database, services, screen manager, and bottom navigation.
 """
-from kivy.metrics import dp
 from kivy.properties import ObjectProperty, StringProperty
-from kivy.uix.screenmanager import ScreenManager, NoTransition, SlideTransition
+from kivy.uix.screenmanager import ScreenManager, NoTransition
 from kivymd.app import MDApp
 from kivymd.uix.boxlayout import MDBoxLayout
-from kivymd.uix.label import MDLabel
 from kivymd.uix.navigationbar import (
     MDNavigationBar,
     MDNavigationItem,
     MDNavigationItemIcon,
 )
-from kivymd.uix.screen import MDScreen
 
-from src.theme import setup_theme, BACKGROUND, TEXT_SECONDARY
-from src.config import get_db_path
+from src.theme import setup_theme
+from src.config import get_db_path, EXERCISES_CSV_PATH, ROUTINES_DIR, BENCHMARKS_YAML_PATH
 from src.db.connection import create_connection
 from src.db.schema import init_db
 
-from src.repositories.exercise_repo import ExerciseRepo
-from src.repositories.routine_repo import RoutineRepo
-from src.repositories.cycle_repo import CycleRepo
+from src.loaders.exercise_loader import load_exercises
+from src.loaders.routine_loader import load_all_routines
+from src.loaders.benchmark_loader import load_benchmark_config
+
+from src.registries.exercise_registry import ExerciseRegistry
+from src.registries.routine_registry import RoutineRegistry
+from src.registries.benchmark_registry import BenchmarkRegistry
+
+from src.repositories.settings_repo import SettingsRepo
 from src.repositories.workout_repo import WorkoutRepo
 from src.repositories.benchmark_repo import BenchmarkRepo
-from src.repositories.settings_repo import SettingsRepo
 
-from src.services.exercise_service import ExerciseService
-from src.services.routine_service import RoutineService
-from src.services.cycle_service import CycleService
+from src.services.app_state_service import AppStateService
 from src.services.workout_service import WorkoutService
 from src.services.benchmark_service import BenchmarkService
 from src.services.stats_service import StatsService
-from src.services.import_export_service import ImportExportService
 from src.services.settings_service import SettingsService
 
 
@@ -42,36 +41,22 @@ TABS = [
     ("home", "home"),
     ("workout", "dumbbell"),
     ("dashboard", "chart-line"),
-    ("manage", "cog"),
 ]
-
-
-class PlaceholderScreen(MDScreen):
-    """Temporary placeholder for screens not yet built."""
-
-    def __init__(self, screen_name, **kwargs):
-        super().__init__(**kwargs)
-        self.name = screen_name
-        self.md_bg_color = BACKGROUND
-        self.add_widget(MDLabel(
-            text=f"{screen_name.title()} — Coming Soon",
-            halign="center",
-            theme_text_color="Custom",
-            text_color=TEXT_SECONDARY,
-        ))
 
 
 class ExerciseLoggerApp(MDApp):
     """Main application."""
 
+    # Registries (loaded once at startup, read-only)
+    exercise_registry = ObjectProperty(None)
+    routine_registry = ObjectProperty(None)
+    benchmark_registry = ObjectProperty(None)
+
     # Services (set during build, accessed by screens via app.X_service)
-    exercise_service = ObjectProperty(None)
-    routine_service = ObjectProperty(None)
-    cycle_service = ObjectProperty(None)
+    app_state_service = ObjectProperty(None)
     workout_service = ObjectProperty(None)
     benchmark_service = ObjectProperty(None)
     stats_service = ObjectProperty(None)
-    import_export_service = ObjectProperty(None)
     settings_service = ObjectProperty(None)
 
     current_tab = StringProperty("home")
@@ -79,34 +64,53 @@ class ExerciseLoggerApp(MDApp):
     def build(self):
         self.title = "Exercise Logger"
         setup_theme(self)
+        self._init_registries()
         self._init_services()
+        self._run_startup_reconciliation()
         return self._build_ui()
 
+    def _init_registries(self):
+        """Load bundled data files and construct in-memory registries."""
+        exercises = load_exercises(EXERCISES_CSV_PATH)
+        self.exercise_registry = ExerciseRegistry(exercises)
+
+        routines = load_all_routines(ROUTINES_DIR, self.exercise_registry)
+        self.routine_registry = RoutineRegistry(routines)
+
+        benchmark_config = load_benchmark_config(BENCHMARKS_YAML_PATH, self.exercise_registry)
+        self.benchmark_registry = BenchmarkRegistry(benchmark_config)
+
     def _init_services(self):
-        """Create DB connection and instantiate all services."""
+        """Create DB connection, init schema, and instantiate all services."""
         db_path = get_db_path()
         self.conn = create_connection(db_path)
         init_db(self.conn)
 
         # Repos
-        exercise_repo = ExerciseRepo(self.conn)
-        routine_repo = RoutineRepo(self.conn)
-        cycle_repo = CycleRepo(self.conn)
+        settings_repo = SettingsRepo(self.conn)
         workout_repo = WorkoutRepo(self.conn)
         benchmark_repo = BenchmarkRepo(self.conn)
-        settings_repo = SettingsRepo(self.conn)
 
-        # Services
-        self.cycle_service = CycleService(cycle_repo, routine_repo)
-        self.exercise_service = ExerciseService(exercise_repo)
-        self.routine_service = RoutineService(routine_repo, exercise_repo, self.cycle_service)
-        self.workout_service = WorkoutService(workout_repo, routine_repo, exercise_repo, self.cycle_service)
-        self.benchmark_service = BenchmarkService(benchmark_repo, exercise_repo)
-        self.stats_service = StatsService(workout_repo, exercise_repo, benchmark_repo)
-        self.import_export_service = ImportExportService(
-            exercise_repo, routine_repo, benchmark_repo, self.cycle_service,
+        # Services (constructor injection, in dependency order)
+        self.app_state_service = AppStateService(
+            settings_repo, self.routine_registry, workout_repo
+        )
+        self.workout_service = WorkoutService(
+            workout_repo, settings_repo, self.exercise_registry,
+            self.routine_registry, self.app_state_service,
+        )
+        self.benchmark_service = BenchmarkService(
+            benchmark_repo, self.benchmark_registry, self.exercise_registry
+        )
+        self.stats_service = StatsService(
+            workout_repo, benchmark_repo, self.exercise_registry, self.benchmark_registry
         )
         self.settings_service = SettingsService(settings_repo, self.conn)
+
+    def _run_startup_reconciliation(self):
+        """Run AppStateService reconciliation and log the result."""
+        result = self.app_state_service.reconcile_on_startup()
+        print(f"[startup] reconciliation: {result}")
 
     def _build_ui(self):
         """Assemble root layout: screen manager + bottom nav."""
@@ -117,27 +121,12 @@ class ExerciseLoggerApp(MDApp):
 
         # Import real screens
         from src.screens.home.home_screen import HomeScreen
-        from src.screens.manage.manage_screen import ManageScreen
         from src.screens.workout.workout_screen import WorkoutScreen
         from src.screens.dashboard.dashboard_screen import DashboardScreen
 
         self.tab_manager.add_widget(HomeScreen(name="home"))
         self.tab_manager.add_widget(WorkoutScreen(name="workout"))
         self.tab_manager.add_widget(DashboardScreen(name="dashboard"))
-        self.tab_manager.add_widget(ManageScreen(name="manage"))
-
-        # Wire Manage detail screens
-        from src.screens.manage.units_screen import UnitsScreen
-        from src.screens.manage.exercise_catalog_screen import ExerciseCatalogScreen
-        from src.screens.manage.routine_editor_screen import RoutineEditorScreen
-        from src.screens.manage.benchmark_setup_screen import BenchmarkSetupScreen
-        from src.screens.manage.import_export_screen import ImportExportScreen
-        manage_screen = self.tab_manager.get_screen("manage")
-        manage_screen.add_detail_screen("units", UnitsScreen(name="manage_units"))
-        manage_screen.add_detail_screen("exercises", ExerciseCatalogScreen(name="manage_exercises"))
-        manage_screen.add_detail_screen("routines", RoutineEditorScreen(name="manage_routines"))
-        manage_screen.add_detail_screen("benchmarks", BenchmarkSetupScreen(name="manage_benchmarks"))
-        manage_screen.add_detail_screen("import_export", ImportExportScreen(name="manage_import_export"))
 
         self.root_layout.add_widget(self.tab_manager)
 
