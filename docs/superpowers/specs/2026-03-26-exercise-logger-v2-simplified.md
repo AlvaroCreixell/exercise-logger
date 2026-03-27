@@ -156,7 +156,11 @@ YAML rules:
 | `time` | `uniform` only | `duration_seconds` required |
 | `cardio` | `uniform` only | `duration_seconds` and/or `distance_km` (both optional — routine can just say "run") |
 
-**Progressive scheme = open reps.** No per-set rep targets. The user decides reps and weight each set. The app's ⓘ tooltip *suggests* a common protocol (~15 reps light → ~8 reps moderate → 4+ reps heavy), but this is coaching guidance, not enforced logic. Any number of sets is valid. App behavior for progressive: no reps pre-fill from plan, stepper starts from previous set or last session.
+**Progressive scheme = open reps.** No per-set rep targets. The user decides reps and weight each set. The app's ⓘ tooltip *suggests* a common protocol:
+
+> **Progressive loading:** Start light ~15 reps (leave 3 in the tank). Increase weight, ~8 reps (leave 1-2 in the tank). Go heavy, 4+ reps (aim for failure — keep going until you can't).
+
+This is coaching guidance, not enforced logic. Any number of sets is valid. App behavior for progressive: no reps pre-fill from plan, stepper starts from previous set or last session.
 
 **Cardio planned targets are optional.** A routine can prescribe "run" with no distance or duration — the user decides how far/long. The requirement for "at least one metric" applies only to **logged sets** (see Logged Set Invariants), not to planned targets.
 
@@ -192,7 +196,8 @@ Invalid bundled data is fatal. The app must not silently downgrade or ignore inv
 Loader failures include:
 - Malformed CSV or YAML
 - Duplicate exercise keys
-- Duplicate routine keys or day keys
+- Duplicate routine keys
+- Duplicate day keys within a routine (day keys are scoped to their routine, not globally unique)
 - Unknown `exercise_key` in routine or benchmark config
 - Invalid exercise type or benchmark method
 - Missing `duration_seconds` for `time` exercises (required in plan)
@@ -333,6 +338,15 @@ Snapshots of exercise key + name so history survives catalog renames.
 
 ---
 
+## Service-Level Invariants
+
+SQLite cannot enforce all domain rules. Services must also enforce:
+- Only one `in_progress` workout session may exist.
+- `active_routine_key` must reference a loaded routine template.
+- `current_day_key` must reference a day within the active routine.
+- `scheme_snapshot` must be set for `source='planned'` exercises (schema allows NULL for ad-hoc flexibility).
+- Logged set fields must match the exercise type snapshot on the session exercise.
+
 ## Logged Set Invariants
 
 SQLite CHECK constraints prevent obviously invalid data. Services enforce type-specific rules:
@@ -398,7 +412,7 @@ Current-session and finished-session sets may be edited or deleted.
 - `set_number` must stay contiguous after a delete.
 - Changing a set rewrites the row in place.
 - Exercise type cannot change (comes from catalog snapshot).
-- If deleting reduces a finished session to zero sets, the session is deleted (same cleanup as Cancel). This prevents orphaned zero-set finished sessions from polluting stats.
+- If deleting reduces a finished session to zero sets, the session is deleted (same cleanup as Cancel). This does NOT rewind `current_day_key` — the cycle advancement that happened when the session was originally finished is permanent. This prevents orphaned zero-set finished sessions from polluting stats.
 
 ### Finish, End Early, Cancel
 
