@@ -1,0 +1,6 @@
+frequency_weeks: 6
+items:
+  - exercise_key: bench_press
+    method: max_weight
+  - exercise_key: plank
+    method: timed_hold
