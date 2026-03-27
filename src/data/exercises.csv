@@ -28,30 +28,35 @@ dumbbell_kickback,Dumbbell Kickback,reps_weight,Dumbbell,Arms
 dumbbell_lunge,Dumbbell Lunge,reps_weight,Dumbbell,Legs
 dumbbell_romanian_deadlift,Dumbbell Romanian Deadlift,reps_weight,Dumbbell,Legs
 dumbbell_shrug,Dumbbell Shrug,reps_weight,Dumbbell,Back
-lat_pulldown,Lat Pulldown,reps_weight,Cable Machine,Back
-seated_cable_row,Seated Cable Row,reps_weight,Cable Machine,Back
-cable_crossover,Cable Crossover,reps_weight,Cable Machine,Chest
-face_pull,Face Pull,reps_weight,Cable Machine,Shoulders
-cable_tricep_pushdown,Cable Tricep Pushdown,reps_weight,Cable Machine,Arms
-cable_curl,Cable Curl,reps_weight,Cable Machine,Arms
-cable_lateral_raise,Cable Lateral Raise,reps_weight,Cable Machine,Shoulders
-cable_woodchop,Cable Woodchop,reps_weight,Cable Machine,Core
+chest_press_machine,Chest Press Machine,reps_weight,Machine,Chest
+pec_deck,Pec Deck / Fly Machine,reps_weight,Machine,Chest
 leg_press,Leg Press,reps_weight,Machine,Legs
 leg_extension,Leg Extension,reps_weight,Machine,Legs
 leg_curl,Leg Curl,reps_weight,Machine,Legs
-hack_squat,Hack Squat,reps_weight,Machine,Legs
 calf_raise_machine,Calf Raise Machine,reps_weight,Machine,Legs
-hip_abductor_machine,Hip Abductor Machine,reps_weight,Machine,Legs
-chest_press_machine,Chest Press Machine,reps_weight,Machine,Chest
-pec_deck,Pec Deck,reps_weight,Machine,Chest
+adductor_machine,Adductor Machine,reps_weight,Machine,Legs
+abductor_machine,Abductor Machine,reps_weight,Machine,Legs
 shoulder_press_machine,Shoulder Press Machine,reps_weight,Machine,Shoulders
-assisted_pull_up_machine,Assisted Pull-Up Machine,reps_weight,Machine,Back
-smith_machine_squat,Smith Machine Squat,reps_weight,Smith Machine,Legs
-smith_machine_bench_press,Smith Machine Bench Press,reps_weight,Smith Machine,Chest
+reverse_pec_deck,Reverse Pec Deck,reps_weight,Machine,Shoulders
+lat_pulldown,Lat Pulldown,reps_weight,Machine / Cable,Back
+seated_cable_row,Seated Cable Row,reps_weight,Cable,Back
+t_bar_row,T-Bar Row,reps_weight,Machine,Back
+tricep_pushdown,Tricep Pushdown,reps_weight,Cable,Arms
+cable_curl,Cable Curl,reps_weight,Cable,Arms
+cable_crossover,Cable Crossover,reps_weight,Cable,Chest
+face_pull,Face Pull,reps_weight,Cable,Shoulders
+cable_lateral_raise,Cable Lateral Raise,reps_weight,Cable,Shoulders
+cable_crunch,Cable Crunch,reps_weight,Cable,Core
+kettlebell_swing,Kettlebell Swing,reps_weight,Kettlebell,Legs / Back
+farmers_carry,Farmer's Carry,reps_weight,Kettlebell / Dumbbell,Full Body
 pull_up,Pull-Up,reps_weight,Bodyweight,Back
 chin_up,Chin-Up,reps_weight,Bodyweight,Back
-push_up,Push-Up,reps_weight,Bodyweight,Chest
 inverted_row,Inverted Row,reps_weight,Bodyweight,Back
+push_up,Push-Up,reps_weight,Bodyweight,Chest
+wide_push_up,Wide Push-Up,reps_weight,Bodyweight,Chest
+diamond_push_up,Diamond Push-Up,reps_weight,Bodyweight,Arms
+decline_push_up,Decline Push-Up,reps_weight,Bodyweight,Chest
+pike_push_up,Pike Push-Up,reps_weight,Bodyweight,Shoulders
 dip,Dip,reps_weight,Bodyweight,Chest / Arms
 squat,Squat,reps_weight,Bodyweight,Legs
 lunge,Lunge,reps_weight,Bodyweight,Legs
