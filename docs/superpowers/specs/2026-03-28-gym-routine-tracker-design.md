@@ -266,6 +266,7 @@ One row per logged set slot.
 | `sessionId` | string | FK to `sessions` |
 | `sessionExerciseId` | string | FK to `sessionExercises` |
 | `exerciseId` | string | Denormalized for querying |
+| `instanceLabel` | string or null | Denormalized from sessionExercises for progression matching |
 | `origin` | enum | `routine`, `extra` |
 | `blockIndex` | number | Index within `setBlocksSnapshot`; `0` for extras |
 | `blockSignature` | string | Normalized signature for progression matching |
@@ -279,9 +280,28 @@ One row per logged set slot.
 | `updatedAt` | string | ISO UTC timestamp |
 
 Notes:
-- Weighted bodyweight movements store added external load in `performedWeightKg`.
-- Unweighted bodyweight sets store `performedWeightKg = null`.
 - For unilateral movements, reps are logged per side if that is how the routine is written. The app does not multiply or derive totals.
+
+### Weighted bodyweight rules
+
+A bodyweight exercise is treated as "weighted" when ANY of the following are true:
+- the routine entry has `type_override: weight` (explicit in YAML)
+- the routine entry has `equipment_override` set to anything other than `bodyweight`
+- the user logs a non-null `performedWeightKg` value for any set in the session
+
+When weighted:
+- the set logging form shows a weight input field (pre-filled from last session or suggestion)
+- `effectiveType` on `sessionExercises` is set to `weight`
+- `performedWeightKg` stores the added external load (e.g., 20kg for weighted dips means 20kg belt weight, not body weight + 20kg)
+- automated progression applies (5% increase when all sets hit the ceiling)
+
+When unweighted:
+- the set logging form shows reps only, no weight input
+- `effectiveType` remains `bodyweight`
+- `performedWeightKg = null`
+- no weight-based progression suggestion (history shown for reps only)
+
+The determination is made per session exercise, not globally. The same exercise (e.g., Dips) can be weighted in one routine and unweighted in another.
 
 ### `settings`
 
@@ -305,7 +325,7 @@ Minimum required indexes:
 - `loggedSets`: `sessionId`
 - `loggedSets`: `[sessionExerciseId+blockIndex+setIndex]`
 - `loggedSets`: `[exerciseId+loggedAt]`
-- `loggedSets`: `[exerciseId+blockSignature+loggedAt]`
+- `loggedSets`: `[exerciseId+instanceLabel+blockSignature+loggedAt]`
 
 ## 8. Exercise Catalog Contract
 
@@ -640,16 +660,20 @@ These blocks have separate suggestions and separate history matching.
 
 For a routine block, use the most recent finished session that contains:
 - the same `exerciseId`
+- the same `instanceLabel` (including null — null only matches null)
 - the same `origin = "routine"`
 - the same `blockSignature`
 
 Fallback if no exact block-signature match exists:
 - same `exerciseId`
+- same `instanceLabel`
 - same `origin = "routine"`
 - same `tag`
 - same `targetKind`
 
 If no fallback exists, there is no automatic suggestion.
+
+The `instanceLabel` requirement prevents duplicate same-day exercise entries from collapsing into a single suggestion/history stream.
 
 ### `blockSignature`
 
@@ -812,7 +836,7 @@ Activation rules:
 - if a newly imported routine has never been used, its initial `nextDayId` is `dayOrder[0]`
 
 Deletion rules:
-- if deleting the active routine and other routines remain, prompt the user to confirm and automatically activate the first remaining routine by stable sort order
+- if deleting the active routine and other routines remain, prompt the user to confirm and automatically activate the earliest remaining routine by `importedAt` ASC
 - if deleting the last remaining routine, allow it and set `activeRoutineId = null`
 - routine deletion must not break existing history because sessions use snapshots
 
@@ -824,6 +848,13 @@ Data:
 - export JSON
 - import JSON
 - clear all data with double confirmation
+
+Clear all data behavior:
+- deletes all routines, sessions, sessionExercises, loggedSets, and settings
+- does NOT delete the exercise catalog (it is re-seeded from CSV on app init regardless)
+- after deletion, recreates a default settings record (`activeRoutineId = null`, `units = "kg"`, `theme = "system"`)
+- the app returns to the empty state (no routines loaded, no history)
+- blocked while an active session exists (same rule as import)
 
 ## 14. Import and Export
 
