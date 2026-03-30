@@ -2,6 +2,15 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> **⚠ ERRATA — READ BEFORE IMPLEMENTING ⚠**
+> Full errata: `docs/superpowers/plans/2026-03-30-plan-errata.md`
+> Fixes for this phase: **S1, P2-A, P2-B, P2-C**. Apply these during implementation — they override the corresponding code below.
+>
+> **S1 [SPEC AMENDMENT]:** `instanceLabel` must be `string` (NOT `string | null`) on both `SessionExercise` and `LoggedSet`. Use `""` as the null sentinel. Reason: Dexie/IndexedDB silently excludes rows with `null` components from compound indexes. The `[exerciseId+instanceLabel+blockSignature+loggedAt]` index is critical for progression matching — storing `null` makes most rows invisible to it. Apply this to the type definitions AND fix any tests that insert `null` and query with `""`.
+> **P2-A [CERTAIN]:** Add `RoutineCardio`, `RoutineCardioOption` types and ensure `Routine` includes `notes: string[]` and `cardio: RoutineCardio | null`. These are shared contracts Phase 3 depends on. Define: `interface RoutineCardioOption { name: string; detail: string; }` and `interface RoutineCardio { notes: string; options: RoutineCardioOption[]; }`.
+> **P2-B [CERTAIN]:** Apply the `instanceLabel: string` normalization from S1 at the type level. Default to `""`. Fix the compound index test that inserts `instanceLabel: null`.
+> **P2-C [DESIGN DECISION — RESOLVED]:** Keep `tagnormal` as the sentinel in `blockSignature` for blocks without a tag. This matches the spec examples exactly (`reps:8-12:count3:tagnormal`). No code change needed — just be aware this is intentional.
+
 **Goal:** Define all TypeScript domain types, create the Dexie database with all 6 tables and indexes, implement settings initialization, and build foundational helper functions (blockSignature, unit conversion, UUID, slug, ISO timestamp).
 
 **Architecture:** All domain types live in `web/src/domain/` as pure TypeScript — no React, no UI. The Dexie database class lives in `web/src/db/database.ts` and declares all 6 tables with their indexes. Helper functions are small, pure, independently testable modules in `web/src/domain/`. Tests live in `web/tests/unit/domain/` and `web/tests/unit/db/`.

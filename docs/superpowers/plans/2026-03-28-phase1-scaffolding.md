@@ -2,6 +2,18 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> **⚠ ERRATA — READ BEFORE IMPLEMENTING ⚠**
+> Full errata: `docs/superpowers/plans/2026-03-30-plan-errata.md`
+> Fixes for this phase: **P1-A through P1-G**. Apply these during implementation — they override the corresponding code below.
+>
+> **P1-A [CERTAIN]:** Add `npm install -D @types/node` before the Vite config step. Without it, `import path` and `__dirname` error.
+> **P1-B [CERTAIN]:** Use `npm install -D` (not `npm install`) for `tailwindcss`, `@tailwindcss/vite`, and `vite-plugin-pwa`. These are build-time devDependencies.
+> **P1-C [CERTAIN]:** Split the PWA icon `purpose: "any maskable"` into two separate entries: one `"any"` and one `"maskable"`. Single entry is a documented anti-pattern.
+> **P1-D [MINOR]:** Generate placeholder icons at the actual declared dimensions (192x192, 512x512), not 1x1.
+> **P1-E [CAUTION]:** Vite 8 is very new. If `vite-plugin-pwa` has compatibility issues, pin to Vite 7.
+> **P1-F [CAUTION]:** Drop `-t vite` from `npx shadcn@latest init`. Let CLI auto-detect on existing projects to avoid file overwrites.
+> **P1-G [MINOR]:** Change `test:e2e` script to `npm run build && playwright test` so standalone `npx playwright test` doesn't serve stale output.
+
 **Goal:** Create the `web/` project with Vite + React + TypeScript, configure all tooling (Tailwind v4, shadcn/ui, PWA, testing), build a mobile-first app shell with bottom tab navigation and 4 routes, and set up GitHub Pages CI/CD.
 
 **Architecture:** A Vite-bundled React SPA lives in `web/` at the repo root, isolated from the legacy Python/Kivy app. The app shell uses React Router for client-side routing between 4 screens (Today, Workout, History, Settings) with a persistent bottom tab bar. The PWA shell is configured for installability and offline caching from day one.

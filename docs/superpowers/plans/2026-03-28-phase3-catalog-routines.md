@@ -2,6 +2,16 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> **⚠ ERRATA — READ BEFORE IMPLEMENTING ⚠**
+> Full errata: `docs/superpowers/plans/2026-03-30-plan-errata.md`
+> Fixes for this phase: **P3-A through P3-E**. Apply these during implementation — they override the corresponding code below.
+>
+> **P3-A [CERTAIN]:** Add equipment enum validation to the CSV parser. Currently `parseExerciseCatalog` uses `as ExerciseEquipment` cast without checking. Validate each equipment value against the `VALID_EQUIPMENT` set (already exists in the routine service). Reject or warn on unknown values like `"Trampoline"`.
+> **P3-B [CERTAIN]:** Resolve compound equipment values in CSV: `Lat Pulldown` = `Machine / Cable`, `Farmer's Carry` = `Kettlebell / Dumbbell`. Decision: **first value wins** after split on `/` and trim. `Lat Pulldown` → `machine`, `Farmer's Carry` → `kettlebell`. Document and test this behavior.
+> **P3-C [CERTAIN]:** Delete the malformed `Burpees,,,` row (line 83) and trailing blank line from the CSV. It has empty Type/Equipment/Muscle Group and duplicates `Burpee`.
+> **P3-D [CERTAIN]:** Fix `Run/walk` slug inconsistency. The slugify function strips `/`, producing `runwalk`, but Phase 5 references this exercise as `run-walk`. **Fix: rename the CSV entry from `Run/walk` to `Run-Walk`** so slugify produces `run-walk`.
+> **P3-E [MINOR]:** Add a positive test case for `distance` target kind (e.g., `{ distance: 2000, count: 1 }`). No test currently validates this target type.
+
 **Goal:** Update the exercise catalog CSV with 8 missing exercises and trimmed columns, build a CSV parser that seeds the exercises table on app init, install the YAML parser, implement full routine validation (all 11 rules from spec section 9), normalize YAML authoring format into the `Routine` record shape, and write the actual Full Body 3-Day Rotation YAML template file.
 
 **Architecture:** The CSV parser lives in `web/src/lib/csv-parser.ts` as a generic utility. The catalog service in `web/src/services/catalog-service.ts` uses it to parse the embedded CSV and seed/update the Dexie `exercises` table. The routine service in `web/src/services/routine-service.ts` uses `yaml` (npm package) to parse YAML, validates against all spec rules, and normalizes into the `Routine` type from Phase 2. All validation errors are specific, field-level, and user-readable. Tests live in `web/tests/unit/`.

@@ -2,6 +2,32 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> **⚠ ERRATA — READ BEFORE IMPLEMENTING ⚠**
+> Full errata: `docs/superpowers/plans/2026-03-30-plan-errata.md`
+> Fixes for this phase: **P5-A through P5-F**. These fix real bugs in the code below. Apply during implementation.
+>
+> **P5-A [CERTAIN — BUG]:** `allSetsHitCeiling` only checks `performedReps`, ignoring `performedDurationSec` and `performedDistanceM`. A weight exercise with a duration target (e.g., farmer's walk 30-60s) would always return `false`. Fix: inspect `block.targetKind` and compare ceiling against the appropriate field:
+> ```ts
+> function allSetsHitCeiling(sets: LoggedSet[], ceiling: number, targetKind: TargetKind): boolean {
+>   return sets.every(ls => {
+>     if (targetKind === "reps") return ls.performedReps !== null && ls.performedReps >= ceiling;
+>     if (targetKind === "duration") return ls.performedDurationSec !== null && ls.performedDurationSec >= ceiling;
+>     if (targetKind === "distance") return ls.performedDistanceM !== null && ls.performedDistanceM >= ceiling;
+>     return false;
+>   });
+> }
+> ```
+> **P5-B [CERTAIN — BUG]:** Minimum increment guard: `roundToIncrement(1, "barbell", "kg")` = `Math.round(1/2.5)*2.5` = **0**. The fallback adds 0 instead of one increment. Fix: use `getIncrement()` directly:
+> ```ts
+> if (suggestedWeightKg <= previousWeightKg) {
+>   suggestedWeightKg = previousWeightKg + getIncrement(effectiveEquipment, "kg");
+> }
+> ```
+> **P5-C [RECOMMENDED]:** Replace hardcoded `/ 2.20462` (lines ~409, ~428) with the Phase 2 `lbsToKg()` helper for single source of truth on conversion constants.
+> **P5-D [RECOMMENDED]:** `getBlockLabel` produces "Set block 2" for untagged blocks, but the spec example shows "Back-off: 70kg x 12, 11, 10". Add heuristic: if a block follows a `top`-tagged block and has no tag, label it "Back-off".
+> **P5-E [MINOR]:** Strengthen the lbs rounding test: assert the exact expected canonical kg value within floating-point tolerance, not just `toBeGreaterThan(100)`.
+> **P5-F [CERTAIN]:** Phase 5 references `run-walk` as an exercise ID. After applying P3-D (renaming CSV `Run/walk` → `Run-Walk`), verify this reference matches the corrected slug.
+
 **Goal:** Implement per-block history matching, weight suggestion engine, and last-time data retrieval. This covers block matching (primary + fallback strategies), automated progression with practical rounding, all no-suggestion cases, last-time display data, extra exercise history, and invariant guards 7 and 8.
 
 **Architecture:** One new service file: `web/src/services/progression-service.ts` contains all progression and history logic as pure functions that query Dexie. No UI, no Zustand, no React -- pure data layer. The service consumes types, helpers, and database from Phases 2-4. Tests live in `web/tests/unit/services/progression-service.test.ts`.

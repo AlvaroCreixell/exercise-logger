@@ -1,4 +1,0 @@
-frequency_weeks: 6
-items:
-  - exercise_key: nonexistent_exercise
-    method: max_weight

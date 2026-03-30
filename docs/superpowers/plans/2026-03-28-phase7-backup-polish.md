@@ -2,6 +2,21 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> **⚠ ERRATA — READ BEFORE IMPLEMENTING ⚠**
+> Full errata: `docs/superpowers/plans/2026-03-30-plan-errata.md`
+> Fixes for this phase: **P7-A through P7-F**. Apply during implementation — they fix validation gaps and test failures.
+>
+> **P7-A [CERTAIN]:** `validateRoutine` during import does NOT check `exerciseId` references inside `routine.days[*].entries[*]` against the current catalog. Add a loop that validates every `exerciseId` in routine entries and superset items. Routines with stale exercise references must fail import.
+> **P7-B [CERTAIN]:** `validateRoutine` does NOT deeply validate `RoutineDay` or `RoutineEntry` internal structure. Add checks: `entries` array exists, each entry has valid `kind`, set blocks are structurally valid, etc. Reuse validation logic from `routine-service.ts` if possible.
+> **P7-C [RECOMMENDED]:** Add cross-record FK integrity checks: `settings.activeRoutineId` → must match an imported routine (or be null), `sessionExercises.sessionId` → imported session, `loggedSets.sessionExerciseId` → imported sessionExercise.
+> **P7-D [CERTAIN — BUG]:** `full-workflow.spec.ts` hardcodes `http://localhost:5173/exercise-logger/` but Phase 1's Playwright config uses port **4173** (preview server). Change to 4173, or better, use Playwright's configured `baseURL` instead of hardcoding:
+> ```ts
+> // WRONG: const BASE_URL = "http://localhost:5173/exercise-logger/";
+> // CORRECT: remove BASE_URL, use page.goto("/") — Playwright applies baseURL from config
+> ```
+> **P7-E [RECOMMENDED]:** The "full workflow" E2E test claims to cover "log a set, export, import round-trip" but finishes without logging any set and only checks export button visibility. Add: tap a set slot, fill values, submit. Verify export triggers a download.
+> **P7-F [RECOMMENDED]:** After importing a backup with an active session, navigate to Workout screen or show a prominent toast. The spec says "the app must resume it after import" — currently the user is left on Settings with no feedback.
+
 **Goal:** Implement export/import/clear-all-data in a new `backup-service.ts`, wire those functions into the existing SettingsScreen (replacing Phase 6 placeholders), finalize the PWA manifest and service worker for offline-first installability, verify all empty states and error messages, and build the full acceptance test suite covering all 16 scenarios from the design spec.
 
 **Architecture:** One new service file `web/src/services/backup-service.ts` owns export, import, and clear-all-data logic as pure functions operating on Dexie. The SettingsScreen from Phase 6 is modified to import and call these functions instead of the placeholder `alert()` calls. PWA configuration in `web/vite.config.ts` is updated for production-ready offline-first behavior. Acceptance tests live in `web/tests/integration/` (Vitest + fake-indexeddb) and `web/tests/e2e/` (Playwright).

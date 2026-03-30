@@ -8,6 +8,8 @@
 
 **Spec:** `docs/superpowers/specs/2026-03-28-gym-routine-tracker-design.md`
 
+**Errata:** `docs/superpowers/plans/2026-03-30-plan-errata.md` — consolidated audit fixes (2026-03-30). Read BEFORE implementing any phase. Fixes supersede corresponding code in phase plan files.
+
 ---
 
 ## Sequencing Rationale
@@ -69,6 +71,8 @@ Each phase gets its own detailed plan document written before execution begins.
   - `SessionExercise`, `SessionExerciseOrigin`, `GroupType`
   - `LoggedSet`
   - `Settings`
+  - `RoutineCardio`, `RoutineCardioOption` (routine cardio section types)
+- `instanceLabel` must be `string` (not `string | null`) everywhere — use `""` as null sentinel for Dexie compound index compatibility (see errata S1)
 - Dexie database class with all 6 tables, schema version 1, and all indexes from spec section 7
 - Settings initialization (create default record if none exists)
 - `blockSignature` generation helper (spec section 11)
@@ -131,11 +135,11 @@ Each phase gets its own detailed plan document written before execution begins.
 - **Finish session:** set status to `finished`, set `finishedAt`, advance `nextDayId` on the source routine using `dayOrderSnapshot` (invariant 3). Allow finishing with unlogged sets (spec: "may finish even if some prescribed sets were not logged").
 - **Day override:** start session with a non-suggested day. Rotation advances to the day after the override pick.
 - **Add extra exercise:** append a `sessionExercise` with `origin = "extra"`, no setBlocksSnapshot, at the end of orderIndex. Only allowed during active session (invariant 6).
-- **Log set:** create or update `loggedSets` row keyed by `[sessionExerciseId, blockIndex, setIndex]` (invariant 9). Denormalize `exerciseId`, `instanceLabel`, `origin`, `blockSignature` from the sessionExercise.
-- **Edit set:** update existing loggedSet, set `updatedAt`.
+- **Log set:** create or update `loggedSets` row keyed by `[sessionExerciseId, blockIndex, setIndex]` (invariant 9). Denormalize `exerciseId`, `instanceLabel`, `origin`, `blockSignature` from the sessionExercise. Weighted bodyweight promotion must run after BOTH create and update paths (see errata P4-D).
+- **Edit set:** update existing loggedSet, set `updatedAt`. Also trigger weighted bodyweight promotion if applicable (see errata P4-E).
 - **Delete set:** remove the loggedSet row.
 - **Weighted bodyweight detection:** resolve `effectiveType` based on routine override, equipment override, or user-logged weight (spec section 7 rules).
-- **Guard: block routine activation/deletion during active session** (invariant 13).
+- **Guard: block routine activation/deletion during active session** (invariant 13). Active-session check must be inside the Dexie transaction (see errata P4-B).
 
 **Deliverables:**
 - All session operations as pure functions / Dexie transactions
@@ -156,7 +160,7 @@ Each phase gets its own detailed plan document written before execution begins.
 
 **Scope:**
 - **Block matching:** given a sessionExercise and blockIndex, find the most recent finished session's loggedSets that match on `exerciseId` + `instanceLabel` + `blockSignature`. Implement fallback (same exerciseId + instanceLabel + tag + targetKind).
-- **Suggestion engine:** evaluate all 4 conditions for automated progression (range target, weight/weighted-bodyweight type, all expected sets logged, all hit ceiling). Calculate 5% increase with practical rounding per equipment type and display unit.
+- **Suggestion engine:** evaluate all 4 conditions for automated progression (range target, weight/weighted-bodyweight type, all expected sets logged, all hit ceiling). The ceiling check must inspect `targetKind` to compare against the correct performed field — not just `performedReps` (see errata P5-A). Calculate 5% increase with practical rounding per equipment type and display unit. Use `getIncrement()` directly for minimum increment guard (see errata P5-B).
 - **No-suggestion cases:** exact-rep blocks, exact-distance, cardio, extras, partial completion, no match.
 - **Last-time display data:** retrieve per-block history for an exercise card. Format: `{ blockLabel, sets: [{ weightKg, reps, duration, distance }] }`. Multi-block exercises return separate entries per block.
 - **Extra exercise history:** most recent sets for that exerciseId regardless of routine position or instanceLabel.
@@ -192,7 +196,7 @@ Each phase gets its own detailed plan document written before execution begins.
 - Active session → scrollable list of sessionExercises in orderIndex
 - Exercise card: name, notes, prescribed set blocks with set slots, per-block last-time data, per-block suggestion (from Phase 5), tap-to-log interaction
 - Superset rendering: visually connected pair
-- Set logging form: pre-filled from current value → last-time → blank. Fields determined by effectiveType (weight+reps, reps-only, duration, distance+duration).
+- Set logging form: pre-filled from current value → last-time → blank. Fields determined by block `targetKind` for routine exercises (see errata S2), with `effectiveType` controlling weight input visibility. Fallback to `effectiveType`-driven fields for extras.
 - Extra exercises: "Add Exercise" button → catalog picker with muscle group filter tabs (invariant 11). Extras render without prescription blocks.
 - Footer: "Finish Workout", "Discard Workout"
 
@@ -272,7 +276,7 @@ Each phase gets its own detailed plan document written before execution begins.
 
 **Acceptance test suite:**
 - All 16 scenarios from spec section 16 covered
-- Playwright E2E smoke tests for the critical flows: import routine → start workout → log sets → finish → check history → export → import round-trip
+- Playwright E2E smoke tests for the critical flows: import routine → start workout → log at least one set → finish → check history → verify export button (see errata P7-E for scope alignment). Use port 4173 (preview), not 5173 (dev) — see errata P7-D.
 
 **Deliverables:**
 - Export/import working and tested (scenario 15-16)
@@ -362,7 +366,6 @@ web/
 │       └── full-body-3day.yaml     # Reference routine template
 ├── index.html
 ├── vite.config.ts
-├── tailwind.config.ts
 ├── tsconfig.json
 ├── package.json
 └── playwright.config.ts
@@ -374,6 +377,13 @@ This structure enforces the spec's ownership rule: domain types and services are
 
 ## Execution
 
-Each phase is executed by writing its detailed plan first, then implementing it. The detailed plan will contain exact file paths, code, test commands, and commit points following the writing-plans skill format.
+Each phase is executed by implementing its detailed plan. Before starting any phase:
 
-To begin: write the detailed plan for Phase 1, then execute it.
+1. Read the errata file (`docs/superpowers/plans/2026-03-30-plan-errata.md`) for that phase's fixes
+2. Apply all CERTAIN fixes — these override the corresponding code in the phase plan
+3. Apply RECOMMENDED fixes unless there's a specific reason to defer
+4. The phase plan's code is the baseline; the errata's fixes are patches on top
+
+The detailed plans contain exact file paths, code, test commands, and commit points.
+
+To begin: execute Phase 1, applying errata P1-A through P1-G during implementation.

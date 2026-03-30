@@ -2,6 +2,47 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> **⚠ ERRATA — READ BEFORE IMPLEMENTING ⚠**
+> Full errata: `docs/superpowers/plans/2026-03-30-plan-errata.md`
+> Fixes for this phase: **P4-A through P4-H**. These fix real bugs in the code below. Apply during implementation.
+>
+> **P4-A [CERTAIN]:** Remove the dead `startSession` function and its helpers (`buildSessionExercises`, `buildSingleSessionExercise`). Only `startSessionWithCatalog` should exist. The dead code has placeholder values (`""` name, `"weight"` type, `"barbell"` equipment) that would produce silently wrong data if accidentally called.
+> **P4-B [CERTAIN]:** `setActiveRoutine` and `deleteRoutine` check `hasActiveSession(db)` OUTSIDE the Dexie transaction — this is a TOCTOU race that can violate invariant 13. Move the active-session check INSIDE the transaction:
+> ```ts
+> // WRONG (current plan):
+> const hasActive = await hasActiveSession(db);
+> if (hasActive) throw ...;
+> await db.transaction("rw", [...], async () => { /* mutation */ });
+>
+> // CORRECT:
+> await db.transaction("rw", [db.settings, db.routines, db.sessions], async () => {
+>   const active = await db.sessions.where("status").equals("active").first();
+>   if (active) throw ...;
+>   /* mutation */
+> });
+> ```
+> **P4-C [CERTAIN]:** In `deleteRoutine`, move the `getSettings(db)` read INSIDE the transaction to avoid stale-data risk.
+> **P4-D [CERTAIN — BUG]:** In `logSet`, the `if (existing)` branch returns at line ~1261 BEFORE the weighted bodyweight promotion code at line ~1286. The promotion check is unreachable on update. Fix: move promotion AFTER both branches:
+> ```ts
+> let result: LoggedSet;
+> if (existing) {
+>   await db.loggedSets.update(existing.id, updated);
+>   result = { ...existing, ...updated } as LoggedSet;
+> } else {
+>   await db.loggedSets.add(loggedSet);
+>   result = loggedSet;
+> }
+> // Promotion runs for BOTH create and update:
+> if (input.performedWeightKg !== null && sessionExercise.effectiveType === "bodyweight") {
+>   await db.sessionExercises.update(sessionExerciseId, { effectiveType: "weight" });
+> }
+> return result;
+> ```
+> **P4-E [RECOMMENDED]:** Add weighted bodyweight promotion to `editSet` too. If a user edits a bodyweight set to add weight, `effectiveType` should promote.
+> **P4-F [RECOMMENDED]:** Add a negative test: editing a set to `performedWeightKg = null` does NOT demote `effectiveType` back to `"bodyweight"`.
+> **P4-G [RECOMMENDED]:** Validate `setIndex` against `block.count` in `logSet`. Reject out-of-range values at the service layer.
+> **P4-H [CERTAIN]:** Verify `deleteRoutine` implements auto-activation: "if deleting the active routine and other routines remain, activate the earliest remaining by `importedAt` ASC." If not present, add it.
+
 **Goal:** Implement all session lifecycle operations as tested domain functions, independent of UI. This includes start, resume, discard, finish, day override, add extra exercise, log/edit/delete sets, weighted bodyweight detection, and the routine activation/deletion guard.
 
 **Architecture:** Two new service files: `web/src/services/session-service.ts` for session lifecycle operations and `web/src/services/set-service.ts` for set logging operations. A new `web/src/services/settings-service.ts` for settings CRUD and the routine guard. All operations use Dexie transactions where atomicity is required. No UI, no Zustand, no React -- pure data layer with Dexie as the only external dependency.
