@@ -1,9 +1,24 @@
 /// <reference types="vitest/config" />
 import path from "path";
-import { defineConfig } from "vite";
+import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { VitePWA } from "vite-plugin-pwa";
+import fs from "fs";
+
+function copyIndexTo404(): Plugin {
+  return {
+    name: "copy-index-to-404",
+    closeBundle() {
+      const dist = path.resolve(__dirname, "dist");
+      const index = path.join(dist, "index.html");
+      const notFound = path.join(dist, "404.html");
+      if (fs.existsSync(index)) {
+        fs.copyFileSync(index, notFound);
+      }
+    },
+  };
+}
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -49,6 +64,7 @@ export default defineConfig({
         globPatterns: ["**/*.{js,css,html,png,svg,woff2}"],
       },
     }),
+    copyIndexTo404(),
   ],
   resolve: {
     alias: {
