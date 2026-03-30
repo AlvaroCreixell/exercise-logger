@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -18,26 +18,14 @@ import {
 } from "@/services/settings-service";
 import type { UnitSystem, ThemePreference } from "@/domain/enums";
 import type { Routine } from "@/domain/types";
-
-// ---------------------------------------------------------------------------
-// Phase 7 placeholders for backup service
-// ---------------------------------------------------------------------------
-
-/**
- * Placeholder: export all user data as JSON.
- * Will be implemented in Phase 7 (backup-service.ts).
- */
-async function handleExportData(): Promise<void> {
-  alert("Export will be available after Phase 7 implementation.");
-}
-
-/**
- * Placeholder: import user data from JSON file.
- * Will be implemented in Phase 7 (backup-service.ts).
- */
-async function handleImportData(): Promise<void> {
-  alert("Import will be available after Phase 7 implementation.");
-}
+import {
+  exportBackup,
+  downloadBackupFile,
+  importBackup,
+  clearAllData,
+  readJsonFile,
+  validateBackupPayload,
+} from "@/services/backup-service";
 
 // ---------------------------------------------------------------------------
 // ERRATA P6-J: Apply theme to document, including matchMedia listener for system
@@ -65,6 +53,7 @@ export default function SettingsScreen() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [clearDialogOpen, setClearDialogOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [importSuccessMessage, setImportSuccessMessage] = useState<string | null>(null);
 
   const hasSession = activeSession !== undefined && activeSession !== null;
 
@@ -130,29 +119,87 @@ export default function SettingsScreen() {
   const handleClearAllData = useCallback(async () => {
     try {
       setError(null);
-      // Delete all user data except exercises (catalog is re-seeded)
-      await db.transaction(
-        "rw",
-        [db.routines, db.sessions, db.sessionExercises, db.loggedSets, db.settings],
-        async () => {
-          await db.routines.clear();
-          await db.sessions.clear();
-          await db.sessionExercises.clear();
-          await db.loggedSets.clear();
-          await db.settings.put({
-            id: "user",
-            activeRoutineId: null,
-            units: "kg",
-            theme: "system",
-          });
-        }
-      );
+      await clearAllData(db);
     } catch (err: unknown) {
       const message =
         err instanceof Error ? err.message : "Failed to clear data";
       setError(message);
     }
   }, []);
+
+  const handleExportData = useCallback(async () => {
+    try {
+      setError(null);
+      const envelope = await exportBackup(db);
+      downloadBackupFile(envelope);
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Failed to export data";
+      setError(message);
+    }
+  }, []);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleImportData = useCallback(async () => {
+    fileInputRef.current?.click();
+  }, []);
+
+  const handleFileSelected = useCallback(
+    async (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+
+      // Reset input so the same file can be re-selected
+      event.target.value = "";
+
+      try {
+        setError(null);
+
+        // Parse the file
+        const json = await readJsonFile(file);
+
+        // Load current catalog IDs for validation
+        const exercises = await db.exercises.toArray();
+        const catalogIds = new Set(exercises.map((e) => e.id));
+
+        // Validate the payload before any mutation
+        const validationErrors = validateBackupPayload(json, catalogIds);
+        if (validationErrors.length > 0) {
+          const firstErrors = validationErrors.slice(0, 3);
+          const errorText = firstErrors
+            .map((e) => `${e.field}: ${e.message}`)
+            .join("\n");
+          const suffix =
+            validationErrors.length > 3
+              ? `\n...and ${validationErrors.length - 3} more errors`
+              : "";
+          setError(`Invalid backup file:\n${errorText}${suffix}`);
+          return;
+        }
+
+        // Perform the transactional import
+        // ERRATA P7-F: check if imported data has active session
+        const result = await importBackup(db, json as any);
+        if (result.hasActiveSession) {
+          // Show feedback that an active session was restored
+          setError(null);
+          // Navigate to workout or show toast — we use a simple approach:
+          // set a success message that informs user
+          setImportSuccessMessage(
+            "Backup imported successfully. An active workout session was restored — switch to the Workout tab to continue."
+          );
+        } else {
+          setImportSuccessMessage("Backup imported successfully.");
+        }
+      } catch (err: unknown) {
+        const message =
+          err instanceof Error ? err.message : "Failed to import data";
+        setError(message);
+      }
+    },
+    []
+  );
 
   if (settings === undefined || routines === undefined) {
     return (
@@ -167,7 +214,11 @@ export default function SettingsScreen() {
       <h1 className="text-lg font-semibold">Settings</h1>
 
       {error && (
-        <p className="text-sm text-destructive">{error}</p>
+        <p className="text-sm text-destructive whitespace-pre-line">{error}</p>
+      )}
+
+      {importSuccessMessage && (
+        <p className="text-sm text-green-600 dark:text-green-400">{importSuccessMessage}</p>
       )}
 
       {/* ---- Routines Section ---- */}
@@ -362,6 +413,15 @@ export default function SettingsScreen() {
         confirmLabel="Clear Data"
         variant="destructive"
         onConfirm={handleClearAllData}
+      />
+
+      {/* Hidden file input for import */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".json"
+        className="hidden"
+        onChange={handleFileSelected}
       />
     </div>
   );
