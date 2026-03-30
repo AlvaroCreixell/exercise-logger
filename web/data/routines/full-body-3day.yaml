@@ -1,0 +1,130 @@
+version: 1
+name: "Full Body 3-Day Rotation"
+rest_default_sec: 90
+rest_superset_sec: 60
+day_order: [A, B, C]
+
+days:
+  A:
+    label: "Heavy Squat + Horizontal Push/Pull"
+    entries:
+      - exercise_id: barbell-back-squat
+        sets:
+          - { reps: [6, 8], count: 1, tag: top }
+          - { reps: [8, 12], count: 3 }
+        notes: "Warm up with 2 lighter sets"
+
+      - exercise_id: leg-curl
+        sets:
+          - { reps: [8, 12], count: 2 }
+        notes: "Slow eccentric, 2-3 sec"
+
+      - exercise_id: adductor-machine
+        sets:
+          - { reps: [12, 15], count: 3 }
+
+      - superset:
+          - exercise_id: dumbbell-bench-press
+            sets:
+              - { reps: [8, 12], count: 3 }
+          - exercise_id: dumbbell-row
+            sets:
+              - { reps: [8, 12], count: 3 }
+            notes: "Each arm"
+
+      - exercise_id: tricep-pushdown
+        sets:
+          - { reps: [8, 12], count: 2 }
+
+      - exercise_id: pallof-press
+        sets:
+          - { reps: [8, 12], count: 3 }
+        notes: "Each side. Slow rotation at full extension"
+
+  B:
+    label: "Moderate Hinge + Vertical Push/Pull"
+    entries:
+      - exercise_id: dumbbell-romanian-deadlift
+        sets:
+          - { reps: [6, 8], count: 1, tag: top }
+          - { reps: [8, 12], count: 2 }
+        notes: "Top set first, then back-off work"
+
+      - exercise_id: dumbbell-lunge
+        sets:
+          - { reps: [8, 12], count: 3 }
+        notes: "Each leg"
+
+      - exercise_id: leg-extension
+        sets:
+          - { reps: [8, 12], count: 2 }
+
+      - superset:
+          - exercise_id: dumbbell-shoulder-press
+            sets:
+              - { reps: [8, 12], count: 3 }
+            notes: "Seated or standing"
+          - exercise_id: lat-pulldown
+            sets:
+              - { reps: [8, 12], count: 3 }
+
+      - exercise_id: dumbbell-curl
+        sets:
+          - { reps: [8, 12], count: 2 }
+
+      - exercise_id: cable-woodchop
+        sets:
+          - { reps: [8, 12], count: 3 }
+        notes: "Each side. Alternate angle weekly"
+
+      - exercise_id: wrist-roller
+        sets:
+          - { duration: [30, 60], count: 2 }
+        notes: "One up, one down"
+
+  C:
+    label: "Unilateral + Accessories"
+    entries:
+      - exercise_id: single-leg-romanian-deadlift
+        sets:
+          - { reps: [8, 12], count: 3 }
+        notes: "Each leg"
+
+      - exercise_id: reverse-lunge
+        sets:
+          - { reps: [8, 12], count: 3 }
+        notes: "Each leg"
+
+      - exercise_id: adductor-machine
+        sets:
+          - { reps: [12, 15], count: 3 }
+
+      - superset:
+          - exercise_id: incline-dumbbell-press
+            sets:
+              - { reps: [8, 12], count: 3 }
+            notes: "30-45 degree incline"
+          - exercise_id: seated-cable-row
+            sets:
+              - { reps: [8, 12], count: 3 }
+
+      - exercise_id: dumbbell-pullover
+        sets:
+          - { reps: [8, 12], count: 2 }
+
+      - exercise_id: medicine-ball-rotational-slam
+        sets:
+          - { reps: 8, count: 3 }
+        notes: "Each side"
+
+cardio:
+  notes: "After lifting, or as a separate session"
+  options:
+    - { name: "Walk", detail: "20-30 min brisk pace" }
+    - { name: "Rowing 2K Sprints", detail: "3 x 2K with 3-4 min rest" }
+    - { name: "Mix", detail: "1-2 rowing sprints + 10-15 min walk" }
+
+notes:
+  - "Rotation is continuous: A-B-C regardless of training days per week."
+  - "Rest after both exercises in a superset round."
+  - "Progression is per set block, not a single number for the whole exercise."
