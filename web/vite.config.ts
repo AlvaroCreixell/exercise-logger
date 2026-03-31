@@ -92,7 +92,7 @@ export default defineConfig({
             },
           },
         ],
-        navigateFallback: "index.html",
+        navigateFallback: "/exercise-logger/index.html",
         navigateFallbackDenylist: [/^\/api/],
       },
     }),
