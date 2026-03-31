@@ -1,5 +1,8 @@
 import { test, expect } from "@playwright/test";
 import path from "path";
+import { fileURLToPath } from "url";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // ERRATA P7-D: Use Playwright's configured baseURL instead of hardcoding port.
 // page.goto("/") uses the baseURL from playwright.config.ts.
@@ -7,8 +10,8 @@ import path from "path";
 test.describe("Exercise Logger E2E Smoke Test", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/");
-    // Wait for the app to initialize (catalog seeding, settings init)
-    await page.waitForLoadState("networkidle");
+    // Wait for IndexedDB initialization to complete (Loading... disappears)
+    await expect(page.getByText("Loading...")).toBeHidden({ timeout: 10000 });
   });
 
   test("app loads and shows the Today screen", async ({ page }) => {
@@ -144,7 +147,7 @@ test.describe("Exercise Logger E2E Smoke Test", () => {
   }) => {
     await page.getByRole("link", { name: /history/i }).click();
     await expect(
-      page.getByText(/no workout history/i)
+      page.getByRole("heading", { name: "No History Yet" })
     ).toBeVisible();
   });
 });
