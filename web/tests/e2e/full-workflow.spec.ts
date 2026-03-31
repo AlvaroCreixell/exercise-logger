@@ -41,9 +41,9 @@ test.describe("Exercise Logger E2E Smoke Test", () => {
     const fileInput = page.locator('input[type="file"][accept=".yaml,.yml"]');
     await fileInput.setInputFiles(yamlPath);
 
-    // Wait for the routine to appear in the list
+    // Wait for the routine name to appear in the list (use exact match to avoid success toast)
     await expect(
-      page.getByText("Full Body 3-Day Rotation")
+      page.getByText("Full Body 3-Day Rotation", { exact: true })
     ).toBeVisible({ timeout: 5000 });
   });
 
@@ -61,8 +61,16 @@ test.describe("Exercise Logger E2E Smoke Test", () => {
     await fileInput.setInputFiles(yamlPath);
 
     await expect(
-      page.getByText("Full Body 3-Day Rotation")
+      page.getByText("Full Body 3-Day Rotation", { exact: true })
     ).toBeVisible({ timeout: 5000 });
+
+    // Step 1b: Activate the routine
+    await page
+      .getByRole("button", { name: "Set as active routine" })
+      .click();
+
+    // Verify routine is now active
+    await expect(page.getByText("Active")).toBeVisible({ timeout: 5000 });
 
     // Step 2: Navigate to Today and start a workout
     await page.getByRole("link", { name: /today/i }).click();
@@ -83,18 +91,34 @@ test.describe("Exercise Logger E2E Smoke Test", () => {
       await setSlot.click();
 
       // Try to fill in the set log form and submit
-      const weightInput = page.locator('input[name="weight"], input[placeholder*="Weight"], input[type="number"]').first();
-      if (await weightInput.isVisible({ timeout: 1000 }).catch(() => false)) {
+      const weightInput = page
+        .locator(
+          'input[name="weight"], input[placeholder*="Weight"], input[type="number"]'
+        )
+        .first();
+      if (
+        await weightInput.isVisible({ timeout: 1000 }).catch(() => false)
+      ) {
         await weightInput.fill("60");
 
-        const repsInput = page.locator('input[name="reps"], input[placeholder*="Reps"], input[type="number"]').nth(1);
-        if (await repsInput.isVisible({ timeout: 1000 }).catch(() => false)) {
+        const repsInput = page
+          .locator(
+            'input[name="reps"], input[placeholder*="Reps"], input[type="number"]'
+          )
+          .nth(1);
+        if (
+          await repsInput.isVisible({ timeout: 1000 }).catch(() => false)
+        ) {
           await repsInput.fill("10");
         }
 
         // Submit the form
-        const saveButton = page.getByRole("button", { name: /save|log|submit/i });
-        if (await saveButton.isVisible({ timeout: 1000 }).catch(() => false)) {
+        const saveButton = page.getByRole("button", {
+          name: /save|log|submit/i,
+        });
+        if (
+          await saveButton.isVisible({ timeout: 1000 }).catch(() => false)
+        ) {
           await saveButton.click();
         }
       }
@@ -105,7 +129,9 @@ test.describe("Exercise Logger E2E Smoke Test", () => {
 
     // Confirm if there is a confirmation dialog
     const confirmButton = page.getByRole("button", { name: /finish/i });
-    if (await confirmButton.isVisible({ timeout: 1000 }).catch(() => false)) {
+    if (
+      await confirmButton.isVisible({ timeout: 1000 }).catch(() => false)
+    ) {
       await confirmButton.click();
     }
 
@@ -125,11 +151,15 @@ test.describe("Exercise Logger E2E Smoke Test", () => {
     await expect(exportButton).toBeEnabled();
 
     // Verify that clicking export triggers a download
-    const downloadPromise = page.waitForEvent("download", { timeout: 5000 }).catch(() => null);
+    const downloadPromise = page
+      .waitForEvent("download", { timeout: 5000 })
+      .catch(() => null);
     await exportButton.click();
     const download = await downloadPromise;
     if (download) {
-      expect(download.suggestedFilename()).toMatch(/exercise-logger-backup.*\.json/);
+      expect(download.suggestedFilename()).toMatch(
+        /exercise-logger-backup.*\.json/
+      );
     }
   });
 
@@ -137,9 +167,7 @@ test.describe("Exercise Logger E2E Smoke Test", () => {
     page,
   }) => {
     await page.getByRole("link", { name: /workout/i }).click();
-    await expect(
-      page.getByText(/no active workout/i)
-    ).toBeVisible();
+    await expect(page.getByText(/no active workout/i)).toBeVisible();
   });
 
   test("history screen shows empty state when no history", async ({
