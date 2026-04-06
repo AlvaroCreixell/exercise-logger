@@ -11,10 +11,8 @@ import { logSet, editSet, deleteSet } from "@/services/set-service";
 import type {
   Exercise,
   Routine,
-  RoutineDay,
   RoutineEntry,
   SetBlock,
-  LoggedSet,
 } from "@/domain/types";
 
 // ---------------------------------------------------------------------------

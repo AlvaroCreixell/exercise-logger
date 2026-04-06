@@ -1,5 +1,5 @@
 import "fake-indexeddb/auto";
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { ExerciseLoggerDB, initializeSettings } from "@/db/database";
 import {
   startSessionWithCatalog,
@@ -14,8 +14,6 @@ import type {
   RoutineDay,
   RoutineEntry,
   RoutineExerciseEntry,
-  Session,
-  SessionExercise,
   SetBlock,
 } from "@/domain/types";
 

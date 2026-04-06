@@ -2,7 +2,6 @@ import "fake-indexeddb/auto";
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import {
   ExerciseLoggerDB,
-  DEFAULT_SETTINGS,
   initializeSettings,
 } from "@/db/database";
 import { parseExerciseCatalog, seedCatalog } from "@/services/catalog-service";
@@ -10,7 +9,6 @@ import {
   validateAndNormalizeRoutine,
   importRoutine,
 } from "@/services/routine-service";
-import type { ValidateRoutineResult } from "@/services/routine-service";
 import {
   startSessionWithCatalog,
   resumeSession,
@@ -20,7 +18,6 @@ import {
 } from "@/services/session-service";
 import { logSet, editSet, deleteSet } from "@/services/set-service";
 import {
-  getSettings,
   setActiveRoutine,
   deleteRoutine,
 } from "@/services/settings-service";
@@ -36,10 +33,6 @@ import {
 import { generateBlockSignature } from "@/domain/block-signature";
 import type {
   Exercise,
-  Routine,
-  Session,
-  SessionExercise,
-  LoggedSet,
 } from "@/domain/types";
 import fs from "fs";
 import path from "path";

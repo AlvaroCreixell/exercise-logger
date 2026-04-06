@@ -9,16 +9,11 @@ import {
 } from "@/services/progression-service";
 import type {
   Exercise,
-  Routine,
-  RoutineDay,
-  RoutineEntry,
-  RoutineExerciseEntry,
   Session,
   SessionExercise,
   LoggedSet,
   SetBlock,
 } from "@/domain/types";
-import type { ExerciseType, ExerciseEquipment, SetTag, UnitSystem } from "@/domain/enums";
 import { generateBlockSignature } from "@/domain/block-signature";
 
 // ---------------------------------------------------------------------------

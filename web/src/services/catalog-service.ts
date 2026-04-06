@@ -1,4 +1,4 @@
-import { parseCsv } from "@/lib/csv-parser";
+import { parseCsv } from "@/shared/lib/csv-parser";
 import { slugify } from "@/domain/slug";
 import type { Exercise } from "@/domain/types";
 import type { ExerciseType, ExerciseEquipment } from "@/domain/enums";

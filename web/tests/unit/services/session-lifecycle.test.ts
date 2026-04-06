@@ -1,6 +1,5 @@
 import "fake-indexeddb/auto";
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import Dexie from "dexie";
 import { ExerciseLoggerDB, initializeSettings } from "@/db/database";
 import {
   startSessionWithCatalog,
@@ -11,11 +10,10 @@ import {
 } from "@/services/session-service";
 import { logSet, editSet, deleteSet } from "@/services/set-service";
 import {
-  hasActiveSession,
   setActiveRoutine,
   deleteRoutine,
 } from "@/services/settings-service";
-import type { Exercise, Routine, RoutineEntry, SetBlock } from "@/domain/types";
+import type { Exercise, Routine, SetBlock } from "@/domain/types";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -260,7 +258,7 @@ describe("session lifecycle integration", () => {
     const s2 = await startSessionWithCatalog(db, routine2, "X");
     await finishSession(db, s2.session.id);
 
-    let r2 = await db.routines.get("r2");
+    const r2 = await db.routines.get("r2");
     expect(r2!.nextDayId).toBe("Y");
 
     // Routine 1 still has nextDayId = B
