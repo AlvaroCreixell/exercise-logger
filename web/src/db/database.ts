@@ -40,13 +40,16 @@ export const DEFAULT_SETTINGS: Settings = {
 };
 
 /**
- * Ensure a default settings record exists.
- * Call this on app startup. If the "user" record already exists, this is a no-op.
+ * Ensure a default settings record exists without overwriting user data.
+ * Call this on app startup. Uses put() instead of add() so concurrent calls
+ * are safe: React StrictMode double-mounts in dev cause two concurrent calls
+ * that both see no record and then both try to write — put() is idempotent,
+ * whereas add() would throw a ConstraintError on the second write.
  */
 export async function initializeSettings(db: ExerciseLoggerDB): Promise<void> {
   const existing = await db.settings.get("user");
   if (!existing) {
-    await db.settings.add(DEFAULT_SETTINGS);
+    await db.settings.put(DEFAULT_SETTINGS);
   }
 }
 
