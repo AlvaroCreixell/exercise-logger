@@ -1,4 +1,4 @@
-import { useParams, Link } from "react-router";
+import { useParams, useNavigate } from "react-router";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/db/database";
 import { useExerciseHistoryGroups } from "@/shared/hooks/useExerciseHistoryGroups";
@@ -12,6 +12,7 @@ export default function ExerciseHistoryScreen() {
   const { exerciseId } = useParams<{ exerciseId: string }>();
   const groups = useExerciseHistoryGroups(exerciseId);
   const settings = useSettings();
+  const navigate = useNavigate();
   const exercise = useLiveQuery(
     () => (exerciseId ? db.exercises.get(exerciseId) : undefined),
     [exerciseId]
@@ -24,9 +25,12 @@ export default function ExerciseHistoryScreen() {
 
   return (
     <div className="p-4 space-y-4 pb-8">
-      <Link to="/history" className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}>
+      <button
+        onClick={() => navigate(-1)}
+        className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}
+      >
         <ArrowLeft className="h-4 w-4 mr-1" />Back
-      </Link>
+      </button>
 
       <h1 className="text-xl font-bold">{name}</h1>
 
@@ -73,11 +77,17 @@ export default function ExerciseHistoryScreen() {
                       } else if (ls.performedDistanceM != null) {
                         text = `${ls.performedDistanceM}m`;
                       }
+                      const tagLabel = ls.tag === "top" ? "Top" : ls.tag === "amrap" ? "AMRAP" : null;
                       return (
                         <span
                           key={si}
                           className="text-sm tabular-nums font-medium"
                         >
+                          {tagLabel && (
+                            <span className="text-[10px] text-muted-foreground font-normal mr-0.5">
+                              {tagLabel}
+                            </span>
+                          )}
                           {text}
                         </span>
                       );
