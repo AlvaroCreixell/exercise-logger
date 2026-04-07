@@ -344,7 +344,7 @@ export function calculateBlockSuggestion(
  *
  * P5-D: If a block follows a top-tagged block and has no tag, label it "Back-off".
  */
-function getBlockLabel(
+export function getBlockLabel(
   block: SetBlock,
   blockIndex: number,
   totalBlocks: number,
