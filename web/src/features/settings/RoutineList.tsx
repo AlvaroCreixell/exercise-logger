@@ -93,7 +93,9 @@ export function RoutineList({
         title="Delete routine?"
         description={
           deleteTarget?.id === activeRoutineId
-            ? "This routine will be deleted. Your next routine will be automatically activated."
+            ? routines.length > 1
+              ? "This routine will be deleted. Your next routine will be automatically activated."
+              : "This is your only routine. Deleting it will leave you with no active routine."
             : "This routine will be permanently deleted."
         }
         confirmText="Delete"
