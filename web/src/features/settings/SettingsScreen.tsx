@@ -73,11 +73,12 @@ export default function SettingsScreen() {
       }
       // After validation passes, raw is a valid BackupEnvelope
       const result = await importBackup(db, raw as BackupEnvelope);
-      toast.success(
-        result.hasActiveSession
-          ? "Data imported. An active session was restored."
-          : "Data imported successfully."
-      );
+      if (result.hasActiveSession) {
+        toast.success("Data imported. Resuming active session...");
+        navigate("/workout");
+      } else {
+        toast.success("Data imported successfully.");
+      }
     } catch (err) {
       setImportErrors([err instanceof Error ? err.message : "Import failed"]);
     } finally {
