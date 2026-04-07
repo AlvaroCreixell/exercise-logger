@@ -277,6 +277,7 @@ import {
   clearAllData,
   readJsonFile,
   validateBackupPayload,
+  type BackupEnvelope,
 } from "@/services/backup-service";
 import type { UnitSystem, ThemePreference } from "@/domain/enums";
 import { Button } from "@/shared/ui/button";
@@ -329,15 +330,16 @@ export default function SettingsScreen() {
     if (!file) return;
     setImportErrors([]);
     try {
-      const envelope = await readJsonFile(file);
+      const raw = await readJsonFile(file);
       const exercises = await db.exercises.toArray();
       const catalogIds = new Set(exercises.map((ex) => ex.id));
-      const errors = validateBackupPayload(envelope, catalogIds);
+      const errors = validateBackupPayload(raw, catalogIds);
       if (errors.length > 0) {
-        setImportErrors(errors.map((err) => `${err.path}: ${err.message}`));
+        setImportErrors(errors.map((err) => `${err.field}: ${err.message}`));
         return;
       }
-      const result = await importBackup(db, envelope);
+      // After validation passes, raw is a valid BackupEnvelope
+      const result = await importBackup(db, raw as BackupEnvelope);
       toast.success(
         result.hasActiveSession
           ? "Data imported. An active session was restored."
@@ -570,7 +572,7 @@ export function DaySelector({
 Create `web/src/features/today/DayPreview.tsx`:
 
 ```tsx
-import type { Routine, RoutineDay } from "@/domain/types";
+import type { Routine, RoutineDay, SetBlock } from "@/domain/types";
 import { Card, CardContent } from "@/shared/ui/card";
 
 interface DayPreviewProps {
@@ -578,19 +580,17 @@ interface DayPreviewProps {
   day: RoutineDay;
 }
 
-function formatSetSummary(entry: { sets?: Array<{ count: number; tag?: string; minValue?: number; maxValue?: number; exactValue?: number }> }): string {
-  const sets = (entry as { sets?: Array<{ count: number; tag?: string; minValue?: number; maxValue?: number; exactValue?: number }> }).sets;
-  if (!sets || sets.length === 0) return "";
-  return sets
-    .map((s) => {
-      const tag = s.tag === "top" ? "top" : s.tag === "amrap" ? "AMRAP" : "";
-      const range = s.exactValue != null
-        ? `${s.exactValue}`
-        : s.minValue != null && s.maxValue != null
-        ? `${s.minValue}-${s.maxValue}`
+function formatSetSummary(setBlocks: SetBlock[]): string {
+  if (setBlocks.length === 0) return "";
+  return setBlocks
+    .map((b) => {
+      const tag = b.tag === "top" ? "top" : b.tag === "amrap" ? "AMRAP" : "";
+      const range = b.exactValue != null
+        ? `${b.exactValue}`
+        : b.minValue != null && b.maxValue != null
+        ? `${b.minValue}-${b.maxValue}`
         : "";
-      const prefix = tag ? `${s.count} ${tag}` : `${s.count} x ${range}`;
-      return prefix;
+      return tag ? `${b.count} ${tag}` : `${b.count} x ${range}`;
     })
     .join(" + ");
 }
@@ -608,7 +608,7 @@ export function DayPreview({ routine, day }: DayPreviewProps) {
                   {entry.instanceLabel ? ` (${entry.instanceLabel})` : ""}
                 </span>
                 <span className="text-xs text-muted-foreground tabular-nums shrink-0">
-                  {formatSetSummary(entry)}
+                  {formatSetSummary(entry.setBlocks)}
                 </span>
               </div>
             );
@@ -622,7 +622,7 @@ export function DayPreview({ routine, day }: DayPreviewProps) {
                     {item.exerciseId.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
                   </span>
                   <span className="text-xs text-muted-foreground tabular-nums shrink-0">
-                    {formatSetSummary(item)}
+                    {formatSetSummary(item.setBlocks)}
                   </span>
                 </div>
               ))}
@@ -1099,6 +1099,7 @@ import type { UnitSystem } from "@/domain/enums";
 import type { BlockSuggestion, BlockLastTime } from "@/services/progression-service";
 import { getBlockLabel } from "@/services/progression-service";
 import { toDisplayWeight, toCanonicalKg } from "@/domain/unit-conversion";
+import { toast } from "sonner";
 
 interface SetLogSheetProps {
   open: boolean;
@@ -1115,8 +1116,8 @@ interface SetLogSheetProps {
     performedReps: number | null;
     performedDurationSec: number | null;
     performedDistanceM: number | null;
-  }) => void;
-  onDelete?: () => void;
+  }) => Promise<void>;
+  onDelete?: () => Promise<void>;
 }
 
 export function SetLogSheet({
@@ -1190,17 +1191,22 @@ export function SetLogSheet({
     ? getBlockLabel(block, blockIndex, blocks.length, blocks)
     : "";
 
-  function handleSave() {
+  async function handleSave() {
     setSaving(true);
-    const w = weight.trim() ? parseFloat(weight) : null;
-    onSave({
-      performedWeightKg: w != null ? toCanonicalKg(w, se.effectiveEquipment, units) : null,
-      performedReps: reps.trim() ? parseInt(reps, 10) : null,
-      performedDurationSec: duration.trim() ? parseInt(duration, 10) : null,
-      performedDistanceM: distance.trim() ? parseFloat(distance) : null,
-    });
-    setSaving(false);
-    onOpenChange(false);
+    try {
+      const w = weight.trim() ? parseFloat(weight) : null;
+      await onSave({
+        performedWeightKg: w != null ? toCanonicalKg(w, se.effectiveEquipment, units) : null,
+        performedReps: reps.trim() ? parseInt(reps, 10) : null,
+        performedDurationSec: duration.trim() ? parseInt(duration, 10) : null,
+        performedDistanceM: distance.trim() ? parseFloat(distance) : null,
+      });
+      onOpenChange(false);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to save set");
+    } finally {
+      setSaving(false);
+    }
   }
 
   const totalSets = block?.count ?? "?";
@@ -1317,9 +1323,17 @@ export function SetLogSheet({
           {existingSet && onDelete && (
             <button
               className="w-full text-center text-xs text-destructive hover:underline py-1"
-              onClick={() => {
-                onDelete();
-                onOpenChange(false);
+              disabled={saving}
+              onClick={async () => {
+                setSaving(true);
+                try {
+                  await onDelete();
+                  onOpenChange(false);
+                } catch (err) {
+                  toast.error(err instanceof Error ? err.message : "Failed to delete set");
+                } finally {
+                  setSaving(false);
+                }
               }}
             >
               Delete this set
@@ -2027,7 +2041,7 @@ import { useSessionDetail } from "@/shared/hooks/useSessionDetail";
 import { useSettings } from "@/shared/hooks/useSettings";
 import { useExerciseHistory } from "@/shared/hooks/useExerciseHistory";
 import { db } from "@/db/database";
-import { logSet, editSet, deleteSet } from "@/services/set-service";
+import { editSet, deleteSet } from "@/services/set-service";
 import { ExerciseCard } from "@/features/workout/ExerciseCard";
 import { SetLogSheet } from "@/features/workout/SetLogSheet";
 import { SupersetGroup } from "@/features/workout/SupersetGroup";
@@ -2085,6 +2099,9 @@ export default function SessionDetailScreen() {
     const existing = exData?.loggedSets.find(
       (ls) => ls.blockIndex === blockIndex && ls.setIndex === setIndex
     );
+    // Only allow editing existing logged sets on finished sessions.
+    // logSet() requires active session status — cannot create new sets here.
+    if (!existing) return;
     setSheetExercise(se);
     setSheetBlockIndex(blockIndex);
     setSheetSetIndex(setIndex);
@@ -2098,12 +2115,9 @@ export default function SessionDetailScreen() {
     performedDurationSec: number | null;
     performedDistanceM: number | null;
   }) {
-    if (!sheetExercise) return;
-    if (sheetExistingSet) {
-      await editSet(db, sheetExistingSet.id, input);
-    } else {
-      await logSet(db, sheetExercise.id, sheetBlockIndex, sheetSetIndex, input);
-    }
+    if (!sheetExercise || !sheetExistingSet) return;
+    // Only editSet is valid on finished sessions
+    await editSet(db, sheetExistingSet.id, input);
   }
 
   async function handleDeleteSet() {
@@ -2616,3 +2630,4 @@ cd web && npm run test:e2e
 ```
 
 The smoke and full-workflow tests should pass against the real UI.
+Y
