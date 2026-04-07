@@ -1,0 +1,167 @@
+import type { SessionExercise, LoggedSet } from "@/domain/types";
+import type { UnitSystem } from "@/domain/enums";
+import type { ExerciseHistoryData, ExtraExerciseHistory } from "@/services/progression-service";
+import { getBlockLabel } from "@/services/progression-service";
+import { toDisplayWeight } from "@/domain/unit-conversion";
+import { Badge } from "@/shared/ui/badge";
+import { Card, CardContent } from "@/shared/ui/card";
+import { SetSlot } from "./SetSlot";
+import { ArrowUp } from "lucide-react";
+
+interface ExerciseCardProps {
+  sessionExercise: SessionExercise;
+  loggedSets: LoggedSet[];
+  units: UnitSystem;
+  historyData: ExerciseHistoryData | undefined;
+  extraHistory: ExtraExerciseHistory | null | undefined;
+  onSetTap: (blockIndex: number, setIndex: number) => void;
+  /** Read-only mode for history view: show subdued unlogged slots */
+  readOnly?: boolean;
+}
+
+function blockLabelVariant(label: string) {
+  if (label === "Top") return "bg-warning-soft text-warning";
+  if (label === "AMRAP") return "bg-info-soft text-info";
+  return "bg-muted text-muted-foreground";
+}
+
+function formatLastTime(
+  sets: Array<{ weightKg: number | null; reps: number | null; durationSec: number | null; distanceM: number | null }>,
+  equipment: string,
+  units: UnitSystem
+): string {
+  if (sets.length === 0) return "";
+  const first = sets[0]!;
+  if (first.weightKg != null) {
+    const w = toDisplayWeight(first.weightKg, equipment as never, units);
+    const allSameWeight = sets.every((s) => s.weightKg === first.weightKg);
+    if (allSameWeight) {
+      const reps = sets.map((s) => s.reps ?? "?").join(", ");
+      return `${w}${units} x ${reps}`;
+    }
+    return sets.map((s) => {
+      const sw = s.weightKg != null ? toDisplayWeight(s.weightKg, equipment as never, units) : "?";
+      return `${sw}x${s.reps ?? "?"}`;
+    }).join(", ");
+  }
+  if (first.reps != null) return sets.map((s) => `${s.reps ?? "?"}r`).join(", ");
+  if (first.durationSec != null) return sets.map((s) => `${s.durationSec ?? "?"}s`).join(", ");
+  return "";
+}
+
+export function ExerciseCard({
+  sessionExercise,
+  loggedSets,
+  units,
+  historyData,
+  extraHistory,
+  onSetTap,
+  readOnly = false,
+}: ExerciseCardProps) {
+  const se = sessionExercise;
+  const blocks = se.setBlocksSnapshot;
+  const isExtra = se.origin === "extra";
+
+  // Build set lookup: [blockIndex][setIndex] -> LoggedSet
+  const setLookup = new Map<string, LoggedSet>();
+  for (const ls of loggedSets) {
+    setLookup.set(`${ls.blockIndex}:${ls.setIndex}`, ls);
+  }
+
+  return (
+    <Card className={readOnly ? "border-0 shadow-none bg-transparent" : undefined}>
+      <CardContent className={`${readOnly ? "px-0" : ""} py-3 space-y-3`}>
+        {/* Header */}
+        <div className="flex items-center gap-2">
+          <h3 className="text-base font-semibold truncate">
+            {se.exerciseNameSnapshot}
+          </h3>
+          {isExtra && (
+            <Badge variant="secondary" className="shrink-0 text-[11px]">Extra</Badge>
+          )}
+        </div>
+
+        {se.notesSnapshot && (
+          <p className="text-xs text-muted-foreground line-clamp-1">
+            {se.notesSnapshot}
+          </p>
+        )}
+
+        {/* Blocks */}
+        {blocks.length > 0 ? (
+          blocks.map((block, blockIndex) => {
+            const label = getBlockLabel(block, blockIndex, blocks.length, blocks);
+            const lastTime = historyData?.lastTime[blockIndex];
+            const suggestion = historyData?.suggestions.find((s) => s.blockIndex === blockIndex);
+
+            return (
+              <div key={blockIndex} className="space-y-1.5">
+                {/* Block label + history */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  {label && (
+                    <span className={`inline-flex items-center rounded-md px-1.5 py-0.5 text-[11px] font-medium ${blockLabelVariant(label)}`}>
+                      {label}
+                    </span>
+                  )}
+                  {lastTime && lastTime.sets.length > 0 && (
+                    <span className="text-xs text-muted-foreground tabular-nums">
+                      Last: {formatLastTime(lastTime.sets, se.effectiveEquipment, units)}
+                    </span>
+                  )}
+                  {suggestion && (
+                    <span className="text-xs text-success tabular-nums font-medium inline-flex items-center gap-0.5">
+                      <ArrowUp className="h-3 w-3" />
+                      {toDisplayWeight(suggestion.suggestedWeightKg, se.effectiveEquipment, units)}{units}
+                    </span>
+                  )}
+                </div>
+
+                {/* Set slots */}
+                <div className="flex gap-2 overflow-x-auto scrollbar-none">
+                  {Array.from({ length: block.count }, (_, setIndex) => (
+                    <SetSlot
+                      key={setIndex}
+                      setIndex={setIndex}
+                      loggedSet={setLookup.get(`${blockIndex}:${setIndex}`)}
+                      units={units}
+                      equipment={se.effectiveEquipment}
+                      onClick={() => onSetTap(blockIndex, setIndex)}
+                    />
+                  ))}
+                </div>
+              </div>
+            );
+          })
+        ) : isExtra && extraHistory ? (
+          /* Extra exercise: show recent history as reference */
+          <p className="text-xs text-muted-foreground tabular-nums">
+            Recent: {formatLastTime(extraHistory.sets, se.effectiveEquipment, units)}
+          </p>
+        ) : null}
+
+        {/* Extra exercise: single unstructured slot row */}
+        {isExtra && (
+          <div className="flex gap-2 overflow-x-auto scrollbar-none">
+            {loggedSets.map((ls, i) => (
+              <SetSlot
+                key={ls.id}
+                setIndex={i}
+                loggedSet={ls}
+                units={units}
+                equipment={se.effectiveEquipment}
+                onClick={() => onSetTap(0, i)}
+              />
+            ))}
+            <SetSlot
+              setIndex={loggedSets.length}
+              loggedSet={undefined}
+              units={units}
+              equipment={se.effectiveEquipment}
+              onClick={() => onSetTap(0, loggedSets.length)}
+            />
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
