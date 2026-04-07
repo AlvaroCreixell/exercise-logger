@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import {
   BrowserRouter,
   Routes,
@@ -6,9 +7,17 @@ import {
   NavLink,
   Outlet,
 } from "react-router";
-import { CalendarDays, Dumbbell, History, Settings } from "lucide-react";
 import { Toaster } from "sonner";
+import { CalendarDays, Dumbbell, History, Settings } from "lucide-react";
 import { useAppInit } from "@/shared/hooks/useAppInit";
+import { useSettings } from "@/shared/hooks/useSettings";
+
+import TodayScreen from "@/features/today/TodayScreen";
+import WorkoutScreen from "@/features/workout/WorkoutScreen";
+import HistoryScreen from "@/features/history/HistoryScreen";
+import SessionDetailScreen from "@/features/history/SessionDetailScreen";
+import ExerciseHistoryScreen from "@/features/history/ExerciseHistoryScreen";
+import SettingsScreen from "@/features/settings/SettingsScreen";
 
 const tabs = [
   { to: "/", label: "Today", icon: CalendarDays },
@@ -17,9 +26,31 @@ const tabs = [
   { to: "/settings", label: "Settings", icon: Settings },
 ] as const;
 
+function ThemeSync() {
+  const settings = useSettings();
+  const theme = settings?.theme;
+  useEffect(() => {
+    if (!settings) return;
+    if (theme === "dark") {
+      document.documentElement.classList.add("dark");
+    } else if (theme === "light") {
+      document.documentElement.classList.remove("dark");
+    } else {
+      const mq = window.matchMedia("(prefers-color-scheme: dark)");
+      const apply = () =>
+        document.documentElement.classList.toggle("dark", mq.matches);
+      apply();
+      mq.addEventListener("change", apply);
+      return () => mq.removeEventListener("change", apply);
+    }
+  }, [settings, theme]);
+  return null;
+}
+
 function Shell() {
   return (
     <div className="flex h-dvh flex-col bg-background text-foreground">
+      <ThemeSync />
       <main className="flex-1 overflow-y-auto">
         <Outlet />
       </main>
@@ -53,14 +84,6 @@ function Shell() {
   );
 }
 
-function Placeholder({ heading }: { heading: string }) {
-  return (
-    <div className="flex h-full items-center justify-center">
-      <h1 className="text-lg text-muted-foreground">{heading}</h1>
-    </div>
-  );
-}
-
 function AppRoutes() {
   const { ready, error } = useAppInit();
 
@@ -83,27 +106,15 @@ function AppRoutes() {
   return (
     <Routes>
       <Route element={<Shell />}>
-        <Route path="/" element={<Placeholder heading="No Active Routine" />} />
-        <Route
-          path="/workout"
-          element={<Placeholder heading="No Active Workout" />}
-        />
-        <Route
-          path="/history"
-          element={<Placeholder heading="No History Yet" />}
-        />
-        <Route
-          path="/history/:sessionId"
-          element={<Placeholder heading="Session Detail" />}
-        />
+        <Route path="/" element={<TodayScreen />} />
+        <Route path="/workout" element={<WorkoutScreen />} />
+        <Route path="/history" element={<HistoryScreen />} />
+        <Route path="/history/:sessionId" element={<SessionDetailScreen />} />
         <Route
           path="/history/exercise/:exerciseId"
-          element={<Placeholder heading="Exercise History" />}
+          element={<ExerciseHistoryScreen />}
         />
-        <Route
-          path="/settings"
-          element={<Placeholder heading="Settings" />}
-        />
+        <Route path="/settings" element={<SettingsScreen />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>
