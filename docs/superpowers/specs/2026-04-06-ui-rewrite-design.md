@@ -172,7 +172,7 @@ Font: Geist Variable (already installed via `@fontsource-variable/geist`).
 - Header: Exercise name, block label (if any), set number (e.g. "Set 2 of 3")
 - **Pre-fill priority**: (1) current logged value if editing, (2) suggestion weight + last-time reps, (3) blank
 - **Fields driven by `targetKind`**:
-  - `"reps"`: Reps number input. Weight input if `effectiveType === "weight"`. Optional expandable weight toggle if `effectiveType === "bodyweight"`.
+  - `"reps"`: Reps number input. Weight input if `effectiveType === "weight"`. If `effectiveType === "bodyweight"`: show an "Add weight" link that reveals the weight field. Include a one-line notice: "Adding weight is permanent for this session." Once any set logs a non-null weight, the exercise promotes to `effectiveType: "weight"` (one-way, no demotion -- enforced by set-service). After promotion, the weight field shows on all subsequent sets without the link or notice.
   - `"duration"`: Duration (seconds) number input. Weight if applicable.
   - `"distance"`: Distance (meters) number input. Weight if applicable.
   - For extras (no `targetKind`): Fall back to `effectiveType`-driven fields.
@@ -266,7 +266,10 @@ Single scrollable page with three card sections.
 - Header: "Routines" (section header style)
 - **Routine list** (`features/settings/RoutineList.tsx`):
   - Each row: Routine name, "Active" badge if active (`bg-info-soft text-info`)
-  - Primary action area: Inactive routines show "Set as active" button. The active routine shows "Delete" button (cannot delete active routine while it's active -- must activate another first, or delete if it's the only routine which clears activeRoutineId). One primary action visible per row, not multiple small buttons.
+  - Primary action area per row. One primary action visible, not multiple small buttons:
+    - Inactive routines: "Set as active" button + small "Delete" action (ghost/text)
+    - Active routine: "Active" badge (no activation button needed) + "Delete" action
+  - Deleting the active routine: The `deleteRoutine` service auto-activates the earliest remaining routine by `importedAt`. If it's the last routine, `activeRoutineId` becomes null. The confirmation dialog should explain this: "This routine will be deleted. [If others exist:] Your next routine will be automatically activated."
   - During active session: action buttons disabled with inline helper text "Finish or discard your current workout first" (`text-warning text-xs`). No tooltips.
 - **Import** (`features/settings/RoutineImporter.tsx`):
   - "Import Routine" button (outline, full-width)
@@ -284,8 +287,8 @@ Single scrollable page with three card sections.
 **Section 3 -- Data:**
 - Header: "Data"
 - "Export Data" button (outline). Triggers `downloadBackupFile`. Toast on success.
-- "Import Data" button (outline). File picker for JSON. Blocked during active session (inline warning text). On success: toast with note if imported data contains an active session.
-- "Clear All Data" button (destructive outline, restrained). Double-confirmation dialog. Blocked during active session. On success: toast, redirect to Today (which shows empty state).
+- "Import Data" button (outline). File picker for JSON. Pre-check: if active session exists, show inline warning and disable the button. The service also guards inside its transaction (Phase 0 fix), so the UI must handle a rejection error gracefully: show inline error "An active workout was started. Finish or discard it before importing." On success: toast with note if imported data contains an active session.
+- "Clear All Data" button (destructive outline, restrained). Double-confirmation dialog. Pre-check: if active session exists, show inline warning and disable the button. The service also guards inside its transaction (Phase 0 fix), so the UI must handle a rejection error gracefully. On success: toast, redirect to Today (which shows empty state).
 
 **Data sources:**
 - `useAllRoutines()` for routine list
@@ -382,15 +385,61 @@ Install as needed via `npx shadcn add`. Expected components:
 
 ---
 
-## 8. Implementation Notes
+## 8. Phase 0: Pre-UI Service Fixes
 
-### Existing Infrastructure (do not modify)
+These service-layer changes must be completed and tested **before** the UI rewrite begins. They fix contract issues that the UI depends on.
+
+### 8.1 Fix TOCTOU on importBackup and clearAllData
+
+**Problem:** Both `importBackup` (backup-service.ts:946-954) and `clearAllData` (backup-service.ts:1009-1017) check for an active session BEFORE entering their Dexie transaction. In a multi-tab scenario, another tab could start a workout between the check and the destructive write, causing silent data loss.
+
+**Fix:** Move the active-session guard INSIDE the `db.transaction()` call for both functions. The transaction table list must include `db.sessions`. If an active session is found inside the transaction, throw an error that the UI can catch and display.
+
+**Pattern** (matching the existing pattern in `settings-service.ts` where `setActiveRoutine` and `deleteRoutine` already guard inside transactions):
+
+```typescript
+// importBackup — move active-session check inside transaction
+await db.transaction("rw", [db.sessions, db.routines, ...], async () => {
+  const activeCount = await db.sessions.where("status").equals("active").count();
+  if (activeCount > 0) {
+    throw new Error("Cannot import while a workout is active");
+  }
+  // ... rest of import logic
+});
+
+// clearAllData — same pattern
+await db.transaction("rw", [db.sessions, db.routines, ...], async () => {
+  const activeCount = await db.sessions.where("status").equals("active").count();
+  if (activeCount > 0) {
+    throw new Error("Cannot clear data while a workout is active");
+  }
+  // ... rest of clear logic
+});
+```
+
+**Tests to update:** Existing tests for `importBackup` and `clearAllData` that verify active-session blocking should still pass (behavior is the same, just race-safe). Add a test comment noting the guard is now transactional.
+
+### 8.2 Document bodyweight promotion as irreversible (no code change)
+
+**Problem:** The one-way promotion from `effectiveType: "bodyweight"` to `"weight"` in `set-service.ts` is correct and intentional, but the UI must not present this as a reversible toggle. No service change is needed -- this is a spec clarification only (already updated in Section 4.2 above).
+
+**Verification:** Confirm that `deleteSet` does NOT revert `effectiveType` (it doesn't -- verified in code). This is by design: once promoted, the exercise stays in weight mode for the rest of the session.
+
+### 8.3 No change needed for routine deletion
+
+**Problem:** The spec initially contradicted the service behavior. The spec has been corrected (Section 4.6) to match the existing `deleteRoutine` auto-activation behavior. No service change needed.
+
+---
+
+## 9. Implementation Notes
+
+### Existing Infrastructure
 
 | Layer | Status |
 |---|---|
 | `domain/` (types, enums, helpers) | Complete, unchanged |
 | `db/database.ts` | Complete, StrictMode bug fixed |
-| `services/` (7 files) | Complete, unchanged |
+| `services/` (7 files) | Complete; Phase 0 fixes `importBackup`/`clearAllData` TOCTOU |
 | `shared/hooks/` (7 hooks) | Complete, moved from old `hooks/` |
 | `data/catalog.csv` | Complete, unchanged |
 | `shared/lib/` (csv-parser, utils) | Complete, moved from old `lib/` |
@@ -467,7 +516,7 @@ The full workflow test (`full-workflow.spec.ts`) expects:
 
 These test selectors should be preserved or updated alongside the UI rewrite.
 
-### Timer Removal
+### Timer Removal (permanent scope reduction)
 
 All previous timer requirements and acceptance criteria are removed. This includes:
 - `restDefaultSec` and `restSupersetSec` fields still exist in the Routine and Session types but are not used by the UI
