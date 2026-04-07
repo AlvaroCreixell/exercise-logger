@@ -6,6 +6,7 @@ import {
   NavLink,
   Outlet,
 } from "react-router";
+import { Toaster } from "sonner";
 import { useAppInit } from "@/shared/hooks/useAppInit";
 
 const tabs = [
@@ -109,8 +110,11 @@ function AppRoutes() {
 
 export default function App() {
   return (
-    <BrowserRouter basename="/exercise-logger">
-      <AppRoutes />
-    </BrowserRouter>
+    <>
+      <BrowserRouter basename="/exercise-logger">
+        <AppRoutes />
+      </BrowserRouter>
+      <Toaster position="top-center" richColors closeButton duration={3000} />
+    </>
   );
 }
