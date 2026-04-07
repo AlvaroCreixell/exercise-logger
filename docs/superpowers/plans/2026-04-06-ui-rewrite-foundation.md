@@ -181,7 +181,7 @@ EOF
 - [ ] **Step 1: Verify zustand is not imported anywhere**
 
 ```bash
-cd web && grep -r "zustand" src/ --include="*.ts" --include="*.tsx" | head -5
+cd web && rg "zustand" src/ -t ts -t tsx
 ```
 
 Expected: No matches (timer store was deleted in the restructure).
@@ -307,10 +307,10 @@ EOF
 Run each command. They install to `src/shared/ui/` per the updated `components.json` aliases.
 
 ```bash
-cd web && npx shadcn@latest add button card dialog sheet input badge tabs separator scroll-area label
+cd web && npx shadcn@latest add -y --overwrite button card dialog alert-dialog sheet input badge tabs separator scroll-area label
 ```
 
-If prompted for overwrite, accept. These are fresh installs (old ui/ was deleted).
+The `-y` flag skips interactive prompts. `alert-dialog` is added for ConfirmDialog (proper modal pattern with focus trap). These are fresh installs (old ui/ was deleted).
 
 - [ ] **Step 2: Verify components were installed to correct path**
 
@@ -412,7 +412,7 @@ Create `web/tests/unit/shared/components/ConfirmDialog.test.tsx`:
 
 ```tsx
 import { describe, it, expect, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
 
@@ -432,13 +432,43 @@ describe("ConfirmDialog", () => {
     expect(screen.getByText("This cannot be undone.")).toBeVisible();
   });
 
-  it("calls onConfirm when confirm button clicked", async () => {
+  it("calls async onConfirm and shows pending state", async () => {
     const user = userEvent.setup();
-    const onConfirm = vi.fn();
+    let resolve: () => void;
+    const onConfirm = vi.fn(
+      () => new Promise<void>((r) => { resolve = r; })
+    );
+    const onOpenChange = vi.fn();
     render(
       <ConfirmDialog
         open={true}
-        onOpenChange={() => {}}
+        onOpenChange={onOpenChange}
+        title="Clear data?"
+        description="All data will be lost."
+        confirmText="Clear"
+        onConfirm={onConfirm}
+        variant="destructive"
+      />
+    );
+    const btn = screen.getByRole("button", { name: "Clear" });
+    await user.click(btn);
+    // onConfirm called but dialog should NOT close yet (async pending)
+    expect(onConfirm).toHaveBeenCalledOnce();
+    expect(onOpenChange).not.toHaveBeenCalled();
+    expect(btn).toBeDisabled();
+    // Resolve the async operation
+    resolve!();
+    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
+  });
+
+  it("calls sync onConfirm and closes immediately", async () => {
+    const user = userEvent.setup();
+    const onConfirm = vi.fn();
+    const onOpenChange = vi.fn();
+    render(
+      <ConfirmDialog
+        open={true}
+        onOpenChange={onOpenChange}
         title="Finish?"
         description="Are you sure?"
         confirmText="Finish"
@@ -447,9 +477,12 @@ describe("ConfirmDialog", () => {
     );
     await user.click(screen.getByRole("button", { name: "Finish" }));
     expect(onConfirm).toHaveBeenCalledOnce();
+    expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 
-  it("renders destructive variant with correct styling", () => {
+  it("requires two clicks when doubleConfirm is true", async () => {
+    const user = userEvent.setup();
+    const onConfirm = vi.fn();
     render(
       <ConfirmDialog
         open={true}
@@ -457,12 +490,20 @@ describe("ConfirmDialog", () => {
         title="Discard?"
         description="All data will be lost."
         confirmText="Discard"
-        onConfirm={() => {}}
+        onConfirm={onConfirm}
         variant="destructive"
+        doubleConfirm
+        doubleConfirmText="Tap again to confirm"
       />
     );
     const btn = screen.getByRole("button", { name: "Discard" });
-    expect(btn).toBeVisible();
+    await user.click(btn);
+    // First click: not confirmed yet, button text changes
+    expect(onConfirm).not.toHaveBeenCalled();
+    expect(screen.getByText("Tap again to confirm")).toBeVisible();
+    // Second click: confirmed
+    await user.click(screen.getByRole("button", { name: "Tap again to confirm" }));
+    expect(onConfirm).toHaveBeenCalledOnce();
   });
 
   it("does not render when open is false", () => {
@@ -494,14 +535,15 @@ Expected: FAIL — module not found.
 Create `web/src/shared/components/ConfirmDialog.tsx`:
 
 ```tsx
+import { useState, useCallback } from "react";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/shared/ui/dialog";
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/shared/ui/alert-dialog";
 import { Button } from "@/shared/ui/button";
 
 interface ConfirmDialogProps {
@@ -510,8 +552,10 @@ interface ConfirmDialogProps {
   title: string;
   description: string;
   confirmText: string;
-  onConfirm: () => void;
+  onConfirm: () => Promise<void> | void;
   variant?: "default" | "destructive";
+  doubleConfirm?: boolean;
+  doubleConfirmText?: string;
 }
 
 export function ConfirmDialog({
@@ -522,35 +566,68 @@ export function ConfirmDialog({
   confirmText,
   onConfirm,
   variant = "default",
+  doubleConfirm = false,
+  doubleConfirmText = "Tap again to confirm",
 }: ConfirmDialogProps) {
+  const [pending, setPending] = useState(false);
+  const [confirmedOnce, setConfirmedOnce] = useState(false);
+
+  const handleOpenChange = useCallback(
+    (nextOpen: boolean) => {
+      if (!nextOpen) {
+        setConfirmedOnce(false);
+        setPending(false);
+      }
+      onOpenChange(nextOpen);
+    },
+    [onOpenChange]
+  );
+
+  const handleConfirm = useCallback(async () => {
+    if (doubleConfirm && !confirmedOnce) {
+      setConfirmedOnce(true);
+      return;
+    }
+    setPending(true);
+    try {
+      await onConfirm();
+      handleOpenChange(false);
+    } catch {
+      setPending(false);
+    }
+  }, [doubleConfirm, confirmedOnce, onConfirm, handleOpenChange]);
+
+  const buttonLabel = doubleConfirm && confirmedOnce
+    ? doubleConfirmText
+    : confirmText;
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-sm">
-        <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-          <DialogDescription>{description}</DialogDescription>
-        </DialogHeader>
-        <DialogFooter className="flex-row gap-2">
+    <AlertDialog open={open} onOpenChange={handleOpenChange}>
+      <AlertDialogContent className="max-w-sm">
+        <AlertDialogHeader>
+          <AlertDialogTitle>{title}</AlertDialogTitle>
+          <AlertDialogDescription>{description}</AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter className="flex-row gap-2">
           <Button
             variant="outline"
-            onClick={() => onOpenChange(false)}
+            onClick={() => handleOpenChange(false)}
+            disabled={pending}
             className="flex-1"
           >
             Cancel
           </Button>
           <Button
             variant={variant === "destructive" ? "destructive" : "default"}
-            onClick={() => {
-              onConfirm();
-              onOpenChange(false);
-            }}
+            onClick={handleConfirm}
+            disabled={pending}
             className="flex-1"
           >
-            {confirmText}
+            {pending ? "..." : buttonLabel}
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }
 ```
@@ -567,7 +644,7 @@ cd web && rm -f src/shared/components/.gitkeep
 cd web && npx vitest run tests/unit/shared/components/ConfirmDialog.test.tsx
 ```
 
-Expected: All 4 tests pass.
+Expected: All 5 tests pass.
 
 - [ ] **Step 6: Commit**
 
@@ -575,101 +652,149 @@ Expected: All 4 tests pass.
 cd web && git add src/shared/components/ConfirmDialog.tsx tests/unit/shared/components/ && cd .. && git commit -m "$(cat <<'EOF'
 feat: add shared ConfirmDialog component
 
-Reusable confirmation dialog with default and destructive variants.
-Used by finish/discard workout, delete routine, clear data flows.
+AlertDialog-based confirmation with async onConfirm support
+(pending state, stays open until resolved), optional double-confirm
+step, and default/destructive variants.
 EOF
 )"
 ```
 
 ---
 
-### Task 8: Create useFinishedSessions and useLastSession hooks
+### Task 8: Create useFinishedSessionSummaries and useLastSession hooks
 
 **Files:**
-- Create: `web/src/shared/hooks/useFinishedSessions.ts`
+- Create: `web/src/shared/hooks/useFinishedSessionSummaries.ts`
 - Create: `web/src/shared/hooks/useLastSession.ts`
-- Test: `web/tests/unit/shared/hooks/useFinishedSessions.test.ts`
+- Test: `web/tests/unit/shared/hooks/useFinishedSessionSummaries.test.ts`
 - Test: `web/tests/unit/shared/hooks/useLastSession.test.ts`
 
-- [ ] **Step 1: Write useFinishedSessions test**
+- [ ] **Step 1: Write useFinishedSessionSummaries test**
 
-Create `web/tests/unit/shared/hooks/useFinishedSessions.test.ts`:
+Create `web/tests/unit/shared/hooks/useFinishedSessionSummaries.test.ts`:
 
 ```typescript
 import "fake-indexeddb/auto";
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, afterEach } from "vitest";
 import { renderHook, waitFor } from "@testing-library/react";
-import { ExerciseLoggerDB, initializeSettings } from "@/db/database";
-import { useFinishedSessions } from "@/shared/hooks/useFinishedSessions";
+import { db, initializeSettings } from "@/db/database";
 
-let db: ExerciseLoggerDB;
+// Hook reads from the singleton db, so seed through it directly
+import { useFinishedSessionSummaries } from "@/shared/hooks/useFinishedSessionSummaries";
 
-beforeEach(async () => {
-  db = new ExerciseLoggerDB();
+afterEach(async () => {
+  await db.sessions.clear();
+  await db.sessionExercises.clear();
+  await db.loggedSets.clear();
+  await db.settings.clear();
   await initializeSettings(db);
 });
 
-afterEach(async () => {
-  await db.delete();
-});
-
-describe("useFinishedSessions", () => {
+describe("useFinishedSessionSummaries", () => {
   it("returns empty array when no finished sessions", async () => {
-    const { result } = renderHook(() => useFinishedSessions());
+    const { result } = renderHook(() => useFinishedSessionSummaries());
     await waitFor(() => expect(result.current).toBeDefined());
     expect(result.current).toEqual([]);
   });
 
-  it("returns finished sessions sorted by startedAt desc", async () => {
+  it("returns summaries with counts, sorted by displayDate desc", async () => {
     await db.sessions.bulkAdd([
       {
-        id: "s1",
-        routineId: "r1",
-        routineNameSnapshot: "Routine",
-        dayId: "A",
-        dayLabelSnapshot: "Push",
-        dayOrderSnapshot: ["A"],
-        restDefaultSecSnapshot: 90,
-        restSupersetSecSnapshot: 60,
+        id: "s1", routineId: "r1", routineNameSnapshot: "Routine",
+        dayId: "A", dayLabelSnapshot: "Push", dayOrderSnapshot: ["A"],
+        restDefaultSecSnapshot: 90, restSupersetSecSnapshot: 60,
         status: "finished",
         startedAt: "2026-04-01T10:00:00Z",
         finishedAt: "2026-04-01T11:00:00Z",
       },
       {
-        id: "s2",
-        routineId: "r1",
-        routineNameSnapshot: "Routine",
-        dayId: "B",
-        dayLabelSnapshot: "Pull",
-        dayOrderSnapshot: ["A", "B"],
-        restDefaultSecSnapshot: 90,
-        restSupersetSecSnapshot: 60,
+        id: "s2", routineId: "r1", routineNameSnapshot: "Routine",
+        dayId: "B", dayLabelSnapshot: "Pull", dayOrderSnapshot: ["A", "B"],
+        restDefaultSecSnapshot: 90, restSupersetSecSnapshot: 60,
         status: "finished",
         startedAt: "2026-04-03T10:00:00Z",
-        finishedAt: "2026-04-03T11:00:00Z",
+        finishedAt: "2026-04-03T11:30:00Z",
       },
       {
-        id: "s3",
-        routineId: "r1",
-        routineNameSnapshot: "Routine",
-        dayId: "A",
-        dayLabelSnapshot: "Push",
-        dayOrderSnapshot: ["A"],
-        restDefaultSecSnapshot: 90,
-        restSupersetSecSnapshot: 60,
+        id: "s3", routineId: "r1", routineNameSnapshot: "Routine",
+        dayId: "A", dayLabelSnapshot: "Push", dayOrderSnapshot: ["A"],
+        restDefaultSecSnapshot: 90, restSupersetSecSnapshot: 60,
         status: "active",
         startedAt: "2026-04-05T10:00:00Z",
         finishedAt: null,
       },
     ]);
+    await db.sessionExercises.bulkAdd([
+      {
+        id: "se1", sessionId: "s1", routineEntryId: "e1",
+        exerciseId: "bench", exerciseNameSnapshot: "Bench",
+        origin: "routine", orderIndex: 0, groupType: "single",
+        supersetGroupId: null, supersetPosition: null,
+        instanceLabel: "", effectiveType: "weight", effectiveEquipment: "barbell",
+        notesSnapshot: null, setBlocksSnapshot: [], createdAt: "2026-04-01T10:00:00Z",
+      },
+      {
+        id: "se2", sessionId: "s2", routineEntryId: "e1",
+        exerciseId: "bench", exerciseNameSnapshot: "Bench",
+        origin: "routine", orderIndex: 0, groupType: "single",
+        supersetGroupId: null, supersetPosition: null,
+        instanceLabel: "", effectiveType: "weight", effectiveEquipment: "barbell",
+        notesSnapshot: null, setBlocksSnapshot: [], createdAt: "2026-04-03T10:00:00Z",
+      },
+      {
+        id: "se3", sessionId: "s2", routineEntryId: "e2",
+        exerciseId: "row", exerciseNameSnapshot: "Row",
+        origin: "routine", orderIndex: 1, groupType: "single",
+        supersetGroupId: null, supersetPosition: null,
+        instanceLabel: "", effectiveType: "weight", effectiveEquipment: "barbell",
+        notesSnapshot: null, setBlocksSnapshot: [], createdAt: "2026-04-03T10:00:00Z",
+      },
+    ]);
+    await db.loggedSets.bulkAdd([
+      {
+        id: "ls1", sessionId: "s1", sessionExerciseId: "se1",
+        exerciseId: "bench", instanceLabel: "", origin: "routine",
+        blockIndex: 0, blockSignature: "reps:8-12:count3:tagnormal",
+        setIndex: 0, tag: null,
+        performedWeightKg: 80, performedReps: 10,
+        performedDurationSec: null, performedDistanceM: null,
+        loggedAt: "2026-04-01T10:05:00Z", updatedAt: "2026-04-01T10:05:00Z",
+      },
+      {
+        id: "ls2", sessionId: "s2", sessionExerciseId: "se2",
+        exerciseId: "bench", instanceLabel: "", origin: "routine",
+        blockIndex: 0, blockSignature: "reps:8-12:count3:tagnormal",
+        setIndex: 0, tag: null,
+        performedWeightKg: 82.5, performedReps: 8,
+        performedDurationSec: null, performedDistanceM: null,
+        loggedAt: "2026-04-03T10:05:00Z", updatedAt: "2026-04-03T10:05:00Z",
+      },
+      {
+        id: "ls3", sessionId: "s2", sessionExerciseId: "se3",
+        exerciseId: "row", instanceLabel: "", origin: "routine",
+        blockIndex: 0, blockSignature: "reps:8-12:count3:tagnormal",
+        setIndex: 0, tag: null,
+        performedWeightKg: 70, performedReps: 10,
+        performedDurationSec: null, performedDistanceM: null,
+        loggedAt: "2026-04-03T10:10:00Z", updatedAt: "2026-04-03T10:10:00Z",
+      },
+    ]);
 
-    const { result } = renderHook(() => useFinishedSessions());
+    const { result } = renderHook(() => useFinishedSessionSummaries());
     await waitFor(() => {
       expect(result.current).toBeDefined();
       expect(result.current!.length).toBe(2);
     });
-    expect(result.current![0]!.id).toBe("s2");
-    expect(result.current![1]!.id).toBe("s1");
+    // s2 is more recent — should be first
+    expect(result.current![0]!.session.id).toBe("s2");
+    expect(result.current![0]!.exerciseCount).toBe(2);
+    expect(result.current![0]!.loggedSetCount).toBe(2);
+    expect(result.current![0]!.displayDate).toBe("2026-04-03T11:30:00Z");
+    // s1
+    expect(result.current![1]!.session.id).toBe("s1");
+    expect(result.current![1]!.exerciseCount).toBe(1);
+    expect(result.current![1]!.loggedSetCount).toBe(1);
+    expect(result.current![1]!.displayDate).toBe("2026-04-01T11:00:00Z");
   });
 });
 ```
@@ -677,32 +802,72 @@ describe("useFinishedSessions", () => {
 - [ ] **Step 2: Run test to verify it fails**
 
 ```bash
-cd web && npx vitest run tests/unit/shared/hooks/useFinishedSessions.test.ts
+cd web && npx vitest run tests/unit/shared/hooks/useFinishedSessionSummaries.test.ts
 ```
 
 Expected: FAIL — module not found.
 
-- [ ] **Step 3: Implement useFinishedSessions**
+- [ ] **Step 3: Implement useFinishedSessionSummaries**
 
-Create `web/src/shared/hooks/useFinishedSessions.ts`:
+Create `web/src/shared/hooks/useFinishedSessionSummaries.ts`:
 
 ```typescript
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/db/database";
 import type { Session } from "@/domain/types";
 
+export interface FinishedSessionSummary {
+  session: Session;
+  exerciseCount: number;
+  loggedSetCount: number;
+  /** finishedAt if available, otherwise startedAt */
+  displayDate: string;
+}
+
 /**
- * Reactively load all finished sessions, sorted by startedAt descending.
+ * Reactively load all finished sessions with exercise/set counts,
+ * sorted by displayDate descending.
  * Returns undefined while loading.
  */
-export function useFinishedSessions(): Session[] | undefined {
+export function useFinishedSessionSummaries(): FinishedSessionSummary[] | undefined {
   return useLiveQuery(async () => {
     const sessions = await db.sessions
       .where("status")
       .equals("finished")
       .toArray();
-    return sessions.sort(
-      (a, b) => b.startedAt.localeCompare(a.startedAt)
+
+    if (sessions.length === 0) return [];
+
+    const sessionIds = sessions.map((s) => s.id);
+
+    // Batch-count exercises and sets per session
+    const allExercises = await db.sessionExercises
+      .where("sessionId")
+      .anyOf(sessionIds)
+      .toArray();
+    const allSets = await db.loggedSets
+      .where("sessionId")
+      .anyOf(sessionIds)
+      .toArray();
+
+    const exerciseCounts = new Map<string, number>();
+    for (const se of allExercises) {
+      exerciseCounts.set(se.sessionId, (exerciseCounts.get(se.sessionId) ?? 0) + 1);
+    }
+    const setCounts = new Map<string, number>();
+    for (const ls of allSets) {
+      setCounts.set(ls.sessionId, (setCounts.get(ls.sessionId) ?? 0) + 1);
+    }
+
+    const summaries: FinishedSessionSummary[] = sessions.map((session) => ({
+      session,
+      exerciseCount: exerciseCounts.get(session.id) ?? 0,
+      loggedSetCount: setCounts.get(session.id) ?? 0,
+      displayDate: session.finishedAt ?? session.startedAt,
+    }));
+
+    return summaries.sort((a, b) =>
+      b.displayDate.localeCompare(a.displayDate)
     );
   });
 }
@@ -711,7 +876,7 @@ export function useFinishedSessions(): Session[] | undefined {
 - [ ] **Step 4: Run test to verify it passes**
 
 ```bash
-cd web && npx vitest run tests/unit/shared/hooks/useFinishedSessions.test.ts
+cd web && npx vitest run tests/unit/shared/hooks/useFinishedSessionSummaries.test.ts
 ```
 
 Expected: PASS.
@@ -722,20 +887,15 @@ Create `web/tests/unit/shared/hooks/useLastSession.test.ts`:
 
 ```typescript
 import "fake-indexeddb/auto";
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, afterEach } from "vitest";
 import { renderHook, waitFor } from "@testing-library/react";
-import { ExerciseLoggerDB, initializeSettings } from "@/db/database";
+import { db, initializeSettings } from "@/db/database";
 import { useLastSession } from "@/shared/hooks/useLastSession";
 
-let db: ExerciseLoggerDB;
-
-beforeEach(async () => {
-  db = new ExerciseLoggerDB();
-  await initializeSettings(db);
-});
-
 afterEach(async () => {
-  await db.delete();
+  await db.sessions.clear();
+  await db.settings.clear();
+  await initializeSettings(db);
 });
 
 describe("useLastSession", () => {
@@ -754,30 +914,18 @@ describe("useLastSession", () => {
   it("returns the most recent finished session for a routine", async () => {
     await db.sessions.bulkAdd([
       {
-        id: "s1",
-        routineId: "r1",
-        routineNameSnapshot: "Routine",
-        dayId: "A",
-        dayLabelSnapshot: "Push",
-        dayOrderSnapshot: ["A"],
-        restDefaultSecSnapshot: 90,
-        restSupersetSecSnapshot: 60,
+        id: "s1", routineId: "r1", routineNameSnapshot: "Routine",
+        dayId: "A", dayLabelSnapshot: "Push", dayOrderSnapshot: ["A"],
+        restDefaultSecSnapshot: 90, restSupersetSecSnapshot: 60,
         status: "finished",
-        startedAt: "2026-04-01T10:00:00Z",
-        finishedAt: "2026-04-01T11:00:00Z",
+        startedAt: "2026-04-01T10:00:00Z", finishedAt: "2026-04-01T11:00:00Z",
       },
       {
-        id: "s2",
-        routineId: "r1",
-        routineNameSnapshot: "Routine",
-        dayId: "B",
-        dayLabelSnapshot: "Pull",
-        dayOrderSnapshot: ["A", "B"],
-        restDefaultSecSnapshot: 90,
-        restSupersetSecSnapshot: 60,
+        id: "s2", routineId: "r1", routineNameSnapshot: "Routine",
+        dayId: "B", dayLabelSnapshot: "Pull", dayOrderSnapshot: ["A", "B"],
+        restDefaultSecSnapshot: 90, restSupersetSecSnapshot: 60,
         status: "finished",
-        startedAt: "2026-04-03T10:00:00Z",
-        finishedAt: "2026-04-03T11:00:00Z",
+        startedAt: "2026-04-03T10:00:00Z", finishedAt: "2026-04-03T11:00:00Z",
       },
     ]);
 
@@ -834,12 +982,12 @@ Expected: PASS.
 - [ ] **Step 8: Commit**
 
 ```bash
-cd web && git add src/shared/hooks/useFinishedSessions.ts src/shared/hooks/useLastSession.ts tests/unit/shared/hooks/ && cd .. && git commit -m "$(cat <<'EOF'
-feat: add useFinishedSessions and useLastSession hooks
+cd web && git add src/shared/hooks/useFinishedSessionSummaries.ts src/shared/hooks/useLastSession.ts tests/unit/shared/hooks/ && cd .. && git commit -m "$(cat <<'EOF'
+feat: add useFinishedSessionSummaries and useLastSession hooks
 
-useFinishedSessions returns all finished sessions sorted desc.
-useLastSession returns the most recent finished session for a
-given routine. Both use useLiveQuery for reactive updates.
+useFinishedSessionSummaries returns view-model summaries with
+exerciseCount, loggedSetCount, and displayDate (finishedAt ?? startedAt).
+useLastSession returns the most recent finished session for a routine.
 EOF
 )"
 ```
@@ -858,20 +1006,17 @@ Create `web/tests/unit/shared/hooks/useSessionDetail.test.ts`:
 
 ```typescript
 import "fake-indexeddb/auto";
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, afterEach } from "vitest";
 import { renderHook, waitFor } from "@testing-library/react";
-import { ExerciseLoggerDB, initializeSettings } from "@/db/database";
+import { db, initializeSettings } from "@/db/database";
 import { useSessionDetail } from "@/shared/hooks/useSessionDetail";
 
-let db: ExerciseLoggerDB;
-
-beforeEach(async () => {
-  db = new ExerciseLoggerDB();
-  await initializeSettings(db);
-});
-
 afterEach(async () => {
-  await db.delete();
+  await db.sessions.clear();
+  await db.sessionExercises.clear();
+  await db.loggedSets.clear();
+  await db.settings.clear();
+  await initializeSettings(db);
 });
 
 describe("useSessionDetail", () => {
@@ -887,56 +1032,44 @@ describe("useSessionDetail", () => {
     expect(result.current).toBeNull();
   });
 
-  it("returns session with exercises and sets", async () => {
+  it("returns session with grouped exercises and their sets", async () => {
     await db.sessions.add({
-      id: "s1",
-      routineId: "r1",
-      routineNameSnapshot: "My Routine",
-      dayId: "A",
-      dayLabelSnapshot: "Push",
-      dayOrderSnapshot: ["A"],
-      restDefaultSecSnapshot: 90,
-      restSupersetSecSnapshot: 60,
+      id: "s1", routineId: "r1", routineNameSnapshot: "My Routine",
+      dayId: "A", dayLabelSnapshot: "Push", dayOrderSnapshot: ["A"],
+      restDefaultSecSnapshot: 90, restSupersetSecSnapshot: 60,
       status: "finished",
-      startedAt: "2026-04-01T10:00:00Z",
-      finishedAt: "2026-04-01T11:00:00Z",
+      startedAt: "2026-04-01T10:00:00Z", finishedAt: "2026-04-01T11:00:00Z",
     });
     await db.sessionExercises.add({
-      id: "se1",
-      sessionId: "s1",
-      routineEntryId: "e1",
-      exerciseId: "barbell-bench-press",
-      exerciseNameSnapshot: "Barbell Bench Press",
-      origin: "routine",
-      orderIndex: 0,
-      groupType: "single",
-      supersetGroupId: null,
-      supersetPosition: null,
-      instanceLabel: "",
-      effectiveType: "weight",
-      effectiveEquipment: "barbell",
+      id: "se1", sessionId: "s1", routineEntryId: "e1",
+      exerciseId: "barbell-bench-press", exerciseNameSnapshot: "Barbell Bench Press",
+      origin: "routine", orderIndex: 0, groupType: "single",
+      supersetGroupId: null, supersetPosition: null,
+      instanceLabel: "", effectiveType: "weight", effectiveEquipment: "barbell",
       notesSnapshot: null,
       setBlocksSnapshot: [{ targetKind: "reps", minValue: 8, maxValue: 12, count: 3 }],
       createdAt: "2026-04-01T10:00:00Z",
     });
-    await db.loggedSets.add({
-      id: "ls1",
-      sessionId: "s1",
-      sessionExerciseId: "se1",
-      exerciseId: "barbell-bench-press",
-      instanceLabel: "",
-      origin: "routine",
-      blockIndex: 0,
-      blockSignature: "reps:8-12:count3:tagnormal",
-      setIndex: 0,
-      tag: null,
-      performedWeightKg: 80,
-      performedReps: 10,
-      performedDurationSec: null,
-      performedDistanceM: null,
-      loggedAt: "2026-04-01T10:05:00Z",
-      updatedAt: "2026-04-01T10:05:00Z",
-    });
+    await db.loggedSets.bulkAdd([
+      {
+        id: "ls1", sessionId: "s1", sessionExerciseId: "se1",
+        exerciseId: "barbell-bench-press", instanceLabel: "", origin: "routine",
+        blockIndex: 0, blockSignature: "reps:8-12:count3:tagnormal",
+        setIndex: 0, tag: null,
+        performedWeightKg: 80, performedReps: 10,
+        performedDurationSec: null, performedDistanceM: null,
+        loggedAt: "2026-04-01T10:05:00Z", updatedAt: "2026-04-01T10:05:00Z",
+      },
+      {
+        id: "ls2", sessionId: "s1", sessionExerciseId: "se1",
+        exerciseId: "barbell-bench-press", instanceLabel: "", origin: "routine",
+        blockIndex: 0, blockSignature: "reps:8-12:count3:tagnormal",
+        setIndex: 1, tag: null,
+        performedWeightKg: 80, performedReps: 8,
+        performedDurationSec: null, performedDistanceM: null,
+        loggedAt: "2026-04-01T10:08:00Z", updatedAt: "2026-04-01T10:08:00Z",
+      },
+    ]);
 
     const { result } = renderHook(() => useSessionDetail("s1"));
     await waitFor(() => {
@@ -944,8 +1077,12 @@ describe("useSessionDetail", () => {
       expect(result.current).not.toBeNull();
     });
     expect(result.current!.session.routineNameSnapshot).toBe("My Routine");
-    expect(result.current!.sessionExercises).toHaveLength(1);
-    expect(result.current!.loggedSets).toHaveLength(1);
+    expect(result.current!.exercises).toHaveLength(1);
+    expect(result.current!.exercises[0]!.sessionExercise.id).toBe("se1");
+    expect(result.current!.exercises[0]!.loggedSets).toHaveLength(2);
+    // Sets sorted by blockIndex, setIndex
+    expect(result.current!.exercises[0]!.loggedSets[0]!.setIndex).toBe(0);
+    expect(result.current!.exercises[0]!.loggedSets[1]!.setIndex).toBe(1);
   });
 });
 ```
@@ -967,14 +1104,18 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/db/database";
 import type { Session, SessionExercise, LoggedSet } from "@/domain/types";
 
-export interface SessionDetailData {
-  session: Session;
-  sessionExercises: SessionExercise[];
+export interface SessionExerciseWithSets {
+  sessionExercise: SessionExercise;
   loggedSets: LoggedSet[];
 }
 
+export interface SessionDetailData {
+  session: Session;
+  exercises: SessionExerciseWithSets[];
+}
+
 /**
- * Reactively load a session with all its exercises and logged sets.
+ * Reactively load a session with all exercises and their grouped/sorted sets.
  * Returns null if session not found. Returns undefined while loading.
  */
 export function useSessionDetail(
@@ -997,7 +1138,26 @@ export function useSessionDetail(
         .equals(sessionId)
         .toArray();
 
-      return { session, sessionExercises, loggedSets };
+      // Group sets by sessionExerciseId
+      const setsByExercise = new Map<string, LoggedSet[]>();
+      for (const ls of loggedSets) {
+        const existing = setsByExercise.get(ls.sessionExerciseId);
+        if (existing) {
+          existing.push(ls);
+        } else {
+          setsByExercise.set(ls.sessionExerciseId, [ls]);
+        }
+      }
+
+      const exercises: SessionExerciseWithSets[] = sessionExercises.map((se) => ({
+        sessionExercise: se,
+        loggedSets: (setsByExercise.get(se.id) ?? []).sort((a, b) => {
+          if (a.blockIndex !== b.blockIndex) return a.blockIndex - b.blockIndex;
+          return a.setIndex - b.setIndex;
+        }),
+      }));
+
+      return { session, exercises };
     },
     [sessionId]
   );
@@ -1018,8 +1178,9 @@ Expected: PASS.
 cd web && git add src/shared/hooks/useSessionDetail.ts tests/unit/shared/hooks/useSessionDetail.test.ts && cd .. && git commit -m "$(cat <<'EOF'
 feat: add useSessionDetail hook
 
-Returns session record + exercises + sets for SessionDetailScreen.
-Handles invalid session IDs by returning null.
+Returns session + exercises grouped with their sorted sets.
+Handles invalid session IDs by returning null. Provides
+screen-ready data for SessionDetailScreen.
 EOF
 )"
 ```
@@ -1038,20 +1199,17 @@ Create `web/tests/unit/shared/hooks/useExerciseHistoryGroups.test.ts`:
 
 ```typescript
 import "fake-indexeddb/auto";
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, afterEach } from "vitest";
 import { renderHook, waitFor } from "@testing-library/react";
-import { ExerciseLoggerDB, initializeSettings } from "@/db/database";
+import { db, initializeSettings } from "@/db/database";
 import { useExerciseHistoryGroups } from "@/shared/hooks/useExerciseHistoryGroups";
 
-let db: ExerciseLoggerDB;
-
-beforeEach(async () => {
-  db = new ExerciseLoggerDB();
-  await initializeSettings(db);
-});
-
 afterEach(async () => {
-  await db.delete();
+  await db.sessions.clear();
+  await db.sessionExercises.clear();
+  await db.loggedSets.clear();
+  await db.settings.clear();
+  await initializeSettings(db);
 });
 
 describe("useExerciseHistoryGroups", () => {
@@ -1070,70 +1228,38 @@ describe("useExerciseHistoryGroups", () => {
   });
 
   it("groups sets by session with context, excludes active sessions", async () => {
-    // Finished session
     await db.sessions.add({
-      id: "s1",
-      routineId: "r1",
-      routineNameSnapshot: "My Routine",
-      dayId: "A",
-      dayLabelSnapshot: "Push",
-      dayOrderSnapshot: ["A"],
-      restDefaultSecSnapshot: 90,
-      restSupersetSecSnapshot: 60,
+      id: "s1", routineId: "r1", routineNameSnapshot: "My Routine",
+      dayId: "A", dayLabelSnapshot: "Push", dayOrderSnapshot: ["A"],
+      restDefaultSecSnapshot: 90, restSupersetSecSnapshot: 60,
       status: "finished",
-      startedAt: "2026-04-01T10:00:00Z",
-      finishedAt: "2026-04-01T11:00:00Z",
+      startedAt: "2026-04-01T10:00:00Z", finishedAt: "2026-04-01T11:00:00Z",
     });
     await db.sessionExercises.add({
-      id: "se1",
-      sessionId: "s1",
-      routineEntryId: "e1",
-      exerciseId: "barbell-bench-press",
-      exerciseNameSnapshot: "Barbell Bench Press",
-      origin: "routine",
-      orderIndex: 0,
-      groupType: "single",
-      supersetGroupId: null,
-      supersetPosition: null,
-      instanceLabel: "",
-      effectiveType: "weight",
-      effectiveEquipment: "barbell",
-      notesSnapshot: null,
-      setBlocksSnapshot: [],
+      id: "se1", sessionId: "s1", routineEntryId: "e1",
+      exerciseId: "barbell-bench-press", exerciseNameSnapshot: "Barbell Bench Press",
+      origin: "routine", orderIndex: 0, groupType: "single",
+      supersetGroupId: null, supersetPosition: null,
+      instanceLabel: "", effectiveType: "weight", effectiveEquipment: "barbell",
+      notesSnapshot: null, setBlocksSnapshot: [],
       createdAt: "2026-04-01T10:00:00Z",
     });
     await db.loggedSets.add({
-      id: "ls1",
-      sessionId: "s1",
-      sessionExerciseId: "se1",
-      exerciseId: "barbell-bench-press",
-      instanceLabel: "",
-      origin: "routine",
-      blockIndex: 0,
-      blockSignature: "reps:8-12:count3:tagnormal",
-      setIndex: 0,
-      tag: null,
-      performedWeightKg: 80,
-      performedReps: 10,
-      performedDurationSec: null,
-      performedDistanceM: null,
-      loggedAt: "2026-04-01T10:05:00Z",
-      updatedAt: "2026-04-01T10:05:00Z",
+      id: "ls1", sessionId: "s1", sessionExerciseId: "se1",
+      exerciseId: "barbell-bench-press", instanceLabel: "", origin: "routine",
+      blockIndex: 0, blockSignature: "reps:8-12:count3:tagnormal",
+      setIndex: 0, tag: null,
+      performedWeightKg: 80, performedReps: 10,
+      performedDurationSec: null, performedDistanceM: null,
+      loggedAt: "2026-04-01T10:05:00Z", updatedAt: "2026-04-01T10:05:00Z",
     });
-
     // Active session (should be excluded)
     await db.sessions.add({
-      id: "s2",
-      routineId: "r1",
-      routineNameSnapshot: "My Routine",
-      dayId: "A",
-      dayLabelSnapshot: "Push",
-      dayOrderSnapshot: ["A"],
-      restDefaultSecSnapshot: 90,
-      restSupersetSecSnapshot: 60,
+      id: "s2", routineId: "r1", routineNameSnapshot: "My Routine",
+      dayId: "A", dayLabelSnapshot: "Push", dayOrderSnapshot: ["A"],
+      restDefaultSecSnapshot: 90, restSupersetSecSnapshot: 60,
       status: "active",
-      startedAt: "2026-04-05T10:00:00Z",
-      finishedAt: null,
+      startedAt: "2026-04-05T10:00:00Z", finishedAt: null,
     });
 
     const { result } = renderHook(() =>
@@ -1146,8 +1272,76 @@ describe("useExerciseHistoryGroups", () => {
     const group = result.current![0]!;
     expect(group.session.id).toBe("s1");
     expect(group.session.routineNameSnapshot).toBe("My Routine");
-    expect(group.sets).toHaveLength(1);
-    expect(group.effectiveEquipment).toBe("barbell");
+    expect(group.entries).toHaveLength(1);
+    expect(group.entries[0]!.effectiveEquipment).toBe("barbell");
+    expect(group.entries[0]!.sets).toHaveLength(1);
+  });
+
+  it("handles same exercise appearing twice in one session with different instance labels", async () => {
+    await db.sessions.add({
+      id: "s1", routineId: "r1", routineNameSnapshot: "Routine",
+      dayId: "A", dayLabelSnapshot: "Legs", dayOrderSnapshot: ["A"],
+      restDefaultSecSnapshot: 90, restSupersetSecSnapshot: 60,
+      status: "finished",
+      startedAt: "2026-04-01T10:00:00Z", finishedAt: "2026-04-01T11:00:00Z",
+    });
+    // Same exercise, two different instance labels
+    await db.sessionExercises.bulkAdd([
+      {
+        id: "se1", sessionId: "s1", routineEntryId: "e1",
+        exerciseId: "barbell-back-squat", exerciseNameSnapshot: "Barbell Back Squat",
+        origin: "routine", orderIndex: 0, groupType: "single",
+        supersetGroupId: null, supersetPosition: null,
+        instanceLabel: "close stance", effectiveType: "weight", effectiveEquipment: "barbell",
+        notesSnapshot: null, setBlocksSnapshot: [],
+        createdAt: "2026-04-01T10:00:00Z",
+      },
+      {
+        id: "se2", sessionId: "s1", routineEntryId: "e2",
+        exerciseId: "barbell-back-squat", exerciseNameSnapshot: "Barbell Back Squat",
+        origin: "routine", orderIndex: 1, groupType: "single",
+        supersetGroupId: null, supersetPosition: null,
+        instanceLabel: "wide stance", effectiveType: "weight", effectiveEquipment: "barbell",
+        notesSnapshot: null, setBlocksSnapshot: [],
+        createdAt: "2026-04-01T10:00:00Z",
+      },
+    ]);
+    await db.loggedSets.bulkAdd([
+      {
+        id: "ls1", sessionId: "s1", sessionExerciseId: "se1",
+        exerciseId: "barbell-back-squat", instanceLabel: "close stance", origin: "routine",
+        blockIndex: 0, blockSignature: "reps:8-12:count3:tagnormal",
+        setIndex: 0, tag: null,
+        performedWeightKg: 100, performedReps: 10,
+        performedDurationSec: null, performedDistanceM: null,
+        loggedAt: "2026-04-01T10:05:00Z", updatedAt: "2026-04-01T10:05:00Z",
+      },
+      {
+        id: "ls2", sessionId: "s1", sessionExerciseId: "se2",
+        exerciseId: "barbell-back-squat", instanceLabel: "wide stance", origin: "routine",
+        blockIndex: 0, blockSignature: "reps:8-12:count3:tagnormal",
+        setIndex: 0, tag: null,
+        performedWeightKg: 90, performedReps: 8,
+        performedDurationSec: null, performedDistanceM: null,
+        loggedAt: "2026-04-01T10:15:00Z", updatedAt: "2026-04-01T10:15:00Z",
+      },
+    ]);
+
+    const { result } = renderHook(() =>
+      useExerciseHistoryGroups("barbell-back-squat")
+    );
+    await waitFor(() => {
+      expect(result.current).toBeDefined();
+      expect(result.current!.length).toBe(1); // One session
+    });
+    const group = result.current![0]!;
+    // Two entries within the same session (different instance labels)
+    expect(group.entries).toHaveLength(2);
+    const labels = group.entries.map((e) => e.instanceLabel).sort();
+    expect(labels).toEqual(["close stance", "wide stance"]);
+    // Each entry has its own sets
+    expect(group.entries.find((e) => e.instanceLabel === "close stance")!.sets).toHaveLength(1);
+    expect(group.entries.find((e) => e.instanceLabel === "wide stance")!.sets).toHaveLength(1);
   });
 });
 ```
@@ -1170,19 +1364,28 @@ import { db } from "@/db/database";
 import type { Session, LoggedSet } from "@/domain/types";
 import type { ExerciseEquipment } from "@/domain/enums";
 
-export interface ExerciseHistoryGroup {
-  session: Pick<
-    Session,
-    "id" | "dayLabelSnapshot" | "routineNameSnapshot" | "startedAt"
-  >;
+export interface ExerciseHistoryEntry {
   instanceLabel: string;
   effectiveEquipment: ExerciseEquipment;
   sets: LoggedSet[];
 }
 
+export interface ExerciseHistoryGroup {
+  session: Pick<
+    Session,
+    "id" | "dayLabelSnapshot" | "routineNameSnapshot" | "startedAt"
+  >;
+  entries: ExerciseHistoryEntry[];
+}
+
 /**
  * Reactively load all logged sets for an exercise across finished sessions,
- * grouped by session with context from sessionExercises and sessions tables.
+ * grouped by session, then by sessionExerciseId within each session.
+ *
+ * Uses the [exerciseId+loggedAt] compound index for the initial query.
+ * Handles the same exercise appearing multiple times in one session
+ * (different instanceLabels) by creating separate entries per sessionExerciseId.
+ *
  * Returns null if exerciseId is undefined. Returns undefined while loading.
  */
 export function useExerciseHistoryGroups(
@@ -1192,15 +1395,15 @@ export function useExerciseHistoryGroups(
     async () => {
       if (!exerciseId) return null;
 
-      // Get all logged sets for this exercise, sorted by loggedAt desc
+      // Query via [exerciseId+loggedAt] compound index
       const allSets = await db.loggedSets
-        .where("exerciseId")
-        .equals(exerciseId)
+        .where("[exerciseId+loggedAt]")
+        .between([exerciseId, ""], [exerciseId, "\uffff"])
         .toArray();
 
       if (allSets.length === 0) return [];
 
-      // Collect unique session IDs and sessionExercise IDs
+      // Collect unique IDs for batch loading
       const sessionIds = new Set(allSets.map((s) => s.sessionId));
       const seIds = new Set(allSets.map((s) => s.sessionExerciseId));
 
@@ -1215,7 +1418,10 @@ export function useExerciseHistoryGroups(
 
       // Batch-load sessionExercises for effectiveEquipment and instanceLabel
       const sessionExercises = await db.sessionExercises.bulkGet([...seIds]);
-      const seMap = new Map<string, { instanceLabel: string; effectiveEquipment: ExerciseEquipment }>();
+      const seMap = new Map<
+        string,
+        { instanceLabel: string; effectiveEquipment: ExerciseEquipment }
+      >();
       for (const se of sessionExercises) {
         if (se) {
           seMap.set(se.id, {
@@ -1225,23 +1431,44 @@ export function useExerciseHistoryGroups(
         }
       }
 
-      // Group sets by session, only from finished sessions
-      const groupMap = new Map<string, { sets: LoggedSet[]; seId: string }>();
+      // Group sets by sessionId -> sessionExerciseId
+      // This correctly handles the same exercise appearing twice in one session
+      const sessionGroupMap = new Map<
+        string,
+        Map<string, LoggedSet[]>
+      >();
       for (const ls of allSets) {
         if (!finishedSessions.has(ls.sessionId)) continue;
-        const existing = groupMap.get(ls.sessionId);
+        let seGroup = sessionGroupMap.get(ls.sessionId);
+        if (!seGroup) {
+          seGroup = new Map();
+          sessionGroupMap.set(ls.sessionId, seGroup);
+        }
+        const existing = seGroup.get(ls.sessionExerciseId);
         if (existing) {
-          existing.sets.push(ls);
+          existing.push(ls);
         } else {
-          groupMap.set(ls.sessionId, { sets: [ls], seId: ls.sessionExerciseId });
+          seGroup.set(ls.sessionExerciseId, [ls]);
         }
       }
 
-      // Build result sorted by session date desc
+      // Build result
       const groups: ExerciseHistoryGroup[] = [];
-      for (const [sessionId, { sets, seId }] of groupMap) {
+      for (const [sessionId, seGroup] of sessionGroupMap) {
         const session = finishedSessions.get(sessionId)!;
-        const seData = seMap.get(seId);
+        const entries: ExerciseHistoryEntry[] = [];
+        for (const [seId, sets] of seGroup) {
+          const seData = seMap.get(seId);
+          entries.push({
+            instanceLabel: seData?.instanceLabel ?? "",
+            effectiveEquipment: seData?.effectiveEquipment ?? "bodyweight",
+            sets: sets.sort((a, b) => {
+              if (a.blockIndex !== b.blockIndex)
+                return a.blockIndex - b.blockIndex;
+              return a.setIndex - b.setIndex;
+            }),
+          });
+        }
         groups.push({
           session: {
             id: session.id,
@@ -1249,12 +1476,7 @@ export function useExerciseHistoryGroups(
             routineNameSnapshot: session.routineNameSnapshot,
             startedAt: session.startedAt,
           },
-          instanceLabel: seData?.instanceLabel ?? "",
-          effectiveEquipment: seData?.effectiveEquipment ?? "bodyweight",
-          sets: sets.sort((a, b) => {
-            if (a.blockIndex !== b.blockIndex) return a.blockIndex - b.blockIndex;
-            return a.setIndex - b.setIndex;
-          }),
+          entries,
         });
       }
 
@@ -1273,7 +1495,7 @@ export function useExerciseHistoryGroups(
 cd web && npx vitest run tests/unit/shared/hooks/useExerciseHistoryGroups.test.ts
 ```
 
-Expected: PASS.
+Expected: All 4 tests pass (including the dual-instanceLabel regression test).
 
 - [ ] **Step 5: Commit**
 
@@ -1282,8 +1504,10 @@ cd web && git add src/shared/hooks/useExerciseHistoryGroups.ts tests/unit/shared
 feat: add useExerciseHistoryGroups hook
 
 Three-table join (loggedSets -> sessionExercises -> sessions) for
-ExerciseHistoryScreen. Groups by session with effectiveEquipment,
-instanceLabel, and session context. Only finished sessions.
+ExerciseHistoryScreen. Uses [exerciseId+loggedAt] compound index.
+Groups by session then by sessionExerciseId to correctly handle
+the same exercise appearing twice in one session with different
+instance labels.
 EOF
 )"
 ```
@@ -1410,7 +1634,7 @@ Expected:
 
 ## What comes next
 
-**Plan B: Screen Implementation** — A separate plan that builds all 6 screens on top of this foundation. Each screen is a self-contained task using the hooks, components, and design tokens established here. Plan B should invoke the `frontend-design` skill for component-level visual quality.
+**Plan B: Screen Implementation** — A separate plan that builds all 6 screens on top of this foundation. Each screen is a self-contained task using the hooks, components, and design tokens established here.
 
 Screens to implement (suggested order):
 1. SettingsScreen (enables importing routines for testing other screens)
