@@ -1,5 +1,18 @@
 # Exercise Logger UI Rewrite -- Design Spec
 
+## Supersedes
+
+This spec supersedes the following sections of the original product spec (`docs/superpowers/specs/2026-03-28-gym-routine-tracker-design.md`):
+
+- **Section 4.6 (Rest Timer):** Timer is permanently removed. All timer UI, Zustand store, superset round detection, and timer-related acceptance criteria are voided.
+- **Section 2.1 (Target Platforms):** Desktop is no longer a secondary target. This is a phone-only PWA. The app should not break on wider screens but no responsive breakpoints or desktop-specific layouts are designed.
+- **Section 10 (Screens -- UI layout descriptions):** All screen layouts, component structures, and interaction patterns from the original spec are replaced by this document.
+- **Acceptance criteria referencing timer behavior** (Sections 12.5, 12.6, 12.14, any others): Voided.
+
+Where the original spec and this document conflict, **this document governs**.
+
+---
+
 ## 1. Design Principles and Non-Goals
 
 ### Principles
@@ -159,7 +172,7 @@ Font: Geist Variable (already installed via `@fontsource-variable/geist`).
 **Set Slot** (`features/workout/SetSlot.tsx`):
 - Minimum 44px height, comfortable width for content
 - **Unlogged**: Set number ("1", "2"), `border border-border text-muted-foreground bg-background`
-- **Logged**: Abbreviated value ("80x8"), `bg-success-soft border-success text-success-foreground` with small checkmark icon. `tabular-nums`.
+- **Logged**: Abbreviated value ("80x8"), `bg-success-soft border-success text-success` with small checkmark icon. `tabular-nums`. (Note: use `text-success` on `-soft` backgrounds, not `text-success-foreground` which is designed for solid `bg-success` surfaces.)
 - Tapping opens SetLogSheet for that slot
 
 **Superset Group** (`features/workout/SupersetGroup.tsx`):
@@ -172,7 +185,7 @@ Font: Geist Variable (already installed via `@fontsource-variable/geist`).
 - Header: Exercise name, block label (if any), set number (e.g. "Set 2 of 3")
 - **Pre-fill priority**: (1) current logged value if editing, (2) suggestion weight + last-time reps, (3) blank
 - **Fields driven by `targetKind`**:
-  - `"reps"`: Reps number input. Weight input if `effectiveType === "weight"`. If `effectiveType === "bodyweight"`: show an "Add weight" link that reveals the weight field. Include a one-line notice: "Adding weight is permanent for this session." Once any set logs a non-null weight, the exercise promotes to `effectiveType: "weight"` (one-way, no demotion -- enforced by set-service). After promotion, the weight field shows on all subsequent sets without the link or notice.
+  - `"reps"`: Reps number input. Weight input if `effectiveType === "weight"`. If `effectiveType === "bodyweight"`: show an "Add weight" link that reveals the weight field. Include a one-line notice: "Adding weight is permanent for this session." Once any set logs a non-null weight, the exercise promotes to `effectiveType: "weight"` (one-way, no demotion -- enforced by set-service). After promotion: the weight field shows permanently on all subsequent sets (no link, no notice). The weight field is pre-filled from the previous set's weight but remains optional -- the service allows null weight on individual sets even after promotion. The UI should not enforce weight-required; mixed weighted/unweighted sets within a promoted exercise are valid (e.g., user adds weight for first set then drops it for burnout sets).
   - `"duration"`: Duration (seconds) number input. Weight if applicable.
   - `"distance"`: Distance (meters) number input. Weight if applicable.
   - For extras (no `targetKind`): Fall back to `effectiveType`-driven fields.
@@ -183,7 +196,7 @@ Font: Geist Variable (already installed via `@fontsource-variable/geist`).
 
 **Exercise Picker** (`features/workout/ExercisePicker.tsx`):
 - Full-height sheet triggered by "Add Exercise" footer button
-- Tabs: All, Legs, Chest, Back, Shoulders, Arms, Core, Cardio (muscle group filter)
+- Tabs: All, Legs, Chest, Back, Shoulders, Arms, Core, Full Body, Cardio (muscle group filter, matching catalog data)
 - Search bar at top
 - Exercise rows: name + equipment badge
 - Already-in-workout exercises: "In workout" badge but still tappable (adds as extra)
@@ -227,16 +240,16 @@ Font: Geist Variable (already installed via `@fontsource-variable/geist`).
 **File:** `features/history/SessionDetailScreen.tsx`
 
 - Back button top-left, navigates to `/history`
-- Header: Day label, routine name, date, duration
+- Header: Day label, routine name, date, duration (all from session record snapshots)
 - Exercise cards: Read-only variant of workout ExerciseCard
   - Quieter surface (no card border or lighter border)
-  - Only logged set slots are rendered and tappable (no empty prescribed slots shown)
+  - **Preserve full prescribed structure.** All prescribed set slots are visible. Logged slots are tappable and show values. Unlogged slots are rendered in a subdued/empty state (`text-muted-foreground`, dashed border) but are also tappable -- tapping opens SetLogSheet to log a set retroactively via `logSet`. This prevents the edit trap where deleting the only logged set removes all visible affordances.
   - Tapping a logged slot opens SetLogSheet in edit mode (`editSet` / `deleteSet`)
   - Exercise name is tappable, navigates to `/history/exercise/:exerciseId`
   - Block labels and block structure preserved for context
 
 **Data sources:**
-- `useSessionExercises(sessionId)` for exercises + sets
+- **`useSessionDetail(sessionId)`** (new hook): Returns `{ session, sessionExercises, loggedSets } | null | undefined`. Loads the session record (for header data: day label, routine name, date, duration from snapshots) plus all exercises and sets. Returns `null` if session not found (invalid ID). This replaces the old `useSessionExercises` for this screen.
 - `useRoutine()` not needed (snapshots contain all display data)
 
 ### 4.5 Exercise History Screen
@@ -254,7 +267,7 @@ Font: Geist Variable (already installed via `@fontsource-variable/geist`).
   - Equipment-appropriate weight formatting via `effectiveEquipment`
 
 **Data sources:**
-- `db.loggedSets` queried by exerciseId, joined with session data for context
+- **`useExerciseHistoryGroups(exerciseId)`** (new hook): Queries `loggedSets` by exerciseId, then joins through `sessionExercises` (for `effectiveEquipment`, `instanceLabel`, `setBlocksSnapshot`) and `sessions` (for `dayLabelSnapshot`, `routineNameSnapshot`, `startedAt`, `status`). Returns groups sorted by session date descending. Only includes sets from finished sessions. This three-table join is necessary because `loggedSets` do not carry `effectiveEquipment` -- that field lives on `SessionExercise`.
 
 ### 4.6 Settings Screen
 
@@ -267,7 +280,7 @@ Single scrollable page with three card sections.
 - **Routine list** (`features/settings/RoutineList.tsx`):
   - Each row: Routine name, "Active" badge if active (`bg-info-soft text-info`)
   - Primary action area per row. One primary action visible, not multiple small buttons:
-    - Inactive routines: "Set as active" button + small "Delete" action (ghost/text)
+    - Inactive routines: "Set as active routine" button + small "Delete" action (ghost/text)
     - Active routine: "Active" badge (no activation button needed) + "Delete" action
   - Deleting the active routine: The `deleteRoutine` service auto-activates the earliest remaining routine by `importedAt`. If it's the last routine, `activeRoutineId` becomes null. The confirmation dialog should explain this: "This routine will be deleted. [If others exist:] Your next routine will be automatically activated."
   - During active session: action buttons disabled with inline helper text "Finish or discard your current workout first" (`text-warning text-xs`). No tooltips.
@@ -324,6 +337,7 @@ Install as needed via `npx shadcn add`. Expected components:
 - **Loading states:** All hooks return `undefined` while loading. Screens show nothing (or skeleton if appropriate) until data resolves. No "Loading..." text except the initial app boot.
 - **Optimistic updates:** Not needed. Dexie writes are local and near-instant. `useLiveQuery` re-renders reactively after writes.
 - **Form submission:** SetLogSheet calls service functions directly. On success, sheet closes. On error (shouldn't happen with local DB), show inline error.
+- **Pending states for async operations:** YAML import (file parsing + validation), JSON import (file parsing + transactional overwrite), export (serialization + download), clear data (transactional delete), finish/discard workout (transactional). While these operations run, the triggering button shows a disabled/loading state (e.g. spinner or "Importing..." text). Dexie writes are fast but file parsing is user-visible.
 - **Navigation:** React Router `Link` / `NavLink` for all navigation. `useNavigate()` for programmatic redirects (e.g. after clear data).
 
 ---
@@ -425,7 +439,23 @@ await db.transaction("rw", [db.sessions, db.routines, ...], async () => {
 
 **Verification:** Confirm that `deleteSet` does NOT revert `effectiveType` (it doesn't -- verified in code). This is by design: once promoted, the exercise stays in weight mode for the rest of the session.
 
-### 8.3 No change needed for routine deletion
+### 8.3 Export getBlockLabel from progression-service
+
+**Problem:** `getBlockLabel()` in `progression-service.ts:347` is a private function. The UI needs it to render block labels ("Top", "AMRAP", "Back-off", "Set block N") on ExerciseCards and SessionDetailScreen.
+
+**Fix:** Add `export` to the function declaration. No logic change.
+
+```typescript
+// OLD (line 347)
+function getBlockLabel(
+
+// NEW
+export function getBlockLabel(
+```
+
+**Tests:** Existing progression-service tests use `getBlockLabel` indirectly through `getExerciseHistoryData`. No test changes needed, but adding a direct unit test for `getBlockLabel` is recommended.
+
+### 8.4 No change needed for routine deletion
 
 **Problem:** The spec initially contradicted the service behavior. The spec has been corrected (Section 4.6) to match the existing `deleteRoutine` auto-activation behavior. No service change needed.
 
@@ -459,9 +489,14 @@ await db.transaction("rw", [db.sessions, db.routines, ...], async () => {
 
 - **`useFinishedSessions()`**: Returns finished sessions sorted by `startedAt` desc. For HistoryScreen.
 - **`useLastSession(routineId)`**: Returns the most recent finished session for a routine. For TodayScreen's last session card.
-- **`useExerciseSessions(exerciseId)`**: Returns all logged sets for an exercise across finished sessions, with session context. For ExerciseHistoryScreen.
+- **`useSessionDetail(sessionId)`**: Returns `{ session, sessionExercises, loggedSets } | null | undefined`. Loads session record + exercises + sets. Returns `null` for invalid session ID. For SessionDetailScreen (replaces bare `useSessionExercises` which doesn't provide session header data).
+- **`useExerciseHistoryGroups(exerciseId)`**: Returns logged sets grouped by session, with session context (day label, routine name, date) and sessionExercise context (effectiveEquipment, instanceLabel). Three-table join: loggedSets -> sessionExercises -> sessions. For ExerciseHistoryScreen.
 
 These follow the same `useLiveQuery` pattern as existing hooks.
+
+### Service Export Needed
+
+- **`getBlockLabel`** in `progression-service.ts` is currently a private function. It must be exported so ExerciseCard and SessionDetailScreen can render block labels ("Top", "AMRAP", "Back-off"). Add `export` to the function declaration in Phase 0.
 
 ### Component File Map
 
@@ -508,7 +543,7 @@ The smoke tests (`smoke.spec.ts`) expect:
 - Headings "No Active Workout", "No History Yet", "Settings" on their respective screens
 
 The full workflow test (`full-workflow.spec.ts`) expects:
-- Settings: YAML file upload, routine name visible, "Set as active routine" button, "Active" text
+- Settings: YAML file upload, routine name visible, "Set as active routine" button (exact copy, matches spec Section 4.6), "Active" text
 - Today: "Start Workout" text/button
 - Workout: "Finish Workout" text, `data-testid="set-slot"` on set slots, number inputs for weight/reps, save button
 - History: routine name visible after finishing
