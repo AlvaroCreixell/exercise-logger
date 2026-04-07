@@ -107,12 +107,24 @@ export default function TodayScreen() {
         {day && <DayPreview day={day} />}
 
         {routine.cardio && (
-          <div className="rounded-lg bg-muted/50 p-3">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">
+          <div className="rounded-lg bg-muted p-3 space-y-1.5">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
               Cardio
             </p>
             {routine.cardio.notes && (
-              <p className="text-xs text-muted-foreground">{routine.cardio.notes}</p>
+              <p className="text-sm text-foreground">{routine.cardio.notes}</p>
+            )}
+            {routine.cardio.options.length > 0 && (
+              <ul className="space-y-1">
+                {routine.cardio.options.map((opt, i) => (
+                  <li key={i} className="text-sm">
+                    <span className="font-medium">{opt.name}</span>
+                    {opt.detail && (
+                      <span className="text-muted-foreground"> — {opt.detail}</span>
+                    )}
+                  </li>
+                ))}
+              </ul>
             )}
           </div>
         )}
