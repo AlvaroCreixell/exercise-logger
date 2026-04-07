@@ -14,6 +14,7 @@ import type { BlockSuggestion, BlockLastTime } from "@/services/progression-serv
 import { getBlockLabel } from "@/services/progression-service";
 import { toDisplayWeight, toCanonicalKg } from "@/domain/unit-conversion";
 import { toast } from "sonner";
+import { isSetInputEmpty } from "./set-log-validation";
 
 interface SetLogSheetProps {
   open: boolean;
@@ -106,15 +107,20 @@ export function SetLogSheet({
     : "";
 
   async function handleSave() {
+    const w = weight.trim() ? parseFloat(weight) : null;
+    const input = {
+      performedWeightKg: w != null ? toCanonicalKg(w, se.effectiveEquipment, units) : null,
+      performedReps: reps.trim() ? parseInt(reps, 10) : null,
+      performedDurationSec: duration.trim() ? parseInt(duration, 10) : null,
+      performedDistanceM: distance.trim() ? parseFloat(distance) : null,
+    };
+    if (isSetInputEmpty(targetKind, input)) {
+      toast.error("Enter at least " + (targetKind === "reps" ? "reps" : targetKind === "duration" ? "duration" : "distance") + " to save.");
+      return;
+    }
     setSaving(true);
     try {
-      const w = weight.trim() ? parseFloat(weight) : null;
-      await onSave({
-        performedWeightKg: w != null ? toCanonicalKg(w, se.effectiveEquipment, units) : null,
-        performedReps: reps.trim() ? parseInt(reps, 10) : null,
-        performedDurationSec: duration.trim() ? parseInt(duration, 10) : null,
-        performedDistanceM: distance.trim() ? parseFloat(distance) : null,
-      });
+      await onSave(input);
       onOpenChange(false);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to save set");
