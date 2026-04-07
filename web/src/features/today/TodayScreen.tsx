@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router";
+import { useLiveQuery } from "dexie-react-hooks";
 import { useSettings } from "@/shared/hooks/useSettings";
 import { useRoutine } from "@/shared/hooks/useRoutine";
 import { useActiveSession } from "@/shared/hooks/useActiveSession";
@@ -21,6 +22,14 @@ export default function TodayScreen() {
   const navigate = useNavigate();
   const [selectedDayId, setSelectedDayId] = useState<string | null>(null);
   const [starting, setStarting] = useState(false);
+
+  const exercises = useLiveQuery(() => db.exercises.toArray());
+  const exerciseNames = new Map<string, string>();
+  if (exercises) {
+    for (const ex of exercises) {
+      exerciseNames.set(ex.id, ex.name);
+    }
+  }
 
   // Live elapsed time for active session
   const [elapsed, setElapsed] = useState(() =>
@@ -104,7 +113,7 @@ export default function TodayScreen() {
           onSelectDay={setSelectedDayId}
         />
 
-        {day && <DayPreview day={day} />}
+        {day && <DayPreview day={day} exerciseNames={exerciseNames} />}
 
         {routine.cardio && (
           <div className="rounded-lg bg-muted p-3 space-y-1.5">

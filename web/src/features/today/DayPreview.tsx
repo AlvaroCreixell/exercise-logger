@@ -3,6 +3,7 @@ import { Card, CardContent } from "@/shared/ui/card";
 
 interface DayPreviewProps {
   day: RoutineDay;
+  exerciseNames: Map<string, string>;
 }
 
 function formatSetSummary(setBlocks: SetBlock[]): string {
@@ -20,7 +21,11 @@ function formatSetSummary(setBlocks: SetBlock[]): string {
     .join(" + ");
 }
 
-export function DayPreview({ day }: DayPreviewProps) {
+function displayName(exerciseId: string, lookup: Map<string, string>): string {
+  return lookup.get(exerciseId) ?? exerciseId.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+export function DayPreview({ day, exerciseNames }: DayPreviewProps) {
   return (
     <Card>
       <CardContent className="py-3 space-y-1.5">
@@ -29,7 +34,7 @@ export function DayPreview({ day }: DayPreviewProps) {
             return (
               <div key={entry.entryId} className="flex items-baseline justify-between gap-2">
                 <span className="text-sm font-medium truncate">
-                  {entry.exerciseId.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
+                  {displayName(entry.exerciseId, exerciseNames)}
                   {entry.instanceLabel ? ` (${entry.instanceLabel})` : ""}
                 </span>
                 <span className="text-xs text-muted-foreground tabular-nums shrink-0">
@@ -38,13 +43,12 @@ export function DayPreview({ day }: DayPreviewProps) {
               </div>
             );
           }
-          // Superset
           return (
             <div key={entry.groupId} className="border-l-2 border-info/30 pl-3 space-y-1">
               {entry.items.map((item) => (
                 <div key={item.entryId} className="flex items-baseline justify-between gap-2">
                   <span className="text-sm font-medium truncate">
-                    {item.exerciseId.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
+                    {displayName(item.exerciseId, exerciseNames)}
                   </span>
                   <span className="text-xs text-muted-foreground tabular-nums shrink-0">
                     {formatSetSummary(item.setBlocks)}
