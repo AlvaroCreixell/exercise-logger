@@ -42,7 +42,13 @@ export function ExercisePicker({
   });
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
+    <Sheet open={open} onOpenChange={(isOpen) => {
+      onOpenChange(isOpen);
+      if (!isOpen) {
+        setSearch("");
+        setTab("All");
+      }
+    }}>
       <SheetContent side="bottom" className="h-[85dvh]" showCloseButton={false}>
         <SheetHeader>
           <SheetTitle>Add Exercise</SheetTitle>
@@ -77,7 +83,6 @@ export function ExercisePicker({
                         onClick={() => {
                           onPick(ex.id);
                           onOpenChange(false);
-                          setSearch("");
                         }}
                         className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg hover:bg-muted/50 transition-colors text-left"
                       >
