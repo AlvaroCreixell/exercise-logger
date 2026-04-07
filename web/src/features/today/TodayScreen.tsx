@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router";
 import { useSettings } from "@/shared/hooks/useSettings";
 import { useRoutine } from "@/shared/hooks/useRoutine";
@@ -22,6 +22,22 @@ export default function TodayScreen() {
   const [selectedDayId, setSelectedDayId] = useState<string | null>(null);
   const [starting, setStarting] = useState(false);
 
+  // Live elapsed time for active session
+  const [elapsed, setElapsed] = useState(() =>
+    activeSession
+      ? Math.round((Date.now() - new Date(activeSession.session.startedAt).getTime()) / 60000)
+      : 0
+  );
+
+  useEffect(() => {
+    if (!activeSession) return;
+    setElapsed(Math.round((Date.now() - new Date(activeSession.session.startedAt).getTime()) / 60000));
+    const id = setInterval(() => {
+      setElapsed(Math.round((Date.now() - new Date(activeSession.session.startedAt).getTime()) / 60000));
+    }, 60_000);
+    return () => clearInterval(id);
+  }, [activeSession]);
+
   if (!settings) return null;
 
   // State A: No active routine
@@ -43,9 +59,6 @@ export default function TodayScreen() {
 
   // State C: Active session exists
   if (activeSession) {
-    const elapsed = Math.round(
-      (Date.now() - new Date(activeSession.session.startedAt).getTime()) / 60000
-    );
     return (
       <div className="p-4">
         <Link to="/workout" className="block">
