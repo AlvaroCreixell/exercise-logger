@@ -6,8 +6,9 @@ import { useActiveSession } from "@/shared/hooks/useActiveSession";
 import { useLastSession } from "@/shared/hooks/useLastSession";
 import { startSessionWithCatalog } from "@/services/session-service";
 import { db } from "@/db/database";
-import { Button } from "@/shared/ui/button";
+import { Button, buttonVariants } from "@/shared/ui/button";
 import { Card, CardContent } from "@/shared/ui/card";
+import { cn } from "@/shared/lib/utils";
 import { DaySelector } from "./DaySelector";
 import { DayPreview } from "./DayPreview";
 import { LastSessionCard } from "./LastSessionCard";
@@ -31,8 +32,8 @@ export default function TodayScreen() {
         <p className="text-sm text-muted-foreground text-center">
           Import a routine in Settings to get started.
         </p>
-        <Link to="/settings">
-          <Button variant="outline">Go to Settings</Button>
+        <Link to="/settings" className={cn(buttonVariants({ variant: "outline" }))}>
+          Go to Settings
         </Link>
       </div>
     );
@@ -47,21 +48,20 @@ export default function TodayScreen() {
     );
     return (
       <div className="p-4">
-        <Card
-          className="border-info bg-info-soft cursor-pointer"
-          onClick={() => navigate("/workout")}
-        >
-          <CardContent className="py-4">
-            <h2 className="text-base font-semibold">Resume Workout</h2>
-            <p className="text-sm text-muted-foreground mt-1">
-              {activeSession.session.dayLabelSnapshot} &middot;{" "}
-              {activeSession.session.routineNameSnapshot}
-            </p>
-            <p className="text-xs text-muted-foreground mt-1 tabular-nums">
-              {elapsed} min &middot; {activeSession.sessionExercises.length} exercises
-            </p>
-          </CardContent>
-        </Card>
+        <Link to="/workout" className="block">
+          <Card className="border-info bg-info-soft hover:bg-info-soft/80 transition-colors">
+            <CardContent className="py-4">
+              <h2 className="text-base font-semibold">Resume Workout</h2>
+              <p className="text-sm text-muted-foreground mt-1">
+                {activeSession.session.dayLabelSnapshot} &middot;{" "}
+                {activeSession.session.routineNameSnapshot}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1 tabular-nums">
+                {elapsed} min &middot; {activeSession.sessionExercises.length} exercises
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
       </div>
     );
   }
