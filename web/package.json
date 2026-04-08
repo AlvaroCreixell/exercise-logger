@@ -1,7 +1,10 @@
 {
-  "name": "web",
+  "name": "exercise-logger",
+  "version": "1.0.0",
+  "description": "Local-first PWA gym routine tracker",
+  "author": "Alvaro Creixell",
+  "license": "MIT",
   "private": true,
-  "version": "0.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",

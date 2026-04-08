@@ -1,11 +1,13 @@
 # Exercise Logger v2 — Project Guide
 
+
+
 ## Overview
 
 Local-first PWA gym routine tracker. React + Vite + TypeScript app in `web/`, deployed to GitHub Pages. Single-user, phone-first, works offline.
 
-**Spec:** `docs/superpowers/specs/2026-03-28-gym-routine-tracker-design.md`
-**Errata:** `docs/superpowers/plans/2026-03-30-plan-errata.md` (44 audit-derived fixes applied during implementation)
+**Spec:** `docs/design-spec.md`
+**UI Spec:** `docs/ui-rewrite-spec.md`
 
 ## Architecture
 

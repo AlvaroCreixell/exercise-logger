@@ -52,7 +52,7 @@ let exerciseLookup: Map<string, Exercise>;
 async function loadRealCatalog(): Promise<Exercise[]> {
   const csvPath = path.resolve(
     __dirname,
-    "../../../docs/exercises/gym_exercises_catalog.csv"
+    "../../src/data/catalog.csv"
   );
   const csvText = fs.readFileSync(csvPath, "utf-8");
   return parseExerciseCatalog(csvText);

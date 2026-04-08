@@ -10,14 +10,14 @@ days:
     entries:
       - exercise_id: barbell-back-squat
         sets:
-          - { reps: [6, 8], count: 1, tag: top }
+          - { reps: [12, 16], count: 1, tag: top }
           - { reps: [8, 12], count: 3 }
-        notes: "Warm up with 2 lighter sets"
+        notes: "Hard top set, 30-60 sec rest"
 
       - exercise_id: leg-curl
         sets:
           - { reps: [8, 12], count: 2 }
-        notes: "Slow eccentric, 2-3 sec"
+        notes: 
 
       - exercise_id: adductor-machine
         sets:
@@ -46,7 +46,7 @@ days:
     entries:
       - exercise_id: dumbbell-romanian-deadlift
         sets:
-          - { reps: [6, 8], count: 1, tag: top }
+          - { reps: [12, 16], count: 1, tag: top }
           - { reps: [8, 12], count: 2 }
         notes: "Top set first, then back-off work"
 
@@ -127,4 +127,3 @@ cardio:
 notes:
   - "Rotation is continuous: A-B-C regardless of training days per week."
   - "Rest after both exercises in a superset round."
-  - "Progression is per set block, not a single number for the whole exercise."

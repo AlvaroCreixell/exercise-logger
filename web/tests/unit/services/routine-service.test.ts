@@ -1191,7 +1191,7 @@ describe("validateAndNormalizeRoutine — integration with real files", () => {
     // Read the real catalog CSV
     const csvPath = path.resolve(
       __dirname,
-      "../../../../docs/exercises/gym_exercises_catalog.csv"
+      "../../../src/data/catalog.csv"
     );
     const csv = fs.readFileSync(csvPath, "utf-8");
 
@@ -1247,7 +1247,7 @@ describe("validateAndNormalizeRoutine — integration with real files", () => {
       expect(squat.setBlocks[0]!.tag).toBe("top");
       expect(squat.setBlocks[0]!.count).toBe(1);
       expect(squat.setBlocks[1]!.count).toBe(3);
-      expect(squat.notes).toBe("Warm up with 2 lighter sets");
+      expect(squat.notes).toBe("Hard top set, 30-60 sec rest");
     }
 
     // Fourth entry: superset (dumbbell-bench-press + dumbbell-row)
@@ -1288,7 +1288,7 @@ describe("validateAndNormalizeRoutine — integration with real files", () => {
     }
 
     // Verify notes and cardio
-    expect(routine.notes).toHaveLength(3);
+    expect(routine.notes).toHaveLength(2);
     expect(routine.notes[0]).toContain("Rotation is continuous");
     expect(routine.cardio).not.toBeNull();
     expect(routine.cardio!.options).toHaveLength(3);

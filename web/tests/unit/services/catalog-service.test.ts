@@ -148,7 +148,7 @@ describe("parseExerciseCatalog with real catalog", () => {
     const path = await import("path");
     const csvPath = path.resolve(
       __dirname,
-      "../../../../docs/exercises/gym_exercises_catalog.csv"
+      "../../../src/data/catalog.csv"
     );
     const csv = fs.readFileSync(csvPath, "utf-8");
 
