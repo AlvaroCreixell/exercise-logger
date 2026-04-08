@@ -91,38 +91,38 @@ npm run lint        # ESLint
 
 ### Codebase
 
-| Metric | Value |
-|--------|-------|
-| Total commits | 223 |
-| Active dev days | 12 (across a 41-day calendar span) |
-| Lines of source code | 8,027 (63 files) |
-| Lines of test code | 9,277 (24 files) |
-| Test-to-source ratio | **1.16x** -- more test code than application code |
-| Tests | 377 unit/integration + Playwright E2E suite |
-| Domain invariants | 11 formally enforced |
+| Metric              | Value                                               |
+|---------------------|-----------------------------------------------------|
+| Total commits       | 223                                                 |
+| Active dev days     | 12 (across a 41-day calendar span)                  |
+| Source code          | 8,027 lines across 63 files                        |
+| Test code            | 9,277 lines across 24 files                        |
+| Test-to-source ratio | **1.16x** -- more test code than application code  |
+| Test suite           | 377 unit/integration + Playwright E2E              |
+| Domain invariants    | 11 formally enforced                               |
 
 ### Planning and review artifacts
 
-| Artifact | Count |
-|----------|-------|
-| Spec iterations | 4 (greenfield &#8594; consolidated audit &#8594; v2 simplified &#8594; final spec) |
-| Implementation plans written | 22 (across 4 plan generations) |
-| Hardening passes | 3 (broken-and-dangerous, spec-fidelity, schema-and-quality) |
-| Cross-model audits | 3 (Claude audit, Codex audit, consolidated report) |
-| Errata items found and applied | 44 |
-| UI rewrite plans | 3 + 1 design spec |
-| UX review | 1 (35-screenshot walkthrough with findings from both models) |
+| Artifact                       | Count                                                                       |
+|--------------------------------|-----------------------------------------------------------------------------|
+| Spec iterations                | 4 (greenfield &#8594; consolidated audit &#8594; v2 simplified &#8594; final) |
+| Implementation plans written   | 22 across 4 plan generations                                                |
+| Hardening passes               | 3 (broken-and-dangerous, spec-fidelity, schema-and-quality)                 |
+| Cross-model audits             | 3 (Claude audit, Codex audit, consolidated report)                          |
+| Errata items found and applied | 44                                                                          |
+| UI rewrite plans               | 3 + 1 design spec                                                          |
+| UX review                      | 35-screenshot walkthrough with findings from both models                    |
 
 ### Commits by type
 
-| Type | Count |
-|------|-------|
-| `feat:` | 111 |
-| `fix:` | 66 |
-| `docs:` | 18 |
-| `chore:` | 7 |
-| `refactor:` | 6 |
-| `test:` | 5 |
+| Type         | Count |
+|--------------|-------|
+| `feat:`      | 111   |
+| `fix:`       | 66    |
+| `docs:`      | 18    |
+| `chore:`     | 7     |
+| `refactor:`  | 6     |
+| `test:`      | 5     |
 
 ### Notable
 
