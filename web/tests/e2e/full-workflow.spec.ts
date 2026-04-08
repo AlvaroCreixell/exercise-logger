@@ -22,14 +22,14 @@ test.describe("Exercise Logger E2E Smoke Test", () => {
   test("navigating to Settings shows the settings screen", async ({
     page,
   }) => {
-    await page.getByRole("link", { name: /settings/i }).click();
+    await page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: /settings/i }).click();
     await expect(page.getByText(/routines/i).first()).toBeVisible();
     await expect(page.getByText(/preferences/i).first()).toBeVisible();
     await expect(page.getByText(/data/i).first()).toBeVisible();
   });
 
   test("import routine YAML via Settings", async ({ page }) => {
-    await page.getByRole("link", { name: /settings/i }).click();
+    await page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: /settings/i }).click();
 
     // The routine YAML file path
     const yamlPath = path.resolve(
@@ -51,7 +51,7 @@ test.describe("Exercise Logger E2E Smoke Test", () => {
     page,
   }) => {
     // Step 1: Import routine via Settings
-    await page.getByRole("link", { name: /settings/i }).click();
+    await page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: /settings/i }).click();
 
     const yamlPath = path.resolve(
       __dirname,
@@ -142,7 +142,7 @@ test.describe("Exercise Logger E2E Smoke Test", () => {
     ).toBeVisible({ timeout: 5000 });
 
     // ERRATA P7-E: Verify export button exists and triggers a download
-    await page.getByRole("link", { name: /settings/i }).click();
+    await page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: /settings/i }).click();
 
     const exportButton = page.getByRole("button", {
       name: /export data/i,

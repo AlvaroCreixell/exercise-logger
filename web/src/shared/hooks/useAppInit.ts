@@ -1,6 +1,9 @@
 import { useState, useEffect } from "react";
 import { db, initializeSettings } from "@/db/database";
 import { loadEmbeddedCatalog, seedCatalog } from "@/services/catalog-service";
+import { validateAndNormalizeRoutine, importRoutine } from "@/services/routine-service";
+import { setActiveRoutine } from "@/services/settings-service";
+import defaultRoutineYaml from "../../../data/routines/full-body-3day.yaml?raw";
 
 /**
  * Initialize the app on first mount:
@@ -21,6 +24,18 @@ export function useAppInit(): { ready: boolean; error: string | null } {
         await initializeSettings(db);
         const exercises = loadEmbeddedCatalog();
         await seedCatalog(db, exercises);
+
+        // Seed bundled routine if none exist yet (idempotent)
+        const routineCount = await db.routines.count();
+        if (routineCount === 0) {
+          const exerciseLookup = new Map(exercises.map((e) => [e.id, e]));
+          const result = validateAndNormalizeRoutine(defaultRoutineYaml, exerciseLookup);
+          if (result.ok) {
+            await importRoutine(db, result.routine);
+            await setActiveRoutine(db, result.routine.id);
+          }
+        }
+
         if (!cancelled) setReady(true);
       } catch (err: unknown) {
         if (!cancelled) {
