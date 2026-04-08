@@ -20,6 +20,8 @@ interface ExerciseCardProps {
   readOnly?: boolean;
   /** Hide the exercise name header (when rendered externally, e.g. as a link) */
   hideHeader?: boolean;
+  /** Callback when unit toggle is tapped. Undefined = no toggle shown (history view). */
+  onUnitToggle?: (newUnit: UnitSystem) => void;
 }
 
 function blockLabelVariant(label: string) {
@@ -73,6 +75,7 @@ export function ExerciseCard({
   onSetTap,
   readOnly = false,
   hideHeader = false,
+  onUnitToggle,
 }: ExerciseCardProps) {
   const se = sessionExercise;
   const blocks = se.setBlocksSnapshot;
@@ -95,6 +98,17 @@ export function ExerciseCard({
             </h3>
             {isExtra && (
               <Badge variant="secondary" className="shrink-0 text-[11px]">Extra</Badge>
+            )}
+            {onUnitToggle && (
+              <button
+                className="ml-auto shrink-0 rounded-md border border-border px-2 py-0.5 text-[11px] font-medium tabular-nums text-muted-foreground hover:bg-muted/50"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onUnitToggle(units === "kg" ? "lbs" : "kg");
+                }}
+              >
+                {units}
+              </button>
             )}
           </div>
         )}

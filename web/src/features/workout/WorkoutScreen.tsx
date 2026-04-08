@@ -7,6 +7,8 @@ import { useExtraHistory } from "@/shared/hooks/useExtraHistory";
 import { db } from "@/db/database";
 import { logSet, editSet, deleteSet } from "@/services/set-service";
 import { addExtraExercise, finishSession, discardSession } from "@/services/session-service";
+import { setUnitOverride } from "@/services/settings-service";
+import { getEffectiveUnit } from "@/domain/unit-helpers";
 import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
 import { ExerciseCard } from "./ExerciseCard";
 import { SetLogSheet } from "./SetLogSheet";
@@ -170,7 +172,7 @@ export default function WorkoutScreen() {
                 key={se.id}
                 sessionExercise={se}
                 loggedSets={setsByExercise.get(se.id) ?? []}
-                units={units}
+                globalUnits={units}
                 onSetTap={(bi, si) => handleSetTap(se, bi, si)}
               />
             );
@@ -182,7 +184,7 @@ export default function WorkoutScreen() {
                   key={se.id}
                   sessionExercise={se}
                   loggedSets={setsByExercise.get(se.id) ?? []}
-                  units={units}
+                  globalUnits={units}
                   onSetTap={(bi, si) => handleSetTap(se, bi, si)}
                 />
               ))}
@@ -257,18 +259,19 @@ export default function WorkoutScreen() {
 function ExerciseCardWithHistory({
   sessionExercise,
   loggedSets,
-  units,
+  globalUnits,
   onSetTap,
 }: {
   sessionExercise: SessionExercise;
   loggedSets: LoggedSet[];
-  units: "kg" | "lbs";
+  globalUnits: "kg" | "lbs";
   onSetTap: (blockIndex: number, setIndex: number) => void;
 }) {
+  const effectiveUnits = getEffectiveUnit(sessionExercise.unitOverride, globalUnits);
   const isRoutine = sessionExercise.origin === "routine";
   const historyData = useExerciseHistory(
     isRoutine ? sessionExercise : undefined,
-    units
+    effectiveUnits
   );
   const extraHistory = useExtraHistory(
     !isRoutine ? sessionExercise.exerciseId : undefined
@@ -278,10 +281,13 @@ function ExerciseCardWithHistory({
     <ExerciseCard
       sessionExercise={sessionExercise}
       loggedSets={loggedSets}
-      units={units}
+      units={effectiveUnits}
       historyData={historyData}
       extraHistory={extraHistory}
       onSetTap={onSetTap}
+      onUnitToggle={async (newUnit) => {
+        await setUnitOverride(db, sessionExercise.id, newUnit);
+      }}
     />
   );
 }
@@ -296,7 +302,7 @@ function SetLogSheetWithHistory({
   blockIndex,
   setIndex,
   existingSet,
-  units,
+  units: globalUnits,
   onSave,
   onDelete,
 }: {
@@ -315,10 +321,11 @@ function SetLogSheetWithHistory({
   }) => Promise<void>;
   onDelete?: () => Promise<void>;
 }) {
+  const effectiveUnits = getEffectiveUnit(sessionExercise.unitOverride, globalUnits);
   const isRoutine = sessionExercise.origin === "routine";
   const historyData = useExerciseHistory(
     isRoutine ? sessionExercise : undefined,
-    units
+    effectiveUnits
   );
 
   const suggestion = historyData?.suggestions.find(
@@ -336,7 +343,7 @@ function SetLogSheetWithHistory({
       existingSet={existingSet}
       suggestion={suggestion}
       lastTime={lastTime}
-      units={units}
+      units={effectiveUnits}
       onSave={onSave}
       onDelete={onDelete}
     />
