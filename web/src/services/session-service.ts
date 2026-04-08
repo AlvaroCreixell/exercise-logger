@@ -12,6 +12,7 @@ import type {
   ExerciseEquipment,
   GroupType,
   SessionExerciseOrigin,
+  UnitSystem,
 } from "@/domain/enums";
 import type { ExerciseLoggerDB } from "@/db/database";
 import { generateId } from "@/domain/uuid";
@@ -65,6 +66,56 @@ function resolveEffectiveEquipment(
   entry: RoutineExerciseEntry
 ): ExerciseEquipment {
   return entry.equipmentOverride ?? catalogExercise.equipment;
+}
+
+// ---------------------------------------------------------------------------
+// Unit override lookup
+// ---------------------------------------------------------------------------
+
+/**
+ * Look up the unitOverride from the most recent finished session
+ * for a given exerciseId + instanceLabel.
+ *
+ * @param matchAnyLabel - When true, matches any instanceLabel (used for extras).
+ */
+async function findPreviousUnitOverride(
+  db: ExerciseLoggerDB,
+  exerciseId: string,
+  instanceLabel: string,
+  matchAnyLabel: boolean = false
+): Promise<UnitSystem | null> {
+  // Get finished sessions, most recent first
+  const finishedSessions = await db.sessions
+    .where("status")
+    .equals("finished")
+    .toArray();
+
+  if (finishedSessions.length === 0) return null;
+
+  finishedSessions.sort((a, b) => {
+    const aTime = a.finishedAt ?? a.startedAt;
+    const bTime = b.finishedAt ?? b.startedAt;
+    return bTime.localeCompare(aTime);
+  });
+
+  for (const session of finishedSessions) {
+    const exercises = await db.sessionExercises
+      .where("sessionId")
+      .equals(session.id)
+      .toArray();
+
+    const match = exercises.find(
+      (se) =>
+        se.exerciseId === exerciseId &&
+        (matchAnyLabel || se.instanceLabel === instanceLabel)
+    );
+
+    if (match) {
+      return match.unitOverride ?? null;
+    }
+  }
+
+  return null;
 }
 
 // ---------------------------------------------------------------------------
@@ -127,6 +178,25 @@ export async function startSessionWithCatalog(
     exerciseMap.set(id, exercise);
   }
 
+  // Look up previous unitOverride for each exercise
+  const unitOverrideMap = new Map<string, UnitSystem | null>();
+  for (const entry of day.entries) {
+    const items = entry.kind === "exercise" ? [entry] : entry.items;
+    for (const ex of items) {
+      const key = `${ex.exerciseId}:${ex.instanceLabel ?? ""}`;
+      if (!unitOverrideMap.has(key)) {
+        unitOverrideMap.set(
+          key,
+          await findPreviousUnitOverride(
+            db,
+            ex.exerciseId,
+            ex.instanceLabel ?? ""
+          )
+        );
+      }
+    }
+  }
+
   // Build session and session exercises
   const sessionId = generateId();
   const now = nowISO();
@@ -168,7 +238,10 @@ export async function startSessionWithCatalog(
         notesSnapshot: entry.notes ?? null,
         setBlocksSnapshot: [...entry.setBlocks],
         createdAt: now,
-        unitOverride: null,
+        unitOverride:
+          unitOverrideMap.get(
+            `${entry.exerciseId}:${entry.instanceLabel ?? ""}`
+          ) ?? null,
       });
       orderIndex++;
     } else if (entry.kind === "superset") {
@@ -193,7 +266,10 @@ export async function startSessionWithCatalog(
           notesSnapshot: item.notes ?? null,
           setBlocksSnapshot: [...item.setBlocks],
           createdAt: now,
-          unitOverride: null,
+          unitOverride:
+            unitOverrideMap.get(
+              `${item.exerciseId}:${item.instanceLabel ?? ""}`
+            ) ?? null,
         });
         orderIndex++;
       }
@@ -397,6 +473,14 @@ export async function addExtraExercise(
 
   let sessionExercise: SessionExercise | null = null;
 
+  // Look up previous unitOverride for this extra exercise (matchAnyLabel = true)
+  const previousOverride = await findPreviousUnitOverride(
+    db,
+    exercise.id,
+    "",
+    true
+  );
+
   await db.transaction("rw", db.sessions, db.sessionExercises, async () => {
     const session = await db.sessions.get(sessionId);
     if (!session) {
@@ -437,7 +521,7 @@ export async function addExtraExercise(
       notesSnapshot: null,
       setBlocksSnapshot: [],
       createdAt: now,
-      unitOverride: null,
+      unitOverride: previousOverride,
     };
 
     await db.sessionExercises.add(sessionExercise);

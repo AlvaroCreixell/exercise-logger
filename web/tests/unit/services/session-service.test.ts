@@ -828,6 +828,158 @@ describe("session-service", () => {
   });
 
   // =====================================================================
+  // unitOverride carry-forward
+  // =====================================================================
+
+  describe("unitOverride carry-forward", () => {
+    it("carries forward unitOverride from most recent finished session", async () => {
+      const routine = makeRoutine({
+        A: {
+          label: "Day A",
+          entries: [
+            makeExerciseEntry("A", 0, "barbell-back-squat", [STANDARD_BLOCK]),
+          ],
+        },
+      });
+      await db.routines.add(routine);
+
+      // Start and finish a session, manually setting unitOverride to "lbs"
+      const first = await startSessionWithCatalog(db, routine, "A");
+      await db.sessionExercises.update(first.sessionExercises[0]!.id, {
+        unitOverride: "lbs",
+      });
+      await finishSession(db, first.session.id);
+
+      // Start a new session — unitOverride should carry forward
+      const second = await startSessionWithCatalog(db, routine, "A");
+      expect(second.sessionExercises[0]!.unitOverride).toBe("lbs");
+    });
+
+    it("defaults to null when no previous session exists", async () => {
+      const routine = makeRoutine({
+        A: {
+          label: "Day A",
+          entries: [
+            makeExerciseEntry("A", 0, "barbell-back-squat", [STANDARD_BLOCK]),
+          ],
+        },
+      });
+      await db.routines.add(routine);
+
+      const result = await startSessionWithCatalog(db, routine, "A");
+      expect(result.sessionExercises[0]!.unitOverride).toBeNull();
+    });
+
+    it("defaults to null when previous session had no unitOverride", async () => {
+      const routine = makeRoutine({
+        A: {
+          label: "Day A",
+          entries: [
+            makeExerciseEntry("A", 0, "barbell-back-squat", [STANDARD_BLOCK]),
+          ],
+        },
+      });
+      await db.routines.add(routine);
+
+      // Start and finish without setting unitOverride
+      const first = await startSessionWithCatalog(db, routine, "A");
+      await finishSession(db, first.session.id);
+
+      const second = await startSessionWithCatalog(db, routine, "A");
+      expect(second.sessionExercises[0]!.unitOverride).toBeNull();
+    });
+
+    it("uses the most recent finished session, not an older one", async () => {
+      const routine = makeRoutine({
+        A: {
+          label: "Day A",
+          entries: [
+            makeExerciseEntry("A", 0, "barbell-back-squat", [STANDARD_BLOCK]),
+          ],
+        },
+      });
+      await db.routines.add(routine);
+
+      // First session: set lbs
+      const first = await startSessionWithCatalog(db, routine, "A");
+      await db.sessionExercises.update(first.sessionExercises[0]!.id, {
+        unitOverride: "lbs",
+      });
+      await finishSession(db, first.session.id);
+
+      // Second session: set kg
+      const second = await startSessionWithCatalog(db, routine, "A");
+      await db.sessionExercises.update(second.sessionExercises[0]!.id, {
+        unitOverride: "kg",
+      });
+      await finishSession(db, second.session.id);
+
+      // Third session should inherit "kg" (the most recent)
+      const third = await startSessionWithCatalog(db, routine, "A");
+      expect(third.sessionExercises[0]!.unitOverride).toBe("kg");
+    });
+
+    it("matches by instanceLabel for routine exercises", async () => {
+      const routine = makeRoutine({
+        A: {
+          label: "Day A",
+          entries: [
+            makeExerciseEntry("A", 0, "barbell-back-squat", [STANDARD_BLOCK], {
+              instanceLabel: "wide",
+            }),
+            makeExerciseEntry("A", 1, "barbell-back-squat", [STANDARD_BLOCK], {
+              instanceLabel: "narrow",
+            }),
+          ],
+        },
+      });
+      await db.routines.add(routine);
+
+      // First session: set different overrides per instance
+      const first = await startSessionWithCatalog(db, routine, "A");
+      await db.sessionExercises.update(first.sessionExercises[0]!.id, {
+        unitOverride: "lbs",
+      });
+      await db.sessionExercises.update(first.sessionExercises[1]!.id, {
+        unitOverride: "kg",
+      });
+      await finishSession(db, first.session.id);
+
+      // Second session should carry forward per-label overrides
+      const second = await startSessionWithCatalog(db, routine, "A");
+      expect(second.sessionExercises[0]!.unitOverride).toBe("lbs"); // "wide"
+      expect(second.sessionExercises[1]!.unitOverride).toBe("kg"); // "narrow"
+    });
+
+    it("carries forward unitOverride for superset exercises", async () => {
+      const routine = makeRoutine({
+        A: {
+          label: "Day A",
+          entries: [
+            makeSupersetEntry("A", 0, [
+              { exerciseId: "dumbbell-bench-press", setBlocks: [STANDARD_BLOCK] },
+              { exerciseId: "dumbbell-row", setBlocks: [STANDARD_BLOCK] },
+            ]),
+          ],
+        },
+      });
+      await db.routines.add(routine);
+
+      // First session: set overrides on superset items
+      const first = await startSessionWithCatalog(db, routine, "A");
+      await db.sessionExercises.update(first.sessionExercises[0]!.id, {
+        unitOverride: "lbs",
+      });
+      await finishSession(db, first.session.id);
+
+      // Second session should carry forward
+      const second = await startSessionWithCatalog(db, routine, "A");
+      expect(second.sessionExercises[0]!.unitOverride).toBe("lbs"); // bench press
+      expect(second.sessionExercises[1]!.unitOverride).toBeNull(); // row (was not set)
+    });
+  });
+
+  // =====================================================================
   // addExtraExercise
   // =====================================================================
 
@@ -941,6 +1093,54 @@ describe("session-service", () => {
         .toArray();
       expect(stored).toHaveLength(1);
       expect(stored[0]!.origin).toBe("extra");
+    });
+
+    it("carries forward unitOverride with matchAnyLabel for extras", async () => {
+      const routine = makeRoutine({
+        A: {
+          label: "Day A",
+          entries: [
+            makeExerciseEntry("A", 0, "tricep-pushdown", [STANDARD_BLOCK], {
+              instanceLabel: "rope",
+            }),
+          ],
+        },
+      });
+      await db.routines.add(routine);
+
+      // First session: set unitOverride on tricep-pushdown with label "rope"
+      const first = await startSessionWithCatalog(db, routine, "A");
+      await db.sessionExercises.update(first.sessionExercises[0]!.id, {
+        unitOverride: "lbs",
+      });
+      await finishSession(db, first.session.id);
+
+      // Start a new session and add tricep-pushdown as extra (no label)
+      const second = await startSessionWithCatalog(db, routine, "A");
+      const extra = await addExtraExercise(
+        db,
+        second.session.id,
+        "tricep-pushdown"
+      );
+
+      // Should carry forward despite different instanceLabel (matchAnyLabel = true)
+      expect(extra.unitOverride).toBe("lbs");
+    });
+
+    it("defaults unitOverride to null for extras with no history", async () => {
+      const routine = makeRoutine({
+        A: { label: "Day A", entries: [] },
+      });
+      await db.routines.add(routine);
+      const sessionData = await startSessionWithCatalog(db, routine, "A");
+
+      const extra = await addExtraExercise(
+        db,
+        sessionData.session.id,
+        "tricep-pushdown"
+      );
+
+      expect(extra.unitOverride).toBeNull();
     });
   });
 });
