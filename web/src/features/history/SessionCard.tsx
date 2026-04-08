@@ -18,6 +18,7 @@ function formatDuration(start: string, end: string | null): string {
   if (!end) return "";
   const ms = new Date(end).getTime() - new Date(start).getTime();
   const min = Math.round(ms / 60000);
+  if (min < 1) return "< 1 min";
   return `${min} min`;
 }
 

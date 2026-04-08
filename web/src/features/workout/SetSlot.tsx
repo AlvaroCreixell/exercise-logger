@@ -10,6 +10,8 @@ interface SetSlotProps {
   units: UnitSystem;
   equipment: ExerciseEquipment;
   onClick: () => void;
+  /** When true, unlogged slots render as inert, non-interactive elements */
+  disabled?: boolean;
 }
 
 export function SetSlot({
@@ -18,6 +20,7 @@ export function SetSlot({
   units,
   equipment,
   onClick,
+  disabled = false,
 }: SetSlotProps) {
   const isLogged = loggedSet !== undefined;
 
@@ -32,10 +35,23 @@ export function SetSlot({
     return "\u2713";
   }
 
+  if (disabled && !isLogged) {
+    return (
+      <div
+        data-testid="set-slot"
+        aria-label={`Set ${setIndex + 1}: empty`}
+        className="min-h-[44px] min-w-[3.5rem] rounded-lg px-2 text-xs font-medium tabular-nums flex items-center justify-center gap-1 shrink-0 border border-border/50 text-muted-foreground/40"
+      >
+        <span>{setIndex + 1}</span>
+      </div>
+    );
+  }
+
   return (
     <button
       data-testid="set-slot"
       onClick={onClick}
+      aria-label={isLogged ? `Set ${setIndex + 1}: ${formatValue(loggedSet)}` : `Set ${setIndex + 1}: empty`}
       className={`min-h-[44px] min-w-[3.5rem] rounded-lg px-2 text-xs font-medium tabular-nums flex items-center justify-center gap-1 transition-colors shrink-0 ${
         isLogged
           ? "border border-success bg-success-soft text-success"

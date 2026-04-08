@@ -46,6 +46,7 @@ export default function SessionDetailScreen() {
     if (!end) return "";
     const ms = new Date(end).getTime() - new Date(start).getTime();
     const min = Math.round(ms / 60000);
+    if (min < 1) return "< 1 min";
     return `${min} min`;
   }
 
@@ -212,6 +213,7 @@ function SessionExerciseCardWithHistory({
         extraHistory={null}
         onSetTap={(bi, si) => onSetTap(se, bi, si)}
         readOnly
+        hideHeader
       />
     </div>
   );

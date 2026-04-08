@@ -87,16 +87,16 @@ export function SetLogSheet({
       } else if (lastSet?.weightKg != null) {
         setWeight(String(toDisplayWeight(lastSet.weightKg, se.effectiveEquipment, units)));
       } else {
-        setWeight("");
+        setWeight(showWeight ? "0" : "");
       }
 
-      setReps(lastSet?.reps != null ? String(lastSet.reps) : "");
+      setReps(lastSet?.reps != null ? String(lastSet.reps) : block?.minValue != null ? String(block.minValue) : "");
       setDuration(lastSet?.durationSec != null ? String(lastSet.durationSec) : "");
       setDistance(lastSet?.distanceM != null ? String(lastSet.distanceM) : "");
     } else {
-      // Priority 3: blank
-      setWeight("");
-      setReps("");
+      // Priority 3: default weight to 0 for weighted, reps to lower bound of range
+      setWeight(showWeight ? "0" : "");
+      setReps(block?.minValue != null && targetKind === "reps" ? String(block.minValue) : "");
       setDuration("");
       setDistance("");
     }
@@ -143,7 +143,7 @@ export function SetLogSheet({
           </SheetTitle>
         </SheetHeader>
 
-        <div className="space-y-4 pb-4">
+        <div className="space-y-4 pb-4 overflow-y-auto flex-1 min-h-0">
           {/* Weight field */}
           {showWeight && (
             <div className="space-y-1.5">
@@ -236,7 +236,7 @@ export function SetLogSheet({
           )}
         </div>
 
-        <div className="space-y-2 pb-2">
+        <div className="space-y-2 pb-2 shrink-0">
           <Button className="w-full" size="lg" onClick={handleSave} disabled={saving}>
             Save
           </Button>

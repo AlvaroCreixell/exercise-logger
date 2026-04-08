@@ -6,7 +6,8 @@ import { toDisplayWeight } from "@/domain/unit-conversion";
 import { Badge } from "@/shared/ui/badge";
 import { Card, CardContent } from "@/shared/ui/card";
 import { SetSlot } from "./SetSlot";
-import { ArrowUp } from "lucide-react";
+import { ArrowUp, Repeat } from "lucide-react";
+import type { SetBlock } from "@/domain/types";
 
 interface ExerciseCardProps {
   sessionExercise: SessionExercise;
@@ -17,6 +18,8 @@ interface ExerciseCardProps {
   onSetTap: (blockIndex: number, setIndex: number) => void;
   /** Read-only mode for history view: show subdued unlogged slots */
   readOnly?: boolean;
+  /** Hide the exercise name header (when rendered externally, e.g. as a link) */
+  hideHeader?: boolean;
 }
 
 function blockLabelVariant(label: string) {
@@ -49,6 +52,19 @@ function formatLastTime(
   return "";
 }
 
+function formatTarget(block: SetBlock): string {
+  const value =
+    block.exactValue != null
+      ? `${block.exactValue}`
+      : block.minValue != null && block.maxValue != null
+      ? `${block.minValue}-${block.maxValue}`
+      : "?";
+  if (block.targetKind === "reps") return `${block.count} x ${value} reps`;
+  if (block.targetKind === "duration") return `${block.count} x ${value}s`;
+  if (block.targetKind === "distance") return `${block.count} x ${value}m`;
+  return `${block.count} x ${value}`;
+}
+
 export function ExerciseCard({
   sessionExercise,
   loggedSets,
@@ -57,6 +73,7 @@ export function ExerciseCard({
   extraHistory,
   onSetTap,
   readOnly = false,
+  hideHeader = false,
 }: ExerciseCardProps) {
   const se = sessionExercise;
   const blocks = se.setBlocksSnapshot;
@@ -72,14 +89,16 @@ export function ExerciseCard({
     <Card className={readOnly ? "border-0 shadow-none bg-transparent" : undefined}>
       <CardContent className={`${readOnly ? "px-0" : ""} py-3 space-y-3`}>
         {/* Header */}
-        <div className="flex items-center gap-2">
-          <h3 className="text-base font-semibold truncate">
-            {se.exerciseNameSnapshot}
-          </h3>
-          {isExtra && (
-            <Badge variant="secondary" className="shrink-0 text-[11px]">Extra</Badge>
-          )}
-        </div>
+        {!hideHeader && (
+          <div className="flex items-center gap-2">
+            <h3 className="text-base font-semibold truncate">
+              {se.exerciseNameSnapshot}
+            </h3>
+            {isExtra && (
+              <Badge variant="secondary" className="shrink-0 text-[11px]">Extra</Badge>
+            )}
+          </div>
+        )}
 
         {se.notesSnapshot && (
           <p className="text-xs text-muted-foreground line-clamp-1">
@@ -96,25 +115,40 @@ export function ExerciseCard({
 
             return (
               <div key={blockIndex} className="space-y-1.5">
-                {/* Block label + history */}
+                {/* Block label + target */}
                 <div className="flex items-center gap-2 flex-wrap">
                   {label && (
                     <span className={`inline-flex items-center rounded-md px-1.5 py-0.5 text-[11px] font-medium ${blockLabelVariant(label)}`}>
                       {label}
                     </span>
                   )}
-                  {lastTime && lastTime.sets.length > 0 && (
-                    <span className="text-xs text-muted-foreground tabular-nums">
-                      Last: {formatLastTime(lastTime.sets, se.effectiveEquipment, units)}
-                    </span>
-                  )}
-                  {suggestion && (
-                    <span className="text-xs text-success tabular-nums font-medium inline-flex items-center gap-0.5">
-                      <ArrowUp className="h-3 w-3" />
-                      {toDisplayWeight(suggestion.suggestedWeightKg, se.effectiveEquipment, units)}{units}
-                    </span>
-                  )}
+                  <span className="text-xs font-medium tabular-nums">
+                    {formatTarget(block)}
+                  </span>
                 </div>
+
+                {/* History + suggestion */}
+                {(lastTime || suggestion) && (
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {lastTime && lastTime.sets.length > 0 && (
+                      <span className="text-xs text-muted-foreground tabular-nums">
+                        Last: {formatLastTime(lastTime.sets, se.effectiveEquipment, units)}
+                      </span>
+                    )}
+                    {suggestion && suggestion.isProgression && (
+                      <span className="text-xs text-success tabular-nums font-medium inline-flex items-center gap-0.5">
+                        <ArrowUp className="h-3 w-3" />
+                        {toDisplayWeight(suggestion.suggestedWeightKg, se.effectiveEquipment, units)}{units}
+                      </span>
+                    )}
+                    {suggestion && !suggestion.isProgression && (
+                      <span className="text-xs text-info tabular-nums font-medium inline-flex items-center gap-0.5">
+                        <Repeat className="h-3 w-3" />
+                        {toDisplayWeight(suggestion.suggestedWeightKg, se.effectiveEquipment, units)}{units}
+                      </span>
+                    )}
+                  </div>
+                )}
 
                 {/* Set slots */}
                 <div className="flex gap-2 overflow-x-auto scrollbar-none">
@@ -126,6 +160,7 @@ export function ExerciseCard({
                       units={units}
                       equipment={se.effectiveEquipment}
                       onClick={() => onSetTap(blockIndex, setIndex)}
+                      disabled={readOnly}
                     />
                   ))}
                 </div>
@@ -142,7 +177,7 @@ export function ExerciseCard({
         {/* Extra exercise: single unstructured slot row */}
         {isExtra && (
           <div className="flex gap-2 overflow-x-auto scrollbar-none">
-            {loggedSets.map((ls, i) => (
+            {[...loggedSets].sort((a, b) => a.loggedAt.localeCompare(b.loggedAt)).map((ls, i) => (
               <SetSlot
                 key={ls.id}
                 setIndex={i}
@@ -152,13 +187,15 @@ export function ExerciseCard({
                 onClick={() => onSetTap(0, i)}
               />
             ))}
-            <SetSlot
-              setIndex={loggedSets.length}
-              loggedSet={undefined}
-              units={units}
-              equipment={se.effectiveEquipment}
-              onClick={() => onSetTap(0, loggedSets.length)}
-            />
+            {!readOnly && (
+              <SetSlot
+                setIndex={loggedSets.length}
+                loggedSet={undefined}
+                units={units}
+                equipment={se.effectiveEquipment}
+                onClick={() => onSetTap(0, loggedSets.length)}
+              />
+            )}
           </div>
         )}
       </CardContent>

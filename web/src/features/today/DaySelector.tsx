@@ -30,7 +30,7 @@ export function DaySelector({
             }`}
           >
             <span>
-              {dayId} — {day.label}
+              {dayId}{isSelected ? ` — ${day.label}` : ""}
             </span>
             {isSuggested && !isSelected && (
               <span className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-info" />

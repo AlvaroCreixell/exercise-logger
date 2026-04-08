@@ -4,9 +4,26 @@ import { db } from "@/db/database";
 import { useExerciseHistoryGroups } from "@/shared/hooks/useExerciseHistoryGroups";
 import { useSettings } from "@/shared/hooks/useSettings";
 import { toDisplayWeight } from "@/domain/unit-conversion";
+import type { LoggedSet } from "@/domain/types";
+import type { SetTag } from "@/domain/enums";
 import { ArrowLeft } from "lucide-react";
 import { buttonVariants } from "@/shared/ui/button";
 import { cn } from "@/shared/lib/utils";
+
+/** Group a sorted list of logged sets into blocks by blockIndex. */
+function groupSetsByBlock(sets: LoggedSet[]): Array<{ tag: SetTag | null; sets: LoggedSet[] }> {
+  const blocks: Array<{ tag: SetTag | null; sets: LoggedSet[] }> = [];
+  let current: { tag: SetTag | null; sets: LoggedSet[] } | null = null;
+  for (const ls of sets) {
+    if (!current || ls.blockIndex !== current.sets[0]!.blockIndex) {
+      current = { tag: ls.tag, sets: [ls] };
+      blocks.push(current);
+    } else {
+      current.sets.push(ls);
+    }
+  }
+  return blocks;
+}
 
 export default function ExerciseHistoryScreen() {
   const { exerciseId } = useParams<{ exerciseId: string }>();
@@ -60,36 +77,41 @@ export default function ExerciseHistoryScreen() {
                       {entry.instanceLabel}
                     </p>
                   )}
-                  <div className="flex flex-wrap gap-x-3 gap-y-0.5">
-                    {entry.sets.map((ls, si) => {
-                      let text = "";
-                      if (ls.performedWeightKg != null && ls.performedReps != null) {
-                        const w = toDisplayWeight(
-                          ls.performedWeightKg,
-                          entry.effectiveEquipment,
-                          units
-                        );
-                        text = `${w}${units} x ${ls.performedReps}`;
-                      } else if (ls.performedReps != null) {
-                        text = `${ls.performedReps} reps`;
-                      } else if (ls.performedDurationSec != null) {
-                        text = `${ls.performedDurationSec}s`;
-                      } else if (ls.performedDistanceM != null) {
-                        text = `${ls.performedDistanceM}m`;
-                      }
-                      const tagLabel = ls.tag === "top" ? "Top" : ls.tag === "amrap" ? "AMRAP" : null;
+                  <div className="space-y-0">
+                    {groupSetsByBlock(entry.sets).map((block, bi) => {
+                      const tagLabel = block.tag === "top" ? "Top" : block.tag === "amrap" ? "AMRAP" : null;
                       return (
-                        <span
-                          key={si}
-                          className="text-sm tabular-nums font-medium"
-                        >
+                        <div key={bi} className={bi > 0 ? "mt-1 pt-1 border-t border-border/50" : ""}>
                           {tagLabel && (
-                            <span className="text-[10px] text-muted-foreground font-normal mr-0.5">
+                            <span className="text-[10px] text-muted-foreground font-normal">
                               {tagLabel}
                             </span>
                           )}
-                          {text}
-                        </span>
+                          <div className="flex flex-wrap gap-x-3 gap-y-0.5">
+                            {block.sets.map((ls, si) => {
+                              let text = "";
+                              if (ls.performedWeightKg != null && ls.performedReps != null) {
+                                const w = toDisplayWeight(
+                                  ls.performedWeightKg,
+                                  entry.effectiveEquipment,
+                                  units
+                                );
+                                text = `${w}${units} x ${ls.performedReps}`;
+                              } else if (ls.performedReps != null) {
+                                text = `${ls.performedReps} reps`;
+                              } else if (ls.performedDurationSec != null) {
+                                text = `${ls.performedDurationSec}s`;
+                              } else if (ls.performedDistanceM != null) {
+                                text = `${ls.performedDistanceM}m`;
+                              }
+                              return (
+                                <span key={si} className="text-sm tabular-nums font-medium">
+                                  {text}
+                                </span>
+                              );
+                            })}
+                          </div>
+                        </div>
                       );
                     })}
                   </div>
