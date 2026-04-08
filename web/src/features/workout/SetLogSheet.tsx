@@ -100,7 +100,7 @@ export function SetLogSheet({
       setDuration("");
       setDistance("");
     }
-  }, [open, existingSet, suggestion, lastTime, se, setIndex, units]);
+  }, [open, existingSet, suggestion, lastTime, se, setIndex, units, block?.minValue, showWeight, targetKind]);
 
   const blockLabel = block
     ? getBlockLabel(block, blockIndex, blocks.length, blocks)
