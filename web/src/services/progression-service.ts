@@ -33,6 +33,8 @@ export interface LastTimeSet {
 
 /** Last-time data for a single set block. */
 export interface BlockLastTime {
+  /** The block index within the exercise's setBlocksSnapshot. */
+  blockIndex: number;
   /** Human-readable block label (e.g., "Top", "Back-off", "Set block 1"). */
   blockLabel: string;
   /** The tag for this block, or null. */
@@ -55,8 +57,8 @@ export interface BlockSuggestion {
 
 /** Combined last-time and suggestion data for an exercise card. */
 export interface ExerciseHistoryData {
-  /** Per-block last-time data. Empty array if no history. */
-  lastTime: BlockLastTime[];
+  /** Per-block last-time data, sparse array keyed by blockIndex. Undefined slots mean no history for that block. */
+  lastTime: (BlockLastTime | undefined)[];
   /** Per-block suggestions. Only present for blocks that qualify. */
   suggestions: BlockSuggestion[];
 }
@@ -344,7 +346,7 @@ export function calculateBlockSuggestion(
  *
  * P5-D: If a block follows a top-tagged block and has no tag, label it "Back-off".
  */
-function getBlockLabel(
+export function getBlockLabel(
   block: SetBlock,
   blockIndex: number,
   totalBlocks: number,
@@ -399,7 +401,7 @@ export async function getExerciseHistoryData(
     return { lastTime: [], suggestions: [] };
   }
 
-  const lastTime: BlockLastTime[] = [];
+  const lastTime: (BlockLastTime | undefined)[] = [];
   const suggestions: BlockSuggestion[] = [];
 
   for (let blockIndex = 0; blockIndex < blocks.length; blockIndex++) {
@@ -419,7 +421,8 @@ export async function getExerciseHistoryData(
     // Build last-time data for this block
     if (matchingSets.length > 0) {
       const blockLabel = getBlockLabel(block, blockIndex, blocks.length, blocks);
-      lastTime.push({
+      lastTime[blockIndex] = {
+        blockIndex,
         blockLabel,
         tag: block.tag ?? null,
         sets: matchingSets.map((ls) => ({
@@ -428,7 +431,7 @@ export async function getExerciseHistoryData(
           durationSec: ls.performedDurationSec,
           distanceM: ls.performedDistanceM,
         })),
-      });
+      };
     }
 
     // Calculate suggestion for this block (invariant 8: per set block)

@@ -12,11 +12,11 @@ import {
   validateBackupPayload,
   readJsonFile,
   type BackupEnvelope,
-  type BackupData,
 } from "@/services/backup-service";
 import type {
   Exercise,
   Routine,
+  RoutineEntry,
   Session,
   SessionExercise,
   LoggedSet,
@@ -375,7 +375,7 @@ describe("validateBackupPayload", () => {
   it("rejects invalid session status", () => {
     const envelope = makeValidEnvelope({
       sessions: [
-        makeSession("s1", { status: "bogus" as any }),
+        makeSession("s1", { status: "bogus" as unknown as Session["status"] }),
       ],
     });
     const errors = validateBackupPayload(envelope, catalogIds);
@@ -390,7 +390,7 @@ describe("validateBackupPayload", () => {
 
   it("rejects invalid settings units", () => {
     const envelope = makeValidEnvelope({
-      settings: { ...DEFAULT_SETTINGS, units: "stones" as any },
+      settings: { ...DEFAULT_SETTINGS, units: "stones" as unknown as Settings["units"] },
     });
     const errors = validateBackupPayload(envelope, catalogIds);
     expect(errors).toEqual(
@@ -467,7 +467,7 @@ describe("validateBackupPayload", () => {
               label: "Day A",
               entries: [
                 {
-                  kind: "invalid" as any,
+                  kind: "invalid" as unknown as RoutineEntry["kind"],
                   entryId: "e1",
                   exerciseId: "barbell-back-squat",
                   setBlocks: [],

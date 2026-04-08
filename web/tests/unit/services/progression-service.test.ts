@@ -9,16 +9,11 @@ import {
 } from "@/services/progression-service";
 import type {
   Exercise,
-  Routine,
-  RoutineDay,
-  RoutineEntry,
-  RoutineExerciseEntry,
   Session,
   SessionExercise,
   LoggedSet,
   SetBlock,
 } from "@/domain/types";
-import type { ExerciseType, ExerciseEquipment, SetTag, UnitSystem } from "@/domain/enums";
 import { generateBlockSignature } from "@/domain/block-signature";
 
 // ---------------------------------------------------------------------------
@@ -1082,6 +1077,69 @@ describe("progression-service", () => {
       // That rounds down to 20 (same weight), so P5-B minimum increment kicks in
       // 20 + 2.5 = 22.5
       expect(result.suggestions[0]!.suggestedWeightKg).toBe(22.5);
+    });
+
+    describe("sparse multi-block history", () => {
+      const TWO_BLOCKS: SetBlock[] = [
+        { targetKind: "reps", minValue: 6, maxValue: 8, count: 1, tag: "top" },
+        { targetKind: "reps", minValue: 8, maxValue: 12, count: 3 },
+      ];
+
+      it("returns lastTime keyed by blockIndex when only block 1 has history", async () => {
+        const ex = makeExercise("squat");
+        await db.exercises.add(ex);
+        const s1 = makeFinishedSession("s1", "2026-03-10T15:00:00.000Z");
+        await db.sessions.add(s1);
+        const se1 = makeSessionExercise("se1", "s1", "squat", TWO_BLOCKS);
+        await db.sessionExercises.add(se1);
+
+        for (let i = 0; i < 3; i++) {
+          await db.loggedSets.add(
+            makeLoggedSet(`ls-1-${i}`, "s1", "se1", "squat", 1, i, TWO_BLOCKS[1]!, {
+              performedWeightKg: 80,
+              performedReps: 10,
+            })
+          );
+        }
+
+        const se2 = makeSessionExercise("se2", "s2", "squat", TWO_BLOCKS);
+        await db.sessions.add({ ...makeFinishedSession("s2", "2026-03-11T15:00:00.000Z"), status: "active" as const });
+        await db.sessionExercises.add(se2);
+
+        const result = await getExerciseHistoryData(db, se2, "kg");
+
+        expect(result.lastTime[0]).toBeUndefined();
+        expect(result.lastTime[1]).toBeDefined();
+        expect(result.lastTime[1]!.sets).toHaveLength(3);
+        expect(result.lastTime[1]!.sets[0]!.weightKg).toBe(80);
+      });
+
+      it("returns lastTime keyed by blockIndex when only block 0 has history", async () => {
+        const ex = makeExercise("bench");
+        await db.exercises.add(ex);
+        const s1 = makeFinishedSession("s1", "2026-03-10T15:00:00.000Z");
+        await db.sessions.add(s1);
+        const se1 = makeSessionExercise("se1", "s1", "bench", TWO_BLOCKS);
+        await db.sessionExercises.add(se1);
+
+        await db.loggedSets.add(
+          makeLoggedSet("ls-0-0", "s1", "se1", "bench", 0, 0, TWO_BLOCKS[0]!, {
+            performedWeightKg: 100,
+            performedReps: 6,
+          })
+        );
+
+        const se2 = makeSessionExercise("se2", "s2", "bench", TWO_BLOCKS);
+        await db.sessions.add({ ...makeFinishedSession("s2", "2026-03-11T15:00:00.000Z"), status: "active" as const });
+        await db.sessionExercises.add(se2);
+
+        const result = await getExerciseHistoryData(db, se2, "kg");
+
+        expect(result.lastTime[0]).toBeDefined();
+        expect(result.lastTime[0]!.sets).toHaveLength(1);
+        expect(result.lastTime[0]!.sets[0]!.weightKg).toBe(100);
+        expect(result.lastTime[1]).toBeUndefined();
+      });
     });
   });
 

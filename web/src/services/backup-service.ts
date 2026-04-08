@@ -942,49 +942,38 @@ export async function importBackup(
   db: ExerciseLoggerDB,
   envelope: BackupEnvelope
 ): Promise<{ hasActiveSession: boolean }> {
-  // Block import while a local active session exists
-  const localActiveCount = await db.sessions
-    .where("status")
-    .equals("active")
-    .count();
-  if (localActiveCount > 0) {
-    throw new Error(
-      "Cannot import while a workout session is active. Finish or discard the session first."
-    );
-  }
-
   const { routines, sessions, sessionExercises, loggedSets, settings } =
     envelope.data;
 
   // All-or-nothing transactional overwrite (invariant 12)
+  // Active-session guard is INSIDE the transaction to prevent TOCTOU races
   await db.transaction(
     "rw",
     [db.routines, db.sessions, db.sessionExercises, db.loggedSets, db.settings],
     async () => {
-      // Clear existing user data
+      const localActiveCount = await db.sessions
+        .where("status")
+        .equals("active")
+        .count();
+      if (localActiveCount > 0) {
+        throw new Error(
+          "Cannot import while a workout session is active. Finish or discard the session first."
+        );
+      }
+
       await db.routines.clear();
       await db.sessions.clear();
       await db.sessionExercises.clear();
       await db.loggedSets.clear();
 
-      // Write imported data
-      if (routines.length > 0) {
-        await db.routines.bulkAdd(routines);
-      }
-      if (sessions.length > 0) {
-        await db.sessions.bulkAdd(sessions);
-      }
-      if (sessionExercises.length > 0) {
-        await db.sessionExercises.bulkAdd(sessionExercises);
-      }
-      if (loggedSets.length > 0) {
-        await db.loggedSets.bulkAdd(loggedSets);
-      }
+      if (routines.length > 0) await db.routines.bulkAdd(routines);
+      if (sessions.length > 0) await db.sessions.bulkAdd(sessions);
+      if (sessionExercises.length > 0) await db.sessionExercises.bulkAdd(sessionExercises);
+      if (loggedSets.length > 0) await db.loggedSets.bulkAdd(loggedSets);
       await db.settings.put(settings);
     }
   );
 
-  // ERRATA P7-F: Return whether the imported data has an active session
   const importedActiveSession = sessions.some((s) => s.status === "active");
   return { hasActiveSession: importedActiveSession };
 }
@@ -1006,20 +995,20 @@ export async function importBackup(
  * @throws Error if an active session exists.
  */
 export async function clearAllData(db: ExerciseLoggerDB): Promise<void> {
-  const activeCount = await db.sessions
-    .where("status")
-    .equals("active")
-    .count();
-  if (activeCount > 0) {
-    throw new Error(
-      "Cannot clear data while a workout session is active. Finish or discard the session first."
-    );
-  }
-
   await db.transaction(
     "rw",
     [db.routines, db.sessions, db.sessionExercises, db.loggedSets, db.settings],
     async () => {
+      const activeCount = await db.sessions
+        .where("status")
+        .equals("active")
+        .count();
+      if (activeCount > 0) {
+        throw new Error(
+          "Cannot clear data while a workout session is active. Finish or discard the session first."
+        );
+      }
+
       await db.routines.clear();
       await db.sessions.clear();
       await db.sessionExercises.clear();
