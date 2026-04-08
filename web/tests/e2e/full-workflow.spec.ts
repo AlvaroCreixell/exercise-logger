@@ -1,8 +1,4 @@
 import { test, expect } from "@playwright/test";
-import path from "path";
-import { fileURLToPath } from "url";
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // ERRATA P7-D: Use Playwright's configured baseURL instead of hardcoding port.
 // page.goto("/") uses the baseURL from playwright.config.ts.
@@ -28,54 +24,23 @@ test.describe("Exercise Logger E2E Smoke Test", () => {
     await expect(page.getByText(/data/i).first()).toBeVisible();
   });
 
-  test("import routine YAML via Settings", async ({ page }) => {
+  test("bundled routine is auto-seeded and active", async ({ page }) => {
     await page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: /settings/i }).click();
 
-    // The routine YAML file path
-    const yamlPath = path.resolve(
-      __dirname,
-      "../../data/routines/full-body-3day.yaml"
-    );
-
-    // Upload the YAML file
-    const fileInput = page.locator('input[type="file"][accept=".yaml,.yml"]');
-    await fileInput.setInputFiles(yamlPath);
-
-    // Wait for the routine name to appear in the list (use exact match to avoid success toast)
+    // The bundled routine should already be present and active
     await expect(
       page.getByText("Full Body 3-Day Rotation", { exact: true })
     ).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText("Active")).toBeVisible();
   });
 
-  test("full workflow: import -> start -> log -> finish -> history -> export", async ({
+  test("full workflow: start -> log -> finish -> history -> export", async ({
     page,
   }) => {
-    // Step 1: Import routine via Settings
-    await page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: /settings/i }).click();
-
-    const yamlPath = path.resolve(
-      __dirname,
-      "../../data/routines/full-body-3day.yaml"
-    );
-    const fileInput = page.locator('input[type="file"][accept=".yaml,.yml"]');
-    await fileInput.setInputFiles(yamlPath);
-
-    await expect(
-      page.getByText("Full Body 3-Day Rotation", { exact: true })
-    ).toBeVisible({ timeout: 5000 });
-
-    // Step 1b: Activate the routine
-    await page
-      .getByRole("button", { name: "Set as active routine" })
-      .click();
-
-    // Verify routine is now active
-    await expect(page.getByText("Active")).toBeVisible({ timeout: 5000 });
-
-    // Step 2: Navigate to Today and start a workout
-    await page.getByRole("link", { name: /today/i }).click();
+    // Bundled routine is auto-seeded and active on fresh launch.
+    // Step 1: Start a workout from Today
     await expect(page.getByText(/start workout/i)).toBeVisible({
-      timeout: 5000,
+      timeout: 10000,
     });
     await page.getByText(/start workout/i).click();
 

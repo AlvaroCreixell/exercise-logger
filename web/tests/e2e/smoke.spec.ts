@@ -2,10 +2,8 @@ import { test, expect } from "@playwright/test";
 
 test("app loads and shows the Today screen", async ({ page }) => {
   await page.goto("/");
-  // Fresh app with no routine shows "No Active Routine"
-  await expect(
-    page.getByRole("heading", { name: "No Active Routine" })
-  ).toBeVisible();
+  // Fresh app auto-seeds the bundled routine — Today shows the routine with Start Workout
+  await expect(page.getByText(/start workout/i)).toBeVisible({ timeout: 10000 });
 });
 
 test("bottom nav has all four tabs", async ({ page }) => {
@@ -36,7 +34,5 @@ test("can navigate between all tabs", async ({ page }) => {
   ).toBeVisible();
 
   await page.getByRole("link", { name: "Today" }).click();
-  await expect(
-    page.getByRole("heading", { name: "No Active Routine" })
-  ).toBeVisible();
+  await expect(page.getByText(/start workout/i)).toBeVisible({ timeout: 10000 });
 });
