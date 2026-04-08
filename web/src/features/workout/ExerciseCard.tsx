@@ -30,20 +30,19 @@ function blockLabelVariant(label: string) {
 
 function formatLastTime(
   sets: Array<{ weightKg: number | null; reps: number | null; durationSec: number | null; distanceM: number | null }>,
-  equipment: string,
   units: UnitSystem
 ): string {
   if (sets.length === 0) return "";
   const first = sets[0]!;
   if (first.weightKg != null) {
-    const w = toDisplayWeight(first.weightKg, equipment as never, units);
+    const w = toDisplayWeight(first.weightKg, units);
     const allSameWeight = sets.every((s) => s.weightKg === first.weightKg);
     if (allSameWeight) {
       const reps = sets.map((s) => s.reps ?? "?").join(", ");
       return `${w}${units} x ${reps}`;
     }
     return sets.map((s) => {
-      const sw = s.weightKg != null ? toDisplayWeight(s.weightKg, equipment as never, units) : "?";
+      const sw = s.weightKg != null ? toDisplayWeight(s.weightKg, units) : "?";
       return `${sw}x${s.reps ?? "?"}`;
     }).join(", ");
   }
@@ -132,19 +131,19 @@ export function ExerciseCard({
                   <div className="flex items-center gap-2 flex-wrap">
                     {lastTime && lastTime.sets.length > 0 && (
                       <span className="text-xs text-muted-foreground tabular-nums">
-                        Last: {formatLastTime(lastTime.sets, se.effectiveEquipment, units)}
+                        Last: {formatLastTime(lastTime.sets, units)}
                       </span>
                     )}
                     {suggestion && suggestion.isProgression && (
                       <span className="text-xs text-success tabular-nums font-medium inline-flex items-center gap-0.5">
                         <ArrowUp className="h-3 w-3" />
-                        {toDisplayWeight(suggestion.suggestedWeightKg, se.effectiveEquipment, units)}{units}
+                        {toDisplayWeight(suggestion.suggestedWeightKg, units)}{units}
                       </span>
                     )}
                     {suggestion && !suggestion.isProgression && (
                       <span className="text-xs text-info tabular-nums font-medium inline-flex items-center gap-0.5">
                         <Repeat className="h-3 w-3" />
-                        {toDisplayWeight(suggestion.suggestedWeightKg, se.effectiveEquipment, units)}{units}
+                        {toDisplayWeight(suggestion.suggestedWeightKg, units)}{units}
                       </span>
                     )}
                   </div>
@@ -158,7 +157,6 @@ export function ExerciseCard({
                       setIndex={setIndex}
                       loggedSet={setLookup.get(`${blockIndex}:${setIndex}`)}
                       units={units}
-                      equipment={se.effectiveEquipment}
                       onClick={() => onSetTap(blockIndex, setIndex)}
                       disabled={readOnly}
                     />
@@ -170,7 +168,7 @@ export function ExerciseCard({
         ) : isExtra && extraHistory ? (
           /* Extra exercise: show recent history as reference */
           <p className="text-xs text-muted-foreground tabular-nums">
-            Recent: {formatLastTime(extraHistory.sets, se.effectiveEquipment, units)}
+            Recent: {formatLastTime(extraHistory.sets, units)}
           </p>
         ) : null}
 
@@ -183,7 +181,6 @@ export function ExerciseCard({
                 setIndex={i}
                 loggedSet={ls}
                 units={units}
-                equipment={se.effectiveEquipment}
                 onClick={() => onSetTap(0, i)}
               />
             ))}
@@ -192,7 +189,6 @@ export function ExerciseCard({
                 setIndex={loggedSets.length}
                 loggedSet={undefined}
                 units={units}
-                equipment={se.effectiveEquipment}
                 onClick={() => onSetTap(0, loggedSets.length)}
               />
             )}

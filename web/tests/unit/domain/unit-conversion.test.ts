@@ -142,51 +142,50 @@ describe("roundToIncrement", () => {
 });
 
 describe("toDisplayWeight", () => {
-  it("returns kg rounded to barbell increment when units is kg", () => {
-    expect(toDisplayWeight(81.3, "barbell", "kg")).toBe(82.5);
+  it("returns kg value with floating-point cleanup when units is kg", () => {
+    expect(toDisplayWeight(7.5, "kg")).toBe(7.5);
   });
 
-  it("converts kg to lbs and rounds to barbell lbs increment", () => {
-    // 100 kg = ~220.46 lbs -> rounds to 220 lbs (nearest 5)
-    expect(toDisplayWeight(100, "barbell", "lbs")).toBe(220);
+  it("converts kg to lbs with floating-point cleanup when units is lbs", () => {
+    expect(toDisplayWeight(lbsToKg(7.5), "lbs")).toBeCloseTo(7.5, 2);
   });
 
-  it("converts kg to lbs for dumbbell (nearest 5 lbs)", () => {
-    // 20 kg = ~44.09 lbs -> rounds to 45 lbs (nearest 5)
-    expect(toDisplayWeight(20, "dumbbell", "lbs")).toBe(45);
+  it("cleans floating-point noise to 2 decimal places", () => {
+    expect(toDisplayWeight(0.30000000000000004, "kg")).toBe(0.3);
   });
 
-  it("converts kg to lbs for machine (nearest 10 lbs)", () => {
-    // 50 kg = ~110.23 lbs -> rounds to 110 lbs (nearest 10)
-    expect(toDisplayWeight(50, "machine", "lbs")).toBe(110);
+  it("does not round to equipment increments", () => {
+    const canonical = lbsToKg(7.5);
+    expect(toDisplayWeight(canonical, "lbs")).toBeCloseTo(7.5, 1);
+  });
+
+  it("round-trips: toDisplayWeight(toCanonicalKg(x, units), units) ≈ x", () => {
+    const input = 7.5;
+    const canonical = toCanonicalKg(input, "lbs");
+    const display = toDisplayWeight(canonical, "lbs");
+    expect(display).toBeCloseTo(input, 1);
   });
 });
 
 describe("toCanonicalKg", () => {
-  it("returns kg rounded to barbell increment when displayUnits is kg", () => {
-    expect(toCanonicalKg(81.3, "barbell", "kg")).toBe(82.5);
+  it("returns kg value unchanged when displayUnits is kg", () => {
+    expect(toCanonicalKg(7.5, "kg")).toBe(7.5);
   });
 
-  it("converts lbs to kg and rounds to barbell kg increment", () => {
-    // 225 lbs = ~102.06 kg -> rounds to 102.5 kg (nearest 2.5)
-    expect(toCanonicalKg(225, "barbell", "lbs")).toBe(102.5);
+  it("converts lbs to kg without rounding when displayUnits is lbs", () => {
+    expect(toCanonicalKg(7.5, "lbs")).toBeCloseTo(3.40194, 4);
   });
 
-  it("converts lbs to kg for dumbbell (nearest 2 kg)", () => {
-    // 45 lbs = ~20.41 kg -> rounds to 20 kg (nearest 2)
-    expect(toCanonicalKg(45, "dumbbell", "lbs")).toBe(20);
+  it("preserves fractional kg values", () => {
+    expect(toCanonicalKg(2.25, "kg")).toBe(2.25);
   });
 
-  it("converts lbs to kg for machine (nearest 5 kg)", () => {
-    // 110 lbs = ~49.9 kg -> rounds to 50 kg (nearest 5)
-    expect(toCanonicalKg(110, "machine", "lbs")).toBe(50);
+  it("preserves fractional lbs values through conversion", () => {
+    expect(toCanonicalKg(12.5, "lbs")).toBeCloseTo(5.66990, 4);
   });
 
-  it("round-trips display -> canonical -> display", () => {
-    const canonicalKg = 80;
-    const displayLbs = toDisplayWeight(canonicalKg, "barbell", "lbs");
-    const backToKg = toCanonicalKg(displayLbs, "barbell", "lbs");
-    // Should be close to original, within one increment
-    expect(Math.abs(backToKg - canonicalKg)).toBeLessThanOrEqual(2.5);
+  it("handles zero", () => {
+    expect(toCanonicalKg(0, "kg")).toBe(0);
+    expect(toCanonicalKg(0, "lbs")).toBe(0);
   });
 });

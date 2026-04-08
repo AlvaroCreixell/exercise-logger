@@ -93,7 +93,6 @@ export default function ExerciseHistoryScreen() {
                               if (ls.performedWeightKg != null && ls.performedReps != null) {
                                 const w = toDisplayWeight(
                                   ls.performedWeightKg,
-                                  entry.effectiveEquipment,
                                   units
                                 );
                                 text = `${w}${units} x ${ls.performedReps}`;

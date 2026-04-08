@@ -71,7 +71,7 @@ export function SetLogSheet({
       // Priority 1: current logged value
       setWeight(
         existingSet.performedWeightKg != null
-          ? String(toDisplayWeight(existingSet.performedWeightKg, se.effectiveEquipment, units))
+          ? String(toDisplayWeight(existingSet.performedWeightKg, units))
           : ""
       );
       setReps(existingSet.performedReps != null ? String(existingSet.performedReps) : "");
@@ -83,9 +83,9 @@ export function SetLogSheet({
       const lastSet = lastTime?.sets[setIndex];
 
       if (suggestedWeight != null) {
-        setWeight(String(toDisplayWeight(suggestedWeight, se.effectiveEquipment, units)));
+        setWeight(String(toDisplayWeight(suggestedWeight, units)));
       } else if (lastSet?.weightKg != null) {
-        setWeight(String(toDisplayWeight(lastSet.weightKg, se.effectiveEquipment, units)));
+        setWeight(String(toDisplayWeight(lastSet.weightKg, units)));
       } else {
         setWeight(showWeight ? "0" : "");
       }
@@ -109,7 +109,7 @@ export function SetLogSheet({
   async function handleSave() {
     const w = weight.trim() ? parseFloat(weight) : null;
     const input = {
-      performedWeightKg: w != null ? toCanonicalKg(w, se.effectiveEquipment, units) : null,
+      performedWeightKg: w != null ? toCanonicalKg(w, units) : null,
       performedReps: reps.trim() ? parseInt(reps, 10) : null,
       performedDurationSec: duration.trim() ? parseInt(duration, 10) : null,
       performedDistanceM: distance.trim() ? parseFloat(distance) : null,

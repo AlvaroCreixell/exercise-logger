@@ -90,39 +90,31 @@ export function roundToIncrement(
 }
 
 /**
- * Convert a canonical kg value to display units, rounded to the nearest
- * practical increment for the given equipment.
+ * Convert a canonical kg value to display units with floating-point cleanup.
  *
- * When units is "kg", the value is rounded to the kg increment.
- * When units is "lbs", the value is converted to lbs then rounded to the lbs increment.
+ * No equipment-based rounding — this is a pure unit conversion.
+ * Equipment rounding is only applied by the progression engine via `roundToIncrement`.
  */
 export function toDisplayWeight(
   canonicalKg: number,
-  equipment: ExerciseEquipment,
   units: "kg" | "lbs"
 ): number {
-  if (units === "kg") {
-    return roundToIncrement(canonicalKg, equipment, "kg");
-  }
-  const lbs = kgToLbs(canonicalKg);
-  return roundToIncrement(lbs, equipment, "lbs");
+  const raw = units === "kg" ? canonicalKg : kgToLbs(canonicalKg);
+  return Math.round(raw * 100) / 100;
 }
 
 /**
- * Convert a display value back to canonical kg, rounded to the nearest
- * practical kg increment for the given equipment.
+ * Convert a display value back to canonical kg.
  *
- * When displayUnits is "kg", the value is used directly (already canonical).
- * When displayUnits is "lbs", the value is converted to kg then rounded to the kg increment.
+ * No equipment-based rounding — this is a pure unit conversion.
+ * Equipment rounding is only applied by the progression engine via `roundToIncrement`.
  */
 export function toCanonicalKg(
   displayValue: number,
-  equipment: ExerciseEquipment,
   displayUnits: "kg" | "lbs"
 ): number {
   if (displayUnits === "kg") {
-    return roundToIncrement(displayValue, equipment, "kg");
+    return displayValue;
   }
-  const kg = lbsToKg(displayValue);
-  return roundToIncrement(kg, equipment, "kg");
+  return lbsToKg(displayValue);
 }

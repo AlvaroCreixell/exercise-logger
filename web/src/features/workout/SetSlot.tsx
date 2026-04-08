@@ -2,13 +2,11 @@ import { Check } from "lucide-react";
 import type { LoggedSet } from "@/domain/types";
 import type { UnitSystem } from "@/domain/enums";
 import { toDisplayWeight } from "@/domain/unit-conversion";
-import type { ExerciseEquipment } from "@/domain/enums";
 
 interface SetSlotProps {
   setIndex: number;
   loggedSet: LoggedSet | undefined;
   units: UnitSystem;
-  equipment: ExerciseEquipment;
   onClick: () => void;
   /** When true, unlogged slots render as inert, non-interactive elements */
   disabled?: boolean;
@@ -18,7 +16,6 @@ export function SetSlot({
   setIndex,
   loggedSet,
   units,
-  equipment,
   onClick,
   disabled = false,
 }: SetSlotProps) {
@@ -26,7 +23,7 @@ export function SetSlot({
 
   function formatValue(ls: LoggedSet): string {
     if (ls.performedWeightKg != null && ls.performedReps != null) {
-      const w = toDisplayWeight(ls.performedWeightKg, equipment, units);
+      const w = toDisplayWeight(ls.performedWeightKg, units);
       return `${w}x${ls.performedReps}`;
     }
     if (ls.performedReps != null) return `${ls.performedReps}r`;
