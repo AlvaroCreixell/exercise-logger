@@ -588,6 +588,17 @@ function validateSessionExercise(
       message: "must be a string",
     });
   }
+  // unitOverride: optional, must be "kg", "lbs", or null/undefined
+  if (
+    s.unitOverride !== undefined &&
+    s.unitOverride !== null &&
+    !VALID_UNITS.includes(s.unitOverride as UnitSystem)
+  ) {
+    errors.push({
+      field: `${path}.unitOverride`,
+      message: `must be one of: ${VALID_UNITS.join(", ")}, or null`,
+    });
+  }
 }
 
 function validateLoggedSet(

@@ -542,6 +542,61 @@ describe("validateBackupPayload", () => {
       ])
     );
   });
+
+  it("accepts sessionExercise with unitOverride: 'lbs'", () => {
+    const envelope = makeValidEnvelope({
+      sessionExercises: [
+        makeSessionExercise("se1", "s1", "barbell-back-squat", {
+          unitOverride: "lbs" as SessionExercise["unitOverride"],
+        }),
+      ],
+    });
+    const errors = validateBackupPayload(envelope, catalogIds);
+    expect(errors).toEqual([]);
+  });
+
+  it("accepts sessionExercise without unitOverride (old backup format)", () => {
+    const se = makeSessionExercise("se1", "s1", "barbell-back-squat");
+    // Simulate an old backup that never had the field
+    const seWithoutField = { ...se } as Record<string, unknown>;
+    delete seWithoutField["unitOverride"];
+    const envelope = makeValidEnvelope({
+      sessionExercises: [seWithoutField as unknown as SessionExercise],
+    });
+    const errors = validateBackupPayload(envelope, catalogIds);
+    expect(errors).toEqual([]);
+  });
+
+  it("accepts sessionExercise with unitOverride: null", () => {
+    const envelope = makeValidEnvelope({
+      sessionExercises: [
+        makeSessionExercise("se1", "s1", "barbell-back-squat", {
+          unitOverride: null as unknown as SessionExercise["unitOverride"],
+        }),
+      ],
+    });
+    const errors = validateBackupPayload(envelope, catalogIds);
+    expect(errors).toEqual([]);
+  });
+
+  it("rejects sessionExercise with invalid unitOverride", () => {
+    const envelope = makeValidEnvelope({
+      sessionExercises: [
+        makeSessionExercise("se1", "s1", "barbell-back-squat", {
+          unitOverride: "invalid" as unknown as SessionExercise["unitOverride"],
+        }),
+      ],
+    });
+    const errors = validateBackupPayload(envelope, catalogIds);
+    expect(errors).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          field: "data.sessionExercises[0].unitOverride",
+          message: expect.stringContaining("kg"),
+        }),
+      ])
+    );
+  });
 });
 
 // =========================================================================
