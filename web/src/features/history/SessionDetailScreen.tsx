@@ -11,6 +11,7 @@ import { SupersetGroup } from "@/features/workout/SupersetGroup";
 import { ArrowLeft } from "lucide-react";
 import { buttonVariants } from "@/shared/ui/button";
 import { cn } from "@/shared/lib/utils";
+import { getEffectiveUnit } from "@/domain/unit-helpers";
 import type { SessionExercise, LoggedSet } from "@/domain/types";
 
 export default function SessionDetailScreen() {
@@ -184,7 +185,7 @@ export default function SessionDetailScreen() {
 
 function SessionExerciseCardWithHistory({
   exData,
-  units,
+  units: globalUnits,
   onSetTap,
 }: {
   exData: { sessionExercise: SessionExercise; loggedSets: LoggedSet[] };
@@ -192,9 +193,10 @@ function SessionExerciseCardWithHistory({
   onSetTap: (se: SessionExercise, blockIndex: number, setIndex: number) => void;
 }) {
   const se = exData.sessionExercise;
+  const effectiveUnits = getEffectiveUnit(se.unitOverride, globalUnits);
   const historyData = useExerciseHistory(
     se.origin === "routine" ? se : undefined,
-    units
+    effectiveUnits
   );
 
   return (
@@ -208,7 +210,7 @@ function SessionExerciseCardWithHistory({
       <ExerciseCard
         sessionExercise={se}
         loggedSets={exData.loggedSets}
-        units={units}
+        units={effectiveUnits}
         historyData={historyData}
         extraHistory={null}
         onSetTap={(bi, si) => onSetTap(se, bi, si)}
@@ -226,7 +228,7 @@ function SetLogSheetWithHistoryForDetail({
   blockIndex,
   setIndex,
   existingSet,
-  units,
+  units: globalUnits,
   onSave,
   onDelete,
 }: {
@@ -245,9 +247,10 @@ function SetLogSheetWithHistoryForDetail({
   }) => Promise<void>;
   onDelete?: () => Promise<void>;
 }) {
+  const effectiveUnits = getEffectiveUnit(sessionExercise.unitOverride, globalUnits);
   const historyData = useExerciseHistory(
     sessionExercise.origin === "routine" ? sessionExercise : undefined,
-    units
+    effectiveUnits
   );
   return (
     <SetLogSheet
@@ -259,7 +262,7 @@ function SetLogSheetWithHistoryForDetail({
       existingSet={existingSet}
       suggestion={historyData?.suggestions.find((s) => s.blockIndex === blockIndex)}
       lastTime={historyData?.lastTime[blockIndex]}
-      units={units}
+      units={effectiveUnits}
       onSave={onSave}
       onDelete={onDelete}
     />

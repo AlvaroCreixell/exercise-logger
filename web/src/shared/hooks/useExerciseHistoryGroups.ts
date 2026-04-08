@@ -1,11 +1,12 @@
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/db/database";
 import type { Session, LoggedSet } from "@/domain/types";
-import type { ExerciseEquipment } from "@/domain/enums";
+import type { ExerciseEquipment, UnitSystem } from "@/domain/enums";
 
 export interface ExerciseHistoryEntry {
   instanceLabel: string;
   effectiveEquipment: ExerciseEquipment;
+  unitOverride: UnitSystem | null;
   sets: LoggedSet[];
 }
 
@@ -41,12 +42,13 @@ export function useExerciseHistoryGroups(
       }
 
       const sessionExercises = await db.sessionExercises.bulkGet([...seIds]);
-      const seMap = new Map<string, { instanceLabel: string; effectiveEquipment: ExerciseEquipment }>();
+      const seMap = new Map<string, { instanceLabel: string; effectiveEquipment: ExerciseEquipment; unitOverride: UnitSystem | null }>();
       for (const se of sessionExercises) {
         if (se) {
           seMap.set(se.id, {
             instanceLabel: se.instanceLabel,
             effectiveEquipment: se.effectiveEquipment,
+            unitOverride: se.unitOverride ?? null,
           });
         }
       }
@@ -77,6 +79,7 @@ export function useExerciseHistoryGroups(
           entries.push({
             instanceLabel: seData?.instanceLabel ?? "",
             effectiveEquipment: seData?.effectiveEquipment ?? "bodyweight",
+            unitOverride: seData?.unitOverride ?? null,
             sets: sets.sort((a, b) => {
               if (a.blockIndex !== b.blockIndex) return a.blockIndex - b.blockIndex;
               return a.setIndex - b.setIndex;
