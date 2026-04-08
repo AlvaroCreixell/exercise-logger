@@ -168,6 +168,7 @@ export async function startSessionWithCatalog(
         notesSnapshot: entry.notes ?? null,
         setBlocksSnapshot: [...entry.setBlocks],
         createdAt: now,
+        unitOverride: null,
       });
       orderIndex++;
     } else if (entry.kind === "superset") {
@@ -192,6 +193,7 @@ export async function startSessionWithCatalog(
           notesSnapshot: item.notes ?? null,
           setBlocksSnapshot: [...item.setBlocks],
           createdAt: now,
+          unitOverride: null,
         });
         orderIndex++;
       }
@@ -435,6 +437,7 @@ export async function addExtraExercise(
       notesSnapshot: null,
       setBlocksSnapshot: [],
       createdAt: now,
+      unitOverride: null,
     };
 
     await db.sessionExercises.add(sessionExercise);

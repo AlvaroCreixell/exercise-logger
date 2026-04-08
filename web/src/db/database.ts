@@ -28,6 +28,27 @@ export class ExerciseLoggerDB extends Dexie {
         "id, sessionId, [sessionExerciseId+blockIndex+setIndex], [exerciseId+loggedAt], [exerciseId+instanceLabel+blockSignature+loggedAt]",
       settings: "id",
     });
+
+    // Version 2: Add unitOverride to sessionExercises.
+    // No index change — unitOverride is not indexed.
+    // Note: this is the Dexie DB version, distinct from the backup
+    // envelope schemaVersion which stays at 1.
+    this.version(2).stores({
+      exercises: "id",
+      routines: "id",
+      sessions: "id, status, [routineId+startedAt]",
+      sessionExercises: "id, sessionId, [sessionId+orderIndex]",
+      loggedSets:
+        "id, sessionId, [sessionExerciseId+blockIndex+setIndex], [exerciseId+loggedAt], [exerciseId+instanceLabel+blockSignature+loggedAt]",
+      settings: "id",
+    }).upgrade(tx => {
+      // Backfill existing sessionExercises with unitOverride: null
+      return tx.table("sessionExercises").toCollection().modify(se => {
+        if (se.unitOverride === undefined) {
+          se.unitOverride = null;
+        }
+      });
+    });
   }
 }
 

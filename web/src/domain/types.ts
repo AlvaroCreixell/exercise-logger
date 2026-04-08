@@ -200,6 +200,11 @@ export interface SessionExercise {
   setBlocksSnapshot: SetBlock[];
   /** ISO UTC timestamp of when this record was created. */
   createdAt: string;
+  /**
+   * Per-exercise unit override for this session.
+   * null means "inherit the global setting from Settings.units".
+   */
+  unitOverride: UnitSystem | null;
 }
 
 /** A logged set record — one row per set slot. */
