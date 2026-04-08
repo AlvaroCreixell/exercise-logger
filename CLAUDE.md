@@ -1,7 +1,6 @@
 # Exercise Logger v2 — Project Guide
 
 
-
 ## Overview
 
 Local-first PWA gym routine tracker. React + Vite + TypeScript app in `web/`, deployed to GitHub Pages. Single-user, phone-first, works offline.
@@ -54,6 +53,8 @@ npm run lint          # ESLint
 - **Snapshots:** Sessions snapshot routine/exercise state at creation. History survives routine deletion.
 - **Imports:** Path alias `@/` maps to `web/src/`
 - **IDs:** UUIDs for records, slugified names for exercises (e.g., `barbell-back-squat`)
+- **Unit override:** Per-exercise unit choice stored on `SessionExercise.unitOverride`. Resolve with `getEffectiveUnit(se.unitOverride, globalUnits)`. `null` = inherit global.
+- **Weight precision:** `toCanonicalKg` and `toDisplayWeight` do not round to equipment increments. User input is stored and displayed with full precision. Only the progression engine's suggestions use `roundToIncrement`. Historical data logged before this change remains at its rounded values.
 
 ## Domain Invariants (enforced in services)
 
@@ -68,6 +69,7 @@ npm run lint          # ESLint
 9. Set logging upserts by `[sessionExerciseId, blockIndex, setIndex]`
 10. Routine activation/deletion blocked during active session
 11. Export/import is versioned and transactional (all-or-nothing)
+12. `toCanonicalKg` and `toDisplayWeight` do not round — user input is stored and displayed with full precision
 
 ## Testing Patterns
 

@@ -6,7 +6,7 @@ Pure business logic functions. Every function takes `db: ExerciseLoggerDB` as it
 
 ### `session-service.ts` — Session lifecycle
 
-- `startSessionWithCatalog(db, routine, dayId)` → SessionData — Creates session + snapshots all exercises from catalog. Enforces invariant 1 (one active session). Does NOT advance rotation.
+- `startSessionWithCatalog(db, routine, dayId)` → SessionData — Creates session + snapshots all exercises from catalog. Enforces invariant 1 (one active session). Does NOT advance rotation. Carries forward `unitOverride` from the most recent finished session via `findPreviousUnitOverride`. Extra exercises use `matchAnyLabel: true` when looking up previous overrides.
 - `resumeSession(db)` → SessionData | null — Returns active session with exercises and sets.
 - `discardSession(db, sessionId)` → void — Hard-deletes session + exercises + sets. Does NOT advance rotation (invariant 4).
 - `finishSession(db, sessionId)` → void — Sets status=finished, advances `nextDayId` using `dayOrderSnapshot`. Allows partial completion.
@@ -38,6 +38,7 @@ Pure business logic functions. Every function takes `db: ExerciseLoggerDB` as it
 - `hasActiveSession(db)` — Boolean check.
 - `setActiveRoutine(db, routineId)` — Blocked during active session (invariant 10, inside transaction).
 - `deleteRoutine(db, routineId)` — Blocked during active session. Auto-activates earliest remaining routine by `importedAt` ASC. All checks inside transaction to prevent TOCTOU races.
+- `setUnitOverride(db, sessionExerciseId, unitOverride)` — Set per-exercise unit override (`UnitSystem | null`) on a `SessionExercise`.
 
 ### `backup-service.ts` — Export/import/clear
 

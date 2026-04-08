@@ -15,6 +15,10 @@ loggedSets:     "id, sessionId, [sessionExerciseId+blockIndex+setIndex], [exerci
 settings:       "id"
 ```
 
+### Schema (version 2)
+
+Adds `unitOverride: UnitSystem | null` to `sessionExercises`. No index change — the field is not indexed. Existing rows get `unitOverride = undefined` (treated as `null`, i.e. inherit global). Note: this is the Dexie DB schema version and is distinct from the backup envelope `schemaVersion` (which stays at 1).
+
 ### Key indexes and their consumers
 
 | Index | Used by | Purpose |

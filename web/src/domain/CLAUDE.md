@@ -39,10 +39,14 @@ Examples: `reps:6-8:count1:tagtop`, `reps:8-12:count3:tagnormal`, `duration:30-6
 - `kgToLbs(kg)`, `lbsToKg(lbs)` — Canonical conversion using `KG_PER_LB = 0.45359237`
 - `roundToIncrement(value, equipment, units)` — Round to nearest practical increment
 - `getIncrement(equipment, units)` — Get the increment step for an equipment/unit pair
-- `toDisplayWeight(kg, units)` — Convert canonical kg to display value (floating-point cleanup only, no equipment rounding)
-- `toCanonicalKg(displayValue, units)` — Convert display input back to canonical kg (pure conversion, no equipment rounding)
+- `toDisplayWeight(kg, units)` — Convert canonical kg to display value (floating-point cleanup only, no equipment rounding). No equipment param.
+- `toCanonicalKg(displayValue, units)` — Convert display input back to canonical kg (pure conversion, no rounding). No equipment param.
 
 Increment table covers all 9 equipment types x 2 unit systems. Barbell: 2.5kg/5lbs. Dumbbell: 2kg/5lbs. Machine/cable: 5kg/10lbs.
+
+### `unit-helpers.ts` — `getEffectiveUnit(unitOverride, globalUnits) => UnitSystem`
+
+Resolve per-exercise unit: returns `unitOverride` if non-null, otherwise `globalUnits`.
 
 ### `slug.ts` — `slugify(name: string) => string`
 
