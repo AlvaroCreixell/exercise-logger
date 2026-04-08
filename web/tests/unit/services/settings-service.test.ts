@@ -8,8 +8,9 @@ import {
   deleteRoutine,
   setUnits,
   setTheme,
+  setUnitOverride,
 } from "@/services/settings-service";
-import type { Routine, Session } from "@/domain/types";
+import type { Routine, Session, SessionExercise } from "@/domain/types";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -233,6 +234,65 @@ describe("settings-service", () => {
       await setTheme(db, "system");
       const settings = await getSettings(db);
       expect(settings.theme).toBe("system");
+    });
+  });
+
+  // --- setUnitOverride ---
+
+  describe("setUnitOverride", () => {
+    function makeSessionExercise(overrides: Partial<SessionExercise> = {}): SessionExercise {
+      return {
+        id: "se1",
+        sessionId: "s1",
+        routineEntryId: null,
+        exerciseId: "leg-press",
+        exerciseNameSnapshot: "Leg Press",
+        origin: "routine",
+        orderIndex: 0,
+        groupType: "single",
+        supersetGroupId: null,
+        supersetPosition: null,
+        instanceLabel: "",
+        effectiveType: "weight",
+        effectiveEquipment: "machine",
+        notesSnapshot: null,
+        setBlocksSnapshot: [],
+        createdAt: "2026-04-08T10:00:00.000Z",
+        unitOverride: null,
+        ...overrides,
+      };
+    }
+
+    it("updates the unitOverride on a session exercise", async () => {
+      const session: Session = {
+        id: "s1", routineId: null, routineNameSnapshot: "Test",
+        dayId: "A", dayLabelSnapshot: "Day A", dayOrderSnapshot: ["A"],
+        restDefaultSecSnapshot: 90, restSupersetSecSnapshot: 60,
+        status: "active", startedAt: "2026-04-08T10:00:00.000Z", finishedAt: null,
+      };
+      await db.sessions.add(session);
+      await db.sessionExercises.add(makeSessionExercise());
+
+      await setUnitOverride(db, "se1", "lbs");
+
+      const updated = await db.sessionExercises.get("se1");
+      expect(updated!.unitOverride).toBe("lbs");
+    });
+
+    it("sets unitOverride back to null", async () => {
+      const session: Session = {
+        id: "s2", routineId: null, routineNameSnapshot: "Test",
+        dayId: "A", dayLabelSnapshot: "Day A", dayOrderSnapshot: ["A"],
+        restDefaultSecSnapshot: 90, restSupersetSecSnapshot: 60,
+        status: "active", startedAt: "2026-04-08T10:00:00.000Z", finishedAt: null,
+      };
+      await db.sessions.add(session);
+      await db.sessionExercises.add(makeSessionExercise({ id: "se2", sessionId: "s2", unitOverride: "lbs" }));
+
+      await setUnitOverride(db, "se2", null);
+
+      const updated = await db.sessionExercises.get("se2");
+      expect(updated!.unitOverride).toBeNull();
     });
   });
 });

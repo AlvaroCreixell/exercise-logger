@@ -132,3 +132,14 @@ export async function setTheme(
 ): Promise<void> {
   await db.settings.update("user", { theme });
 }
+
+/**
+ * Set the unit override for a specific session exercise.
+ */
+export async function setUnitOverride(
+  db: ExerciseLoggerDB,
+  sessionExerciseId: string,
+  unitOverride: UnitSystem | null
+): Promise<void> {
+  await db.sessionExercises.update(sessionExerciseId, { unitOverride });
+}
