@@ -12,12 +12,12 @@ export function WorkoutFooter({
   onDiscard,
 }: WorkoutFooterProps) {
   return (
-    <div className="sticky bottom-0 z-10 border-t bg-background p-4 pb-[env(safe-area-inset-bottom)]">
+    <div className="sticky bottom-0 z-10 border-t-2 border-border-strong bg-background p-5 pb-[env(safe-area-inset-bottom)]">
       <div className="flex gap-2">
         <Button variant="outline" className="flex-1" onClick={onAddExercise}>
           Add Exercise
         </Button>
-        <Button className="flex-1" onClick={onFinish}>
+        <Button variant="cta" className="flex-1" onClick={onFinish}>
           Finish Workout
         </Button>
       </div>

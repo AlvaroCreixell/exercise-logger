@@ -251,7 +251,7 @@ export function SetLogSheet({
         </div>
 
         <div className="space-y-2 pb-2 shrink-0">
-          <Button className="w-full" size="lg" onClick={handleSave} disabled={saving}>
+          <Button variant="cta" className="w-full" size="lg" onClick={handleSave} disabled={saving}>
             Save
           </Button>
           {existingSet && onDelete && (

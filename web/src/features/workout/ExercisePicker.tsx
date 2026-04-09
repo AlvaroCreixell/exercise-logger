@@ -84,7 +84,7 @@ export function ExercisePicker({
                           onPick(ex.id);
                           onOpenChange(false);
                         }}
-                        className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg hover:bg-muted/50 transition-colors text-left"
+                        className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-muted/50 border-b border-border transition-colors text-left"
                       >
                         <div>
                           <span className="text-sm font-medium">{ex.name}</span>

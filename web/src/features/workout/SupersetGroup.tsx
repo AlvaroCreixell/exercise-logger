@@ -6,8 +6,8 @@ interface SupersetGroupProps {
 
 export function SupersetGroup({ children }: SupersetGroupProps) {
   return (
-    <div className="border-l-2 border-info pl-3 space-y-3">
-      <span className="text-xs text-info font-medium">Superset</span>
+    <div className="border-l-2 border-cta pl-4 space-y-3">
+      <span className="text-xs font-semibold uppercase tracking-widest text-cta">Superset</span>
       {children}
     </div>
   );

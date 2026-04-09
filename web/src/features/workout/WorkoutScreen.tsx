@@ -39,8 +39,8 @@ export default function WorkoutScreen() {
   // Empty state
   if (activeSession === null) {
     return (
-      <div className="flex h-full flex-col items-center justify-center gap-2 p-4">
-        <h1 className="text-xl font-bold">No Active Workout</h1>
+      <div className="flex h-full flex-col items-center justify-center gap-2 p-5">
+        <h1 className="text-2xl font-extrabold tracking-tight font-heading">No Active Workout</h1>
         <p className="text-sm text-muted-foreground">
           Start a workout from the Today tab.
         </p>
@@ -153,17 +153,17 @@ export default function WorkoutScreen() {
   return (
     <div className="flex flex-col h-full">
       {/* Sticky header */}
-      <div className="sticky top-0 z-10 bg-background border-b px-4 py-3">
-        <h1 className="text-lg font-bold truncate">
+      <div className="sticky top-0 z-10 bg-background border-b-2 border-border-strong px-5 py-3">
+        <p className="text-xs font-semibold uppercase tracking-widest text-cta truncate">
           {session.dayLabelSnapshot}
-        </h1>
-        <p className="text-xs text-muted-foreground truncate">
-          {session.routineNameSnapshot}
         </p>
+        <h1 className="text-2xl font-extrabold tracking-tight font-heading truncate">
+          {session.routineNameSnapshot}
+        </h1>
       </div>
 
       {/* Scrollable body */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+      <div className="flex-1 overflow-y-auto p-5 space-y-3">
         {renderGroups.map((group, i) => {
           if (group.type === "single") {
             const se = group.exercise;

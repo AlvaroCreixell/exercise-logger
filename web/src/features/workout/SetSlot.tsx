@@ -37,7 +37,7 @@ export function SetSlot({
       <div
         data-testid="set-slot"
         aria-label={`Set ${setIndex + 1}: empty`}
-        className="min-h-[44px] min-w-[3.5rem] rounded-lg px-2 text-xs font-medium tabular-nums flex items-center justify-center gap-1 shrink-0 border border-border/50 text-muted-foreground/40"
+        className="min-h-[44px] min-w-[3.5rem] px-2 text-xs font-medium tabular-nums flex items-center justify-center gap-1 shrink-0 border border-border/50 text-muted-foreground/40"
       >
         <span>{setIndex + 1}</span>
       </div>
@@ -49,10 +49,10 @@ export function SetSlot({
       data-testid="set-slot"
       onClick={onClick}
       aria-label={isLogged ? `Set ${setIndex + 1}: ${formatValue(loggedSet)}` : `Set ${setIndex + 1}: empty`}
-      className={`min-h-[44px] min-w-[3.5rem] rounded-lg px-2 text-xs font-medium tabular-nums flex items-center justify-center gap-1 transition-colors shrink-0 ${
+      className={`min-h-[44px] min-w-[3.5rem] px-2 text-xs font-medium tabular-nums flex items-center justify-center gap-1 transition-colors shrink-0 ${
         isLogged
-          ? "border border-success bg-success-soft text-success"
-          : "border border-border text-muted-foreground hover:bg-muted/50"
+          ? "border-l-2 border-l-success border border-border bg-success-soft text-success"
+          : "border border-border-strong text-muted-foreground hover:bg-muted/50"
       }`}
     >
       {isLogged ? (

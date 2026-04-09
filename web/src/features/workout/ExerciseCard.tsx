@@ -88,12 +88,12 @@ export function ExerciseCard({
   }
 
   return (
-    <Card className={readOnly ? "border-0 shadow-none bg-transparent" : undefined}>
+    <Card className={readOnly ? "border-t border-border bg-transparent" : undefined}>
       <CardContent className={`${readOnly ? "px-0" : ""} py-3 space-y-3`}>
         {/* Header */}
         {!hideHeader && (
           <div className="flex items-center gap-2">
-            <h3 className="text-base font-semibold truncate">
+            <h3 className="text-sm font-semibold uppercase tracking-wide truncate">
               {se.exerciseNameSnapshot}
             </h3>
             {isExtra && (
@@ -101,7 +101,7 @@ export function ExerciseCard({
             )}
             {onUnitToggle && (
               <button
-                className="ml-auto shrink-0 rounded-md border border-border px-2 py-0.5 text-[11px] font-medium tabular-nums text-muted-foreground hover:bg-muted/50"
+                className="ml-auto shrink-0 border border-border-strong px-2 py-0.5 text-[11px] font-medium tabular-nums text-muted-foreground hover:bg-muted/50"
                 onClick={(e) => {
                   e.stopPropagation();
                   onUnitToggle(units === "kg" ? "lbs" : "kg");
@@ -131,7 +131,7 @@ export function ExerciseCard({
                 {/* Block label + target */}
                 <div className="flex items-center gap-2 flex-wrap">
                   {label && (
-                    <span className={`inline-flex items-center rounded-md px-1.5 py-0.5 text-[11px] font-medium ${blockLabelVariant(label)}`}>
+                    <span className={`inline-flex items-center px-1.5 py-0.5 text-[11px] font-medium ${blockLabelVariant(label)}`}>
                       {label}
                     </span>
                   )}
