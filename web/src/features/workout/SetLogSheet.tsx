@@ -51,9 +51,15 @@ export function SetLogSheet({
   const se = sessionExercise;
   const blocks = se.setBlocksSnapshot;
   const block: SetBlock | undefined = blocks[blockIndex];
-  const targetKind = block?.targetKind ?? "reps";
+  // For extras (no set blocks), infer targetKind from exercise type
+  const defaultTargetKind =
+    se.effectiveType === "isometric" ? "duration" as const
+    : se.effectiveType === "cardio" ? "duration" as const
+    : "reps" as const;
+  const targetKind = block?.targetKind ?? defaultTargetKind;
   const showWeight = se.effectiveType === "weight";
   const isBodyweight = se.effectiveType === "bodyweight";
+  const isCardioExtra = se.effectiveType === "cardio" && !block;
 
   const [weight, setWeight] = useState("");
   const [reps, setReps] = useState("");
@@ -220,7 +226,7 @@ export function SetLogSheet({
             </div>
           )}
 
-          {targetKind === "distance" && (
+          {(targetKind === "distance" || isCardioExtra) && (
             <div className="space-y-1.5">
               <Label htmlFor="distance">Distance (meters)</Label>
               <Input
