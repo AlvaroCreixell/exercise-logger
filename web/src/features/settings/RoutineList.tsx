@@ -45,14 +45,14 @@ export function RoutineList({
           return (
             <div
               key={routine.id}
-              className="flex items-center justify-between rounded-lg border p-3"
+              className="flex items-center justify-between border-b border-border p-3"
             >
               <div className="flex items-center gap-2 min-w-0">
                 <span className="text-sm font-medium truncate">
                   {routine.name}
                 </span>
                 {isActive && (
-                  <Badge variant="secondary" className="bg-info-soft text-info shrink-0">
+                  <Badge variant="secondary" className="bg-cta text-white shrink-0">
                     Active
                   </Badge>
                 )}

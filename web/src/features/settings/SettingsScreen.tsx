@@ -96,8 +96,8 @@ export default function SettingsScreen() {
   const themeOptions: ThemePreference[] = ["light", "dark", "system"];
 
   return (
-    <div className="p-4 space-y-6 pb-8">
-      <h1 className="text-xl font-bold">Settings</h1>
+    <div className="p-5 space-y-8 pb-8">
+      <h1 className="text-2xl font-extrabold tracking-tight font-heading">Settings</h1>
 
       <Card>
         <CardHeader>
@@ -125,14 +125,16 @@ export default function SettingsScreen() {
         <CardContent className="space-y-4">
           <div className="space-y-1.5">
             <label className="text-sm font-medium">Units</label>
-            <div className="flex rounded-lg border overflow-hidden">
-              {unitOptions.map((u) => (
+            <div className="flex overflow-hidden">
+              {unitOptions.map((u, i) => (
                 <button
                   key={u}
                   onClick={() => handleUnits(u)}
-                  className={`flex-1 py-2 text-sm font-medium transition-colors ${
+                  className={`flex-1 py-2 text-sm font-medium transition-colors border-[1.5px] border-border-strong ${
+                    i > 0 ? "-ml-[1.5px]" : ""
+                  } ${
                     settings.units === u
-                      ? "bg-primary text-primary-foreground"
+                      ? "bg-primary text-primary-foreground z-10"
                       : "hover:bg-muted"
                   }`}
                 >
@@ -143,14 +145,16 @@ export default function SettingsScreen() {
           </div>
           <div className="space-y-1.5">
             <label className="text-sm font-medium">Theme</label>
-            <div className="flex rounded-lg border overflow-hidden">
-              {themeOptions.map((t) => (
+            <div className="flex overflow-hidden">
+              {themeOptions.map((t, i) => (
                 <button
                   key={t}
                   onClick={() => handleTheme(t)}
-                  className={`flex-1 py-2 text-sm font-medium capitalize transition-colors ${
+                  className={`flex-1 py-2 text-sm font-medium capitalize transition-colors border-[1.5px] border-border-strong ${
+                    i > 0 ? "-ml-[1.5px]" : ""
+                  } ${
                     settings.theme === t
-                      ? "bg-primary text-primary-foreground"
+                      ? "bg-primary text-primary-foreground z-10"
                       : "hover:bg-muted"
                   }`}
                 >
@@ -193,7 +197,7 @@ export default function SettingsScreen() {
             </p>
           )}
           {importErrors.length > 0 && (
-            <div className="rounded-lg border border-warning bg-warning-soft p-3 space-y-1">
+            <div className="border border-warning bg-warning-soft p-3 space-y-1">
               {importErrors.map((err, i) => (
                 <p key={i} className="text-xs text-warning-foreground">{err}</p>
               ))}

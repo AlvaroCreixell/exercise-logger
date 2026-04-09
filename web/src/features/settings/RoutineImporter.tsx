@@ -61,7 +61,7 @@ export function RoutineImporter() {
         {importing ? "Importing..." : "Import Routine"}
       </Button>
       {errors.length > 0 && (
-        <div className="rounded-lg border border-warning bg-warning-soft p-3 space-y-1">
+        <div className="border border-warning bg-warning-soft p-3 space-y-1">
           {errors.map((err, i) => (
             <p key={i} className="text-xs text-warning-foreground">
               {err}
