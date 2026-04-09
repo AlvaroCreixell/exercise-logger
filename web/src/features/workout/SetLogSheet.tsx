@@ -60,6 +60,8 @@ export function SetLogSheet({
   const showWeight = se.effectiveType === "weight";
   const isBodyweight = se.effectiveType === "bodyweight";
   const isCardioExtra = se.effectiveType === "cardio" && !block;
+  // Cardio extras show duration in minutes; everything else in seconds
+  const durationInMinutes = isCardioExtra;
 
   const [weight, setWeight] = useState("");
   const [reps, setReps] = useState("");
@@ -81,7 +83,9 @@ export function SetLogSheet({
           : ""
       );
       setReps(existingSet.performedReps != null ? String(existingSet.performedReps) : "");
-      setDuration(existingSet.performedDurationSec != null ? String(existingSet.performedDurationSec) : "");
+      setDuration(existingSet.performedDurationSec != null
+        ? String(durationInMinutes ? Math.round(existingSet.performedDurationSec / 60 * 100) / 100 : existingSet.performedDurationSec)
+        : "");
       setDistance(existingSet.performedDistanceM != null ? String(existingSet.performedDistanceM) : "");
     } else if (suggestion || lastTime) {
       // Priority 2: suggestion weight + last-time reps
@@ -97,7 +101,9 @@ export function SetLogSheet({
       }
 
       setReps(lastSet?.reps != null ? String(lastSet.reps) : block?.minValue != null ? String(block.minValue) : "");
-      setDuration(lastSet?.durationSec != null ? String(lastSet.durationSec) : "");
+      setDuration(lastSet?.durationSec != null
+        ? String(durationInMinutes ? Math.round(lastSet.durationSec / 60 * 100) / 100 : lastSet.durationSec)
+        : "");
       setDistance(lastSet?.distanceM != null ? String(lastSet.distanceM) : "");
     } else {
       // Priority 3: default weight to 0 for weighted, reps to lower bound of range
@@ -117,7 +123,9 @@ export function SetLogSheet({
     const input = {
       performedWeightKg: w != null ? toCanonicalKg(w, units) : null,
       performedReps: reps.trim() ? parseInt(reps, 10) : null,
-      performedDurationSec: duration.trim() ? parseInt(duration, 10) : null,
+      performedDurationSec: duration.trim()
+        ? (durationInMinutes ? Math.round(parseFloat(duration) * 60) : parseInt(duration, 10))
+        : null,
       performedDistanceM: distance.trim() ? parseFloat(distance) : null,
     };
     if (isSetInputEmpty(targetKind, input)) {
@@ -213,12 +221,12 @@ export function SetLogSheet({
 
           {targetKind === "duration" && (
             <div className="space-y-1.5">
-              <Label htmlFor="duration">Duration (seconds)</Label>
+              <Label htmlFor="duration">Duration ({durationInMinutes ? "minutes" : "seconds"})</Label>
               <Input
                 id="duration"
                 name="duration"
                 type="number"
-                inputMode="numeric"
+                inputMode={durationInMinutes ? "decimal" : "numeric"}
                 className="text-lg tabular-nums h-12"
                 value={duration}
                 onChange={(e) => setDuration(e.target.value)}
