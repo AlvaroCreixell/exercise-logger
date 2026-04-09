@@ -52,8 +52,8 @@ export default function TodayScreen() {
   // State A: No active routine
   if (!settings.activeRoutineId || routine === null) {
     return (
-      <div className="flex h-full flex-col items-center justify-center gap-4 p-4">
-        <h1 className="text-xl font-bold">No Active Routine</h1>
+      <div className="flex h-full flex-col items-center justify-center gap-4 p-5">
+        <h1 className="text-2xl font-extrabold tracking-tight font-heading">No Active Routine</h1>
         <p className="text-sm text-muted-foreground text-center">
           Import a routine in Settings to get started.
         </p>
@@ -69,9 +69,9 @@ export default function TodayScreen() {
   // State C: Active session exists
   if (activeSession) {
     return (
-      <div className="p-4">
+      <div className="p-5">
         <Link to="/workout" className="block">
-          <Card className="border-info bg-info-soft hover:bg-info-soft/80 transition-colors">
+          <Card className="border border-info bg-info-soft hover:bg-info-soft/80 transition-colors">
             <CardContent className="py-4">
               <h2 className="text-base font-semibold">Resume Workout</h2>
               <p className="text-sm text-muted-foreground mt-1">
@@ -104,8 +104,8 @@ export default function TodayScreen() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        <h1 className="text-xl font-bold">{routine.name}</h1>
+      <div className="flex-1 overflow-y-auto p-5 space-y-4">
+        <h1 className="text-2xl font-extrabold tracking-tight font-heading">{routine.name}</h1>
 
         <DaySelector
           routine={routine}
@@ -116,7 +116,7 @@ export default function TodayScreen() {
         {day && <DayPreview day={day} exerciseNames={exerciseNames} />}
 
         {routine.cardio && (
-          <div className="rounded-lg bg-muted p-3 space-y-1.5">
+          <div className="bg-muted p-3 space-y-1.5">
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
               Cardio
             </p>
@@ -141,8 +141,8 @@ export default function TodayScreen() {
         {lastSession && <LastSessionCard session={lastSession} />}
       </div>
 
-      <div className="sticky bottom-0 border-t bg-background p-4 pb-[env(safe-area-inset-bottom)]">
-        <Button className="w-full" size="lg" onClick={handleStart} disabled={starting}>
+      <div className="sticky bottom-0 border-t-2 border-border-strong bg-background p-5 pb-[env(safe-area-inset-bottom)]">
+        <Button className="w-full" variant="cta" size="lg" onClick={handleStart} disabled={starting}>
           {starting ? "Starting..." : "Start Workout"}
         </Button>
       </div>

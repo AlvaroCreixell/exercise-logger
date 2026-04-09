@@ -23,7 +23,7 @@ function formatDuration(start: string, end: string | null): string {
 
 export function LastSessionCard({ session }: LastSessionCardProps) {
   return (
-    <div className="rounded-lg border bg-muted/30 px-3 py-2">
+    <div className="border-t-2 border-border-strong px-3 py-2">
       <p className="text-xs text-muted-foreground">
         Last workout: {session.dayLabelSnapshot} &middot;{" "}
         <span className="tabular-nums">

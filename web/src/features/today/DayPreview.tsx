@@ -1,5 +1,4 @@
 import type { RoutineDay, SetBlock } from "@/domain/types";
-import { Card, CardContent } from "@/shared/ui/card";
 
 interface DayPreviewProps {
   day: RoutineDay;
@@ -27,13 +26,13 @@ function displayName(exerciseId: string, lookup: Map<string, string>): string {
 
 export function DayPreview({ day, exerciseNames }: DayPreviewProps) {
   return (
-    <Card>
-      <CardContent className="py-3 space-y-1.5">
+    <div className="border-t border-border-strong pt-3">
+      <div className="space-y-1.5">
         {day.entries.map((entry) => {
           if (entry.kind === "exercise") {
             return (
-              <div key={entry.entryId} className="flex items-baseline justify-between gap-2">
-                <span className="text-sm font-medium truncate">
+              <div key={entry.entryId} className="flex items-baseline justify-between gap-2 border-b border-border py-1">
+                <span className="text-sm font-semibold uppercase tracking-wide truncate">
                   {displayName(entry.exerciseId, exerciseNames)}
                   {entry.instanceLabel ? ` (${entry.instanceLabel})` : ""}
                 </span>
@@ -44,10 +43,10 @@ export function DayPreview({ day, exerciseNames }: DayPreviewProps) {
             );
           }
           return (
-            <div key={entry.groupId} className="border-l-2 border-info/30 pl-3 space-y-1">
+            <div key={entry.groupId} className="border-l-2 border-cta pl-4 space-y-1">
               {entry.items.map((item) => (
-                <div key={item.entryId} className="flex items-baseline justify-between gap-2">
-                  <span className="text-sm font-medium truncate">
+                <div key={item.entryId} className="flex items-baseline justify-between gap-2 border-b border-border py-1">
+                  <span className="text-sm font-semibold uppercase tracking-wide truncate">
                     {displayName(item.exerciseId, exerciseNames)}
                   </span>
                   <span className="text-xs text-muted-foreground tabular-nums shrink-0">
@@ -58,7 +57,7 @@ export function DayPreview({ day, exerciseNames }: DayPreviewProps) {
             </div>
           );
         })}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
