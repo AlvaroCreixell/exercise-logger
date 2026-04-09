@@ -29,7 +29,7 @@ export default function SessionDetailScreen() {
 
   if (detail === null) {
     return (
-      <div className="p-4">
+      <div className="p-5">
         <Link to="/history" className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}>
           <ArrowLeft className="h-4 w-4 mr-1" />Back
         </Link>
@@ -121,13 +121,13 @@ export default function SessionDetailScreen() {
   }
 
   return (
-    <div className="p-4 space-y-4 pb-8">
+    <div className="p-5 space-y-4 pb-8">
       <Link to="/history" className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}>
         <ArrowLeft className="h-4 w-4 mr-1" />Back
       </Link>
 
       <div>
-        <h1 className="text-xl font-bold">{session.dayLabelSnapshot}</h1>
+        <h1 className="text-2xl font-extrabold tracking-tight font-heading">{session.dayLabelSnapshot}</h1>
         <p className="text-sm text-muted-foreground">
           {session.routineNameSnapshot}
         </p>
@@ -203,7 +203,7 @@ function SessionExerciseCardWithHistory({
     <div>
       <Link
         to={`/history/exercise/${se.exerciseId}`}
-        className="text-base font-semibold hover:underline"
+        className="text-sm font-semibold uppercase tracking-wide hover:underline"
       >
         {se.exerciseNameSnapshot}
       </Link>

@@ -42,7 +42,7 @@ export default function ExerciseHistoryScreen() {
   const name = exercise?.name ?? exerciseId ?? "Exercise";
 
   return (
-    <div className="p-4 space-y-4 pb-8">
+    <div className="p-5 space-y-4 pb-8">
       <button
         onClick={() => navigate(-1)}
         className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}
@@ -50,7 +50,7 @@ export default function ExerciseHistoryScreen() {
         <ArrowLeft className="h-4 w-4 mr-1" />Back
       </button>
 
-      <h1 className="text-xl font-bold">{name}</h1>
+      <h1 className="text-2xl font-extrabold tracking-tight font-heading">{name}</h1>
 
       {groups === null || groups === undefined ? null : groups.length === 0 ? (
         <p className="text-sm text-muted-foreground">
@@ -59,8 +59,8 @@ export default function ExerciseHistoryScreen() {
       ) : (
         <div className="space-y-4">
           {groups.map((group) => (
-            <div key={group.session.id} className="space-y-1">
-              <p className="text-xs text-muted-foreground tabular-nums">
+            <div key={group.session.id} className="space-y-1 border-t-2 border-border-strong pt-2">
+              <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground tabular-nums">
                 {new Date(group.session.startedAt).toLocaleDateString(undefined, {
                   month: "short",
                   day: "numeric",
@@ -84,7 +84,7 @@ export default function ExerciseHistoryScreen() {
                       {groupSetsByBlock(entry.sets).map((block, bi) => {
                         const tagLabel = block.tag === "top" ? "Top" : block.tag === "amrap" ? "AMRAP" : null;
                         return (
-                          <div key={bi} className={bi > 0 ? "mt-1 pt-1 border-t border-border/50" : ""}>
+                          <div key={bi} className={bi > 0 ? "mt-1 pt-1 border-t border-border" : ""}>
                             {tagLabel && (
                               <span className="text-[10px] text-muted-foreground font-normal">
                                 {tagLabel}

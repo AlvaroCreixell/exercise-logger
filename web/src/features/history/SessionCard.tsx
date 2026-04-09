@@ -28,14 +28,14 @@ export function SessionCard({ summary }: SessionCardProps) {
   return (
     <Link
       to={`/history/${session.id}`}
-      className="block rounded-lg border p-3 hover:bg-muted/50 transition-colors"
+      className="block border-t border-border-strong p-3 hover:bg-muted/50 transition-colors"
     >
       <div className="flex items-start gap-2">
-        <Badge variant="secondary" className="bg-info-soft text-info shrink-0 mt-0.5">
+        <Badge variant="secondary" className="bg-cta text-white shrink-0 mt-0.5">
           {session.dayId}
         </Badge>
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-medium truncate">
+          <p className="text-base font-semibold truncate">
             {session.routineNameSnapshot} — {session.dayLabelSnapshot}
           </p>
           <p className="text-xs text-muted-foreground tabular-nums mt-0.5">
