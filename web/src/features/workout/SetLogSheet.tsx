@@ -108,7 +108,7 @@ export function SetLogSheet({
     const carryoverSet = blockSetsInSession
       .filter(
         (ls) =>
-          ls.sessionExerciseId === sessionExercise.id &&
+          ls.sessionExerciseId === se.id &&
           ls.blockIndex === blockIndex &&
           ls.performedWeightKg != null
       )
