@@ -25,6 +25,12 @@ interface SetLogSheetProps {
   existingSet: LoggedSet | undefined;
   suggestion: BlockSuggestion | undefined;
   lastTime: BlockLastTime | undefined;
+  /**
+   * All sets already logged for this (sessionExercise, blockIndex) in the
+   * current session, including the one being edited. Used for in-session
+   * weight carryover on new slots. Default [] = carryover disabled.
+   */
+  blockSetsInSession?: LoggedSet[];
   units: UnitSystem;
   onSave: (input: {
     performedWeightKg: number | null;
@@ -44,6 +50,7 @@ export function SetLogSheet({
   existingSet,
   suggestion,
   lastTime,
+  blockSetsInSession: _blockSetsInSession = [],
   units,
   onSave,
   onDelete,
