@@ -77,7 +77,11 @@ export function SetLogSheet({
   const [showWeightForBodyweight, setShowWeightForBodyweight] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  // Pre-fill on open
+  // Pre-fill on open.
+  // Caveat: this effect re-runs whenever suggestion/lastTime/blockSetsInSession
+  // identity changes, not just on open/close edges. A parent re-render while
+  // the sheet is open can re-apply the prefill and clobber in-flight user input.
+  // If that causes real UX pain, switch to edge-detecting `open` with a useRef.
   useEffect(() => {
     if (!open) return;
     setShowWeightForBodyweight(false);
