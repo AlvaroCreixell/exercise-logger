@@ -212,4 +212,113 @@ describe("ExerciseCard", () => {
 
     expect(onSetTap).toHaveBeenCalledWith(0, 3);
   });
+
+  it("renders duration+distance history as combined 'min' + 'm' under 'Last:'", () => {
+    // Running workout: one "set" that captures both a 30min duration AND a 5K distance.
+    const runBlock: SetBlock = {
+      targetKind: "duration",
+      exactValue: 1800,
+      count: 1,
+    };
+    const se = makeSessionExercise({
+      exerciseNameSnapshot: "Outdoor Run",
+      setBlocksSnapshot: [runBlock],
+    });
+    const historyData: ExerciseHistoryData = {
+      lastTime: [
+        {
+          blockIndex: 0,
+          blockLabel: "Set block 1",
+          tag: null,
+          sets: [{ weightKg: null, reps: null, durationSec: 1800, distanceM: 5000 }],
+        },
+      ],
+      suggestions: [],
+    };
+
+    render(
+      <ExerciseCard
+        sessionExercise={se}
+        loggedSets={[]}
+        units="kg"
+        historyData={historyData}
+        extraHistory={undefined}
+        onSetTap={() => {}}
+      />
+    );
+
+    expect(screen.getByText(/Last:\s*30min\s+5000m/)).toBeVisible();
+  });
+
+  it("renders duration-only history in minutes when divisible by 60", () => {
+    const durationBlock: SetBlock = {
+      targetKind: "duration",
+      exactValue: 1800,
+      count: 1,
+    };
+    const se = makeSessionExercise({
+      exerciseNameSnapshot: "Plank Hold",
+      setBlocksSnapshot: [durationBlock],
+    });
+    const historyData: ExerciseHistoryData = {
+      lastTime: [
+        {
+          blockIndex: 0,
+          blockLabel: "Set block 1",
+          tag: null,
+          sets: [{ weightKg: null, reps: null, durationSec: 1800, distanceM: null }],
+        },
+      ],
+      suggestions: [],
+    };
+
+    render(
+      <ExerciseCard
+        sessionExercise={se}
+        loggedSets={[]}
+        units="kg"
+        historyData={historyData}
+        extraHistory={undefined}
+        onSetTap={() => {}}
+      />
+    );
+
+    expect(screen.getByText(/Last:\s*30min/)).toBeVisible();
+  });
+
+  it("keeps seconds format for sub-minute durations", () => {
+    const durationBlock: SetBlock = {
+      targetKind: "duration",
+      exactValue: 45,
+      count: 1,
+    };
+    const se = makeSessionExercise({
+      exerciseNameSnapshot: "Short Plank",
+      setBlocksSnapshot: [durationBlock],
+    });
+    const historyData: ExerciseHistoryData = {
+      lastTime: [
+        {
+          blockIndex: 0,
+          blockLabel: "Set block 1",
+          tag: null,
+          sets: [{ weightKg: null, reps: null, durationSec: 45, distanceM: null }],
+        },
+      ],
+      suggestions: [],
+    };
+
+    render(
+      <ExerciseCard
+        sessionExercise={se}
+        loggedSets={[]}
+        units="kg"
+        historyData={historyData}
+        extraHistory={undefined}
+        onSetTap={() => {}}
+      />
+    );
+
+    expect(screen.getByText(/Last:\s*45s/)).toBeVisible();
+  });
 });

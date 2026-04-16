@@ -30,6 +30,13 @@ function blockLabelVariant(label: string) {
   return "bg-muted text-muted-foreground";
 }
 
+function formatDurationShort(sec: number): string {
+  if (sec < 60) return `${sec}s`;
+  const mins = Math.floor(sec / 60);
+  const rem = sec % 60;
+  return rem === 0 ? `${mins}min` : `${mins}min ${rem}s`;
+}
+
 function formatLastTime(
   sets: Array<{ weightKg: number | null; reps: number | null; durationSec: number | null; distanceM: number | null }>,
   units: UnitSystem
@@ -49,8 +56,14 @@ function formatLastTime(
     }).join(", ");
   }
   if (first.reps != null) return sets.map((s) => `${s.reps ?? "?"}r`).join(", ");
-  if (first.durationSec != null) return sets.map((s) => `${s.durationSec ?? "?"}s`).join(", ");
-  if (first.distanceM != null) return sets.map((s) => `${s.distanceM ?? "?"}m`).join(", ");
+  if (first.durationSec != null || first.distanceM != null) {
+    return sets.map((s) => {
+      const parts: string[] = [];
+      if (s.durationSec != null) parts.push(formatDurationShort(s.durationSec));
+      if (s.distanceM != null) parts.push(`${s.distanceM}m`);
+      return parts.length ? parts.join(" ") : "?";
+    }).join(", ");
+  }
   return "";
 }
 
