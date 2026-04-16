@@ -187,28 +187,35 @@ export function ExerciseCard({
           </p>
         ) : null}
 
-        {/* Extra exercise: single unstructured slot row */}
-        {isExtra && (
-          <div className="flex gap-2 overflow-x-auto scrollbar-none">
-            {[...loggedSets].sort((a, b) => a.loggedAt.localeCompare(b.loggedAt)).map((ls, i) => (
-              <SetSlot
-                key={ls.id}
-                setIndex={i}
-                loggedSet={ls}
-                units={units}
-                onClick={() => onSetTap(0, i)}
-              />
-            ))}
-            {!readOnly && (
-              <SetSlot
-                setIndex={loggedSets.length}
-                loggedSet={undefined}
-                units={units}
-                onClick={() => onSetTap(0, loggedSets.length)}
-              />
-            )}
-          </div>
-        )}
+        {/* Extra exercise: single unstructured slot row.
+            Display index `i` is used only for the visible "1, 2, 3" label;
+            the stored `ls.setIndex` is what the click handler must use so
+            taps after a middle-set delete still address the right row. */}
+        {isExtra && (() => {
+          const sorted = [...loggedSets].sort((a, b) => a.loggedAt.localeCompare(b.loggedAt));
+          const nextSetIndex = loggedSets.reduce((max, ls) => Math.max(max, ls.setIndex + 1), 0);
+          return (
+            <div className="flex gap-2 overflow-x-auto scrollbar-none">
+              {sorted.map((ls, i) => (
+                <SetSlot
+                  key={ls.id}
+                  setIndex={i}
+                  loggedSet={ls}
+                  units={units}
+                  onClick={() => onSetTap(0, ls.setIndex)}
+                />
+              ))}
+              {!readOnly && (
+                <SetSlot
+                  setIndex={sorted.length}
+                  loggedSet={undefined}
+                  units={units}
+                  onClick={() => onSetTap(0, nextSetIndex)}
+                />
+              )}
+            </div>
+          );
+        })()}
       </CardContent>
     </Card>
   );

@@ -132,4 +132,83 @@ describe("ExerciseCard", () => {
 
     expect(screen.getByText(/Recent:\s*1500m/)).toBeVisible();
   });
+
+  it("extras pass the stored loggedSet.setIndex to onSetTap (not the render index)", async () => {
+    const user = userEvent.setup();
+    const onSetTap = vi.fn();
+
+    // Simulates the state after logging extras at setIndex 0, 1, 2 and then
+    // deleting the one at setIndex 1. The remaining stored indices are 0 and 2.
+    const loggedSets: LoggedSet[] = [
+      makeLoggedSet({
+        id: "ls-a",
+        setIndex: 0,
+        loggedAt: "2026-04-16T12:00:00.000Z",
+      }),
+      makeLoggedSet({
+        id: "ls-c",
+        setIndex: 2,
+        loggedAt: "2026-04-16T12:02:00.000Z",
+      }),
+    ];
+    const se = makeSessionExercise({
+      origin: "extra",
+      setBlocksSnapshot: [],
+    });
+
+    render(
+      <ExerciseCard
+        sessionExercise={se}
+        loggedSets={loggedSets}
+        units="kg"
+        historyData={undefined}
+        extraHistory={undefined}
+        onSetTap={onSetTap}
+      />
+    );
+
+    // The two logged slots render in chronological order; the third (empty)
+    // slot is the "add another extra" affordance. Find all set-slot elements
+    // and click the SECOND logged one (index 1 in render order, but stored
+    // setIndex is 2).
+    const slots = screen.getAllByTestId("set-slot");
+    // slots[0] = logged setIndex 0, slots[1] = logged setIndex 2,
+    // slots[2] = empty new-set slot at loggedSets.length (= 2).
+    expect(slots).toHaveLength(3);
+
+    await user.click(slots[1]!);
+
+    expect(onSetTap).toHaveBeenCalledWith(0, 2);
+  });
+
+  it("the empty 'add extra' slot uses max(setIndex)+1, not loggedSets.length", async () => {
+    const user = userEvent.setup();
+    const onSetTap = vi.fn();
+
+    // Two surviving extras at stored indices 0 and 2 (middle one deleted).
+    // loggedSets.length = 2, but setIndex 2 is taken — the new slot must
+    // open at setIndex 3.
+    const loggedSets: LoggedSet[] = [
+      makeLoggedSet({ id: "ls-a", setIndex: 0, loggedAt: "2026-04-16T12:00:00.000Z" }),
+      makeLoggedSet({ id: "ls-c", setIndex: 2, loggedAt: "2026-04-16T12:02:00.000Z" }),
+    ];
+    const se = makeSessionExercise({ origin: "extra", setBlocksSnapshot: [] });
+
+    render(
+      <ExerciseCard
+        sessionExercise={se}
+        loggedSets={loggedSets}
+        units="kg"
+        historyData={undefined}
+        extraHistory={undefined}
+        onSetTap={onSetTap}
+      />
+    );
+
+    const slots = screen.getAllByTestId("set-slot");
+    // slots[2] is the empty add-new affordance.
+    await user.click(slots[2]!);
+
+    expect(onSetTap).toHaveBeenCalledWith(0, 3);
+  });
 });
