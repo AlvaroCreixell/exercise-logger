@@ -120,6 +120,10 @@ export default function SessionDetailScreen() {
     processed.add(se.id);
   }
 
+  const sheetExerciseSets = sheetExercise
+    ? exercises.find((e) => e.sessionExercise.id === sheetExercise.id)?.loggedSets ?? []
+    : [];
+
   return (
     <div className="p-5 space-y-4 pb-8">
       <Link to="/history" className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}>
@@ -174,6 +178,7 @@ export default function SessionDetailScreen() {
           blockIndex={sheetBlockIndex}
           setIndex={sheetSetIndex}
           existingSet={sheetExistingSet}
+          blockSetsInSession={sheetExerciseSets}
           units={units}
           onSave={handleSave}
           onDelete={sheetExistingSet ? handleDeleteSet : undefined}
@@ -228,6 +233,7 @@ function SetLogSheetWithHistoryForDetail({
   blockIndex,
   setIndex,
   existingSet,
+  blockSetsInSession,
   units: globalUnits,
   onSave,
   onDelete,
@@ -238,6 +244,7 @@ function SetLogSheetWithHistoryForDetail({
   blockIndex: number;
   setIndex: number;
   existingSet: LoggedSet | undefined;
+  blockSetsInSession: LoggedSet[];
   units: "kg" | "lbs";
   onSave: (input: {
     performedWeightKg: number | null;
@@ -262,6 +269,7 @@ function SetLogSheetWithHistoryForDetail({
       existingSet={existingSet}
       suggestion={historyData?.suggestions.find((s) => s.blockIndex === blockIndex)}
       lastTime={historyData?.lastTime[blockIndex]}
+      blockSetsInSession={blockSetsInSession}
       units={effectiveUnits}
       onSave={onSave}
       onDelete={onDelete}
