@@ -173,7 +173,8 @@ describe("ExerciseCard", () => {
     // setIndex is 2).
     const slots = screen.getAllByTestId("set-slot");
     // slots[0] = logged setIndex 0, slots[1] = logged setIndex 2,
-    // slots[2] = empty new-set slot at loggedSets.length (= 2).
+    // slots[2] = empty new-set slot at nextSetIndex (= 3, since max stored
+    // setIndex is 2). The next test exercises that slot specifically.
     expect(slots).toHaveLength(3);
 
     await user.click(slots[1]!);
