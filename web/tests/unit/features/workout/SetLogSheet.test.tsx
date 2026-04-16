@@ -88,4 +88,32 @@ describe("SetLogSheet prefill", () => {
     expect(weight.value).toBe("0");
     expect(reps.value).toBe("8"); // minValue of the default STANDARD_BLOCK
   });
+
+  it("prefills weight from the most recent in-session set for the same block, overriding the suggestion", () => {
+    // Scenario from docs/notes.md: suggestion says 130, user actually used 135 on set 0.
+    // Opening set 1 must show 135, not 130.
+    const priorSet = makeLoggedSet({
+      id: "ls-set0",
+      setIndex: 0,
+      blockIndex: 0,
+      performedWeightKg: 135,
+      performedReps: 12,
+      loggedAt: "2026-04-16T12:05:00.000Z",
+    });
+    const suggestion: BlockSuggestion = {
+      blockIndex: 0,
+      suggestedWeightKg: 130,
+      isProgression: true,
+      previousWeightKg: 125,
+    };
+
+    renderSheet({
+      setIndex: 1,
+      suggestion,
+      blockSetsInSession: [priorSet],
+    });
+
+    const weight = screen.getByLabelText(/weight/i) as HTMLInputElement;
+    expect(weight.value).toBe("135");
+  });
 });

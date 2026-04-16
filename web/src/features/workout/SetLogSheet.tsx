@@ -50,7 +50,7 @@ export function SetLogSheet({
   existingSet,
   suggestion,
   lastTime,
-  blockSetsInSession: _blockSetsInSession = [],
+  blockSetsInSession = [],
   units,
   onSave,
   onDelete,
@@ -83,7 +83,7 @@ export function SetLogSheet({
     setShowWeightForBodyweight(false);
 
     if (existingSet) {
-      // Priority 1: current logged value
+      // Priority 1: current logged value (edit mode)
       setWeight(
         existingSet.performedWeightKg != null
           ? String(toDisplayWeight(existingSet.performedWeightKg, units))
@@ -94,32 +94,36 @@ export function SetLogSheet({
         ? String(durationInMinutes ? Math.round(existingSet.performedDurationSec / 60 * 100) / 100 : existingSet.performedDurationSec)
         : "");
       setDistance(existingSet.performedDistanceM != null ? String(existingSet.performedDistanceM) : "");
-    } else if (suggestion || lastTime) {
-      // Priority 2: suggestion weight + last-time reps
-      const suggestedWeight = suggestion?.suggestedWeightKg;
-      const lastSet = lastTime?.sets[setIndex];
-
-      if (suggestedWeight != null) {
-        setWeight(String(toDisplayWeight(suggestedWeight, units)));
-      } else if (lastSet?.weightKg != null) {
-        setWeight(String(toDisplayWeight(lastSet.weightKg, units)));
-      } else {
-        setWeight(showWeight ? "0" : "");
-      }
-
-      setReps(lastSet?.reps != null ? String(lastSet.reps) : block?.minValue != null ? String(block.minValue) : "");
-      setDuration(lastSet?.durationSec != null
-        ? String(durationInMinutes ? Math.round(lastSet.durationSec / 60 * 100) / 100 : lastSet.durationSec)
-        : "");
-      setDistance(lastSet?.distanceM != null ? String(lastSet.distanceM) : "");
-    } else {
-      // Priority 3: default weight to 0 for weighted, reps to lower bound of range
-      setWeight(showWeight ? "0" : "");
-      setReps(block?.minValue != null && targetKind === "reps" ? String(block.minValue) : "");
-      setDuration("");
-      setDistance("");
+      return;
     }
-  }, [open, existingSet, suggestion, lastTime, se, setIndex, units, block?.minValue, showWeight, targetKind]);
+
+    // Priority 2: in-session weight carryover. Look for the most recent set
+    // logged in this session for the same block with a non-null weight.
+    // Weight only — reps/duration/distance still follow the suggestion /
+    // last-time path below so range targets stay visible.
+    const carryoverSet = blockSetsInSession
+      .filter((ls) => ls.blockIndex === blockIndex && ls.performedWeightKg != null)
+      .sort((a, b) => b.loggedAt.localeCompare(a.loggedAt))[0];
+
+    const lastSet = lastTime?.sets[setIndex];
+    const suggestedWeight = suggestion?.suggestedWeightKg;
+
+    if (carryoverSet?.performedWeightKg != null) {
+      setWeight(String(toDisplayWeight(carryoverSet.performedWeightKg, units)));
+    } else if (suggestedWeight != null) {
+      setWeight(String(toDisplayWeight(suggestedWeight, units)));
+    } else if (lastSet?.weightKg != null) {
+      setWeight(String(toDisplayWeight(lastSet.weightKg, units)));
+    } else {
+      setWeight(showWeight ? "0" : "");
+    }
+
+    setReps(lastSet?.reps != null ? String(lastSet.reps) : block?.minValue != null && targetKind === "reps" ? String(block.minValue) : "");
+    setDuration(lastSet?.durationSec != null
+      ? String(durationInMinutes ? Math.round(lastSet.durationSec / 60 * 100) / 100 : lastSet.durationSec)
+      : "");
+    setDistance(lastSet?.distanceM != null ? String(lastSet.distanceM) : "");
+  }, [open, existingSet, suggestion, lastTime, blockSetsInSession, se, blockIndex, setIndex, units, block?.minValue, showWeight, targetKind, durationInMinutes]);
 
   const blockLabel = block
     ? getBlockLabel(block, blockIndex, blocks.length, blocks)
