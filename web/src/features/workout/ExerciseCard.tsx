@@ -67,7 +67,21 @@ function formatLastTime(
   return "";
 }
 
+function formatDurationTarget(block: SetBlock): string {
+  if (block.exactValue != null) return formatDurationShort(block.exactValue);
+  if (block.minValue != null && block.maxValue != null) {
+    const min = block.minValue;
+    const max = block.maxValue;
+    const cleanMinutes = min >= 60 && max >= 60 && min % 60 === 0 && max % 60 === 0;
+    return cleanMinutes ? `${min / 60}-${max / 60}min` : `${min}-${max}s`;
+  }
+  return "?";
+}
+
 function formatTarget(block: SetBlock): string {
+  if (block.targetKind === "duration") {
+    return `${block.count} x ${formatDurationTarget(block)}`;
+  }
   const value =
     block.exactValue != null
       ? `${block.exactValue}`
@@ -75,7 +89,6 @@ function formatTarget(block: SetBlock): string {
       ? `${block.minValue}-${block.maxValue}`
       : "?";
   if (block.targetKind === "reps") return `${block.count} x ${value} reps`;
-  if (block.targetKind === "duration") return `${block.count} x ${value}s`;
   if (block.targetKind === "distance") return `${block.count} x ${value}m`;
   return `${block.count} x ${value}`;
 }

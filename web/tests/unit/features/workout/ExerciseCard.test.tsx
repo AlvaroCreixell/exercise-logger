@@ -286,6 +286,83 @@ describe("ExerciseCard", () => {
     expect(screen.getByText(/Last:\s*30min/)).toBeVisible();
   });
 
+  it("renders a duration target as minutes when exactValue is divisible by 60", () => {
+    const runBlock: SetBlock = {
+      targetKind: "duration",
+      exactValue: 1800,
+      count: 1,
+    };
+    const se = makeSessionExercise({
+      exerciseNameSnapshot: "Outdoor Run",
+      setBlocksSnapshot: [runBlock],
+    });
+
+    render(
+      <ExerciseCard
+        sessionExercise={se}
+        loggedSets={[]}
+        units="kg"
+        historyData={undefined}
+        extraHistory={undefined}
+        onSetTap={() => {}}
+      />
+    );
+
+    expect(screen.getByText("1 x 30min")).toBeVisible();
+  });
+
+  it("renders a duration range target in minutes when both endpoints are clean minutes", () => {
+    const runRangeBlock: SetBlock = {
+      targetKind: "duration",
+      minValue: 1800,
+      maxValue: 3600,
+      count: 1,
+    };
+    const se = makeSessionExercise({
+      exerciseNameSnapshot: "Outdoor Run",
+      setBlocksSnapshot: [runRangeBlock],
+    });
+
+    render(
+      <ExerciseCard
+        sessionExercise={se}
+        loggedSets={[]}
+        units="kg"
+        historyData={undefined}
+        extraHistory={undefined}
+        onSetTap={() => {}}
+      />
+    );
+
+    expect(screen.getByText("1 x 30-60min")).toBeVisible();
+  });
+
+  it("keeps a sub-minute duration range target in seconds", () => {
+    const plankBlock: SetBlock = {
+      targetKind: "duration",
+      minValue: 30,
+      maxValue: 60,
+      count: 2,
+    };
+    const se = makeSessionExercise({
+      exerciseNameSnapshot: "Plank",
+      setBlocksSnapshot: [plankBlock],
+    });
+
+    render(
+      <ExerciseCard
+        sessionExercise={se}
+        loggedSets={[]}
+        units="kg"
+        historyData={undefined}
+        extraHistory={undefined}
+        onSetTap={() => {}}
+      />
+    );
+
+    expect(screen.getByText("2 x 30-60s")).toBeVisible();
+  });
+
   it("keeps seconds format for sub-minute durations", () => {
     const durationBlock: SetBlock = {
       targetKind: "duration",
