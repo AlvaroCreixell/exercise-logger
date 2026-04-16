@@ -208,6 +208,7 @@ export default function WorkoutScreen() {
           blockIndex={sheetBlockIndex}
           setIndex={sheetSetIndex}
           existingSet={sheetExistingSet}
+          blockSetsInSession={setsByExercise.get(sheetExercise.id) ?? []}
           units={units}
           onSave={handleSave}
           onDelete={sheetExistingSet ? handleDeleteSet : undefined}
@@ -302,6 +303,7 @@ function SetLogSheetWithHistory({
   blockIndex,
   setIndex,
   existingSet,
+  blockSetsInSession,
   units: globalUnits,
   onSave,
   onDelete,
@@ -312,6 +314,7 @@ function SetLogSheetWithHistory({
   blockIndex: number;
   setIndex: number;
   existingSet: LoggedSet | undefined;
+  blockSetsInSession: LoggedSet[];
   units: "kg" | "lbs";
   onSave: (input: {
     performedWeightKg: number | null;
@@ -343,6 +346,7 @@ function SetLogSheetWithHistory({
       existingSet={existingSet}
       suggestion={suggestion}
       lastTime={lastTime}
+      blockSetsInSession={blockSetsInSession}
       units={effectiveUnits}
       onSave={onSave}
       onDelete={onDelete}
