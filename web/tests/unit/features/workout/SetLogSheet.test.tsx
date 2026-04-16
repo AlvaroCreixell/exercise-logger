@@ -149,30 +149,62 @@ describe("SetLogSheet prefill", () => {
     expect(weight.value).toBe("140");
   });
 
-  it("picks the most recent carryover set by loggedAt, not by setIndex", () => {
-    // User logged set 0 at 12:00 (weight 130), then went back and edited set 0
-    // to 135 at 12:10. Opening set 1 should prefill 135 (most recent write),
-    // even though setIndex didn't change.
-    const earlier = makeLoggedSet({
-      id: "ls-a",
+  it("picks the most recent carryover set by updatedAt (so in-session edits win)", () => {
+    // Scenario: user logged set 0 = 130 at 12:00, then set 1 = 120 at 12:01,
+    // then went back and EDITED set 0 to 140. The edit bumps updatedAt to 12:10
+    // but leaves loggedAt at 12:00. Opening set 2 should prefill 140 (the
+    // just-edited weight), not 120 (the unchanged set 1).
+    const editedSet0 = makeLoggedSet({
+      id: "ls-set0",
       setIndex: 0,
-      performedWeightKg: 130,
+      performedWeightKg: 140,
       loggedAt: "2026-04-16T12:00:00.000Z",
+      updatedAt: "2026-04-16T12:10:00.000Z",
     });
-    const later = makeLoggedSet({
-      id: "ls-b",
-      setIndex: 0,
-      performedWeightKg: 135,
-      loggedAt: "2026-04-16T12:10:00.000Z",
+    const untouchedSet1 = makeLoggedSet({
+      id: "ls-set1",
+      setIndex: 1,
+      performedWeightKg: 120,
+      loggedAt: "2026-04-16T12:01:00.000Z",
+      updatedAt: "2026-04-16T12:01:00.000Z",
     });
 
     renderSheet({
-      setIndex: 1,
-      blockSetsInSession: [earlier, later],
+      setIndex: 2,
+      blockSetsInSession: [editedSet0, untouchedSet1],
     });
 
     const weight = screen.getByLabelText(/weight/i) as HTMLInputElement;
-    expect(weight.value).toBe("135");
+    expect(weight.value).toBe("140");
+  });
+
+  it("ignores carryover sets from other session exercises even if blockIndex matches", () => {
+    // Defense-in-depth: if a caller ever passes sets from multiple session
+    // exercises, the carryover filter must scope by sessionExerciseId.
+    const otherExerciseSet = makeLoggedSet({
+      id: "ls-other",
+      sessionExerciseId: "se-OTHER",
+      blockIndex: 0,
+      setIndex: 0,
+      performedWeightKg: 999,
+      loggedAt: "2026-04-16T12:05:00.000Z",
+      updatedAt: "2026-04-16T12:05:00.000Z",
+    });
+    const suggestion: BlockSuggestion = {
+      blockIndex: 0,
+      suggestedWeightKg: 130,
+      previousWeightKg: 125,
+      isProgression: true,
+    };
+
+    renderSheet({
+      setIndex: 0,
+      suggestion,
+      blockSetsInSession: [otherExerciseSet],
+    });
+
+    const weight = screen.getByLabelText(/weight/i) as HTMLInputElement;
+    expect(weight.value).toBe("130"); // suggestion, not 999
   });
 
   it("ignores carryover sets whose performedWeightKg is null", () => {

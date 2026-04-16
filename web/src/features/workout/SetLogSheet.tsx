@@ -106,8 +106,13 @@ export function SetLogSheet({
     // Weight only — reps/duration/distance still follow the suggestion /
     // last-time path below so range targets stay visible.
     const carryoverSet = blockSetsInSession
-      .filter((ls) => ls.blockIndex === blockIndex && ls.performedWeightKg != null)
-      .sort((a, b) => b.loggedAt.localeCompare(a.loggedAt))[0];
+      .filter(
+        (ls) =>
+          ls.sessionExerciseId === sessionExercise.id &&
+          ls.blockIndex === blockIndex &&
+          ls.performedWeightKg != null
+      )
+      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0];
 
     const lastSet = lastTime?.sets[setIndex];
     const suggestedWeight = suggestion?.suggestedWeightKg;
