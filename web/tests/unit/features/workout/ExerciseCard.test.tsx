@@ -67,4 +67,69 @@ describe("ExerciseCard", () => {
     );
     expect(screen.getByText("Barbell Back Squat")).toBeVisible();
   });
+
+  it("renders distance-only history under 'Last:' for routine blocks", () => {
+    const distanceBlock: SetBlock = {
+      targetKind: "distance",
+      exactValue: 2000,
+      count: 2,
+    };
+    const se = makeSessionExercise({
+      exerciseNameSnapshot: "Rowing 2K Sprint",
+      setBlocksSnapshot: [distanceBlock],
+    });
+    const historyData: ExerciseHistoryData = {
+      lastTime: [
+        {
+          blockIndex: 0,
+          blockLabel: "Set block 1",
+          tag: null,
+          sets: [
+            { weightKg: null, reps: null, durationSec: null, distanceM: 2000 },
+            { weightKg: null, reps: null, durationSec: null, distanceM: 2050 },
+          ],
+        },
+      ],
+      suggestions: [],
+    };
+
+    render(
+      <ExerciseCard
+        sessionExercise={se}
+        loggedSets={[]}
+        units="kg"
+        historyData={historyData}
+        extraHistory={undefined}
+        onSetTap={() => {}}
+      />
+    );
+
+    expect(screen.getByText(/Last:\s*2000m,\s*2050m/)).toBeVisible();
+  });
+
+  it("renders distance-only history under 'Recent:' for extra exercises", () => {
+    const se = makeSessionExercise({
+      origin: "extra",
+      setBlocksSnapshot: [],
+    });
+    const extraHistory: ExtraExerciseHistory = {
+      sessionDate: "2026-04-16T12:00:00.000Z",
+      sets: [
+        { weightKg: null, reps: null, durationSec: null, distanceM: 1500 },
+      ],
+    };
+
+    render(
+      <ExerciseCard
+        sessionExercise={se}
+        loggedSets={[]}
+        units="kg"
+        historyData={undefined}
+        extraHistory={extraHistory}
+        onSetTap={() => {}}
+      />
+    );
+
+    expect(screen.getByText(/Recent:\s*1500m/)).toBeVisible();
+  });
 });

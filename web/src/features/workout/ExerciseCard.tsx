@@ -50,6 +50,7 @@ function formatLastTime(
   }
   if (first.reps != null) return sets.map((s) => `${s.reps ?? "?"}r`).join(", ");
   if (first.durationSec != null) return sets.map((s) => `${s.durationSec ?? "?"}s`).join(", ");
+  if (first.distanceM != null) return sets.map((s) => `${s.distanceM ?? "?"}m`).join(", ");
   return "";
 }
 
