@@ -802,3 +802,126 @@ describe("set-service", () => {
     });
   });
 });
+
+// ---------------------------------------------------------------------------
+// Input validation
+// ---------------------------------------------------------------------------
+
+describe("logSet input validation", () => {
+  async function setupActiveSession(): Promise<{ db: ExerciseLoggerDB; seId: string }> {
+    const db = new ExerciseLoggerDB();
+    await initializeSettings(db);
+
+    const exercise = makeExercise("barbell-back-squat");
+    await db.exercises.add(exercise);
+
+    const routine = makeRoutine([
+      {
+        kind: "exercise",
+        entryId: "A-e0",
+        exerciseId: exercise.id,
+        setBlocks: [STANDARD_BLOCK],
+      },
+    ]);
+    await db.routines.add(routine);
+
+    const session = await startSessionWithCatalog(db, routine, "A");
+    return { db, seId: session.sessionExercises[0]!.id };
+  }
+
+  it.each([
+    ["negative weight", { performedWeightKg: -5, performedReps: 8, performedDurationSec: null, performedDistanceM: null }],
+    ["negative reps", { performedWeightKg: 80, performedReps: -1, performedDurationSec: null, performedDistanceM: null }],
+    ["zero reps", { performedWeightKg: 80, performedReps: 0, performedDurationSec: null, performedDistanceM: null }],
+    ["negative duration", { performedWeightKg: null, performedReps: null, performedDurationSec: -10, performedDistanceM: null }],
+    ["zero duration", { performedWeightKg: null, performedReps: null, performedDurationSec: 0, performedDistanceM: null }],
+    ["negative distance", { performedWeightKg: null, performedReps: null, performedDurationSec: null, performedDistanceM: -100 }],
+    ["zero distance", { performedWeightKg: null, performedReps: null, performedDurationSec: null, performedDistanceM: 0 }],
+    ["NaN weight", { performedWeightKg: NaN, performedReps: 8, performedDurationSec: null, performedDistanceM: null }],
+    ["Infinity reps", { performedWeightKg: 80, performedReps: Infinity, performedDurationSec: null, performedDistanceM: null }],
+  ])("rejects %s", async (_label, input) => {
+    const { db, seId } = await setupActiveSession();
+    try {
+      await expect(logSet(db, seId, 0, 0, input)).rejects.toThrow(/invalid|positive|finite/i);
+      const count = await db.loggedSets.count();
+      expect(count).toBe(0);
+    } finally {
+      await db.delete();
+    }
+  });
+
+  it("accepts zero weight (bodyweight semantics) with positive reps", async () => {
+    const { db, seId } = await setupActiveSession();
+    try {
+      const ls = await logSet(db, seId, 0, 0, {
+        performedWeightKg: 0,
+        performedReps: 5,
+        performedDurationSec: null,
+        performedDistanceM: null,
+      });
+      expect(ls.performedWeightKg).toBe(0);
+      expect(ls.performedReps).toBe(5);
+    } finally {
+      await db.delete();
+    }
+  });
+
+  it("accepts all-null input (rare but legal -- represents an empty save)", async () => {
+    const { db, seId } = await setupActiveSession();
+    try {
+      const ls = await logSet(db, seId, 0, 0, {
+        performedWeightKg: null,
+        performedReps: null,
+        performedDurationSec: null,
+        performedDistanceM: null,
+      });
+      expect(ls.id).toBeDefined();
+    } finally {
+      await db.delete();
+    }
+  });
+});
+
+describe("editSet input validation", () => {
+  it("rejects a negative weight on edit and leaves the row unchanged", async () => {
+    const db = new ExerciseLoggerDB();
+    await initializeSettings(db);
+
+    const exercise = makeExercise("barbell-back-squat");
+    await db.exercises.add(exercise);
+    const routine = makeRoutine([
+      {
+        kind: "exercise",
+        entryId: "A-e0",
+        exerciseId: exercise.id,
+        setBlocks: [STANDARD_BLOCK],
+      },
+    ]);
+    await db.routines.add(routine);
+    const session = await startSessionWithCatalog(db, routine, "A");
+    const seId = session.sessionExercises[0]!.id;
+
+    const original = await logSet(db, seId, 0, 0, {
+      performedWeightKg: 80,
+      performedReps: 8,
+      performedDurationSec: null,
+      performedDistanceM: null,
+    });
+
+    try {
+      await expect(
+        editSet(db, original.id, {
+          performedWeightKg: -10,
+          performedReps: 8,
+          performedDurationSec: null,
+          performedDistanceM: null,
+        })
+      ).rejects.toThrow(/invalid|positive|finite/i);
+
+      const after = await db.loggedSets.get(original.id);
+      expect(after?.performedWeightKg).toBe(80);
+    } finally {
+      await db.delete();
+    }
+  });
+});

@@ -24,6 +24,48 @@ export interface SetLogInput {
 }
 
 // ---------------------------------------------------------------------------
+// Input validation
+// ---------------------------------------------------------------------------
+
+/**
+ * Validate a SetLogInput for plausible numeric ranges.
+ *
+ * Rules (per `docs/notes.md`):
+ * - performedWeightKg: >= 0 or null (zero allowed for bodyweight movements
+ *   logged as "no added load").
+ * - performedReps, performedDurationSec, performedDistanceM: > 0 or null
+ *   (zero is meaningless -- use null to mean "not applicable").
+ * - All numeric values must be finite (rejects NaN and +/-Infinity).
+ *
+ * Throws a descriptive Error on the first failing field.
+ */
+function validateSetInput(input: SetLogInput): void {
+  const checkNonNegative = (value: number | null, field: string) => {
+    if (value === null) return;
+    if (!Number.isFinite(value)) {
+      throw new Error(`Invalid ${field}: must be a finite number, got ${value}`);
+    }
+    if (value < 0) {
+      throw new Error(`Invalid ${field}: must be >= 0, got ${value}`);
+    }
+  };
+  const checkPositive = (value: number | null, field: string) => {
+    if (value === null) return;
+    if (!Number.isFinite(value)) {
+      throw new Error(`Invalid ${field}: must be a finite number, got ${value}`);
+    }
+    if (value <= 0) {
+      throw new Error(`Invalid ${field}: must be positive, got ${value}`);
+    }
+  };
+
+  checkNonNegative(input.performedWeightKg, "performedWeightKg");
+  checkPositive(input.performedReps, "performedReps");
+  checkPositive(input.performedDurationSec, "performedDurationSec");
+  checkPositive(input.performedDistanceM, "performedDistanceM");
+}
+
+// ---------------------------------------------------------------------------
 // Log set
 // ---------------------------------------------------------------------------
 
@@ -59,6 +101,8 @@ export async function logSet(
   setIndex: number,
   input: SetLogInput
 ): Promise<LoggedSet> {
+  validateSetInput(input);
+
   const sessionExercise = await db.sessionExercises.get(sessionExerciseId);
   if (!sessionExercise) {
     throw new Error(`SessionExercise "${sessionExerciseId}" not found`);
@@ -187,6 +231,8 @@ export async function editSet(
   loggedSetId: string,
   input: SetLogInput
 ): Promise<LoggedSet> {
+  validateSetInput(input);
+
   const existing = await db.loggedSets.get(loggedSetId);
   if (!existing) {
     throw new Error(`LoggedSet "${loggedSetId}" not found`);
