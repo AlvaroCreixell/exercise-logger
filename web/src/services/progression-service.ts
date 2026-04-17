@@ -556,7 +556,7 @@ export async function getExtraExerciseHistory(
  *   the last 7 × 24 hours of `now`.
  * - `sessionsLast30Days`: same, last 30 × 24 hours.
  * - `daysSinceLastSession`: integer number of calendar days between the most
- *   recent finished session's `startedAt` and `now` (both truncated to local
+ *   recent finished session's `startedAt` and `now` (both truncated to UTC
  *   midnight). 0 = today. `null` if no finished sessions exist.
  * - Active and discarded sessions are excluded.
  */
