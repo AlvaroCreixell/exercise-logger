@@ -1,15 +1,16 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router";
 import { useLiveQuery } from "dexie-react-hooks";
+import { CalendarCheck } from "lucide-react";
 import { useSettings } from "@/shared/hooks/useSettings";
 import { useRoutine } from "@/shared/hooks/useRoutine";
 import { useActiveSession } from "@/shared/hooks/useActiveSession";
 import { useLastSession } from "@/shared/hooks/useLastSession";
 import { startSessionWithCatalog } from "@/services/session-service";
 import { db } from "@/db/database";
-import { Button, buttonVariants } from "@/shared/ui/button";
+import { Button } from "@/shared/ui/button";
 import { Card, CardContent } from "@/shared/ui/card";
-import { cn } from "@/shared/lib/utils";
+import { EmptyState } from "@/shared/components/EmptyState";
 import { DaySelector } from "./DaySelector";
 import { DayPreview } from "./DayPreview";
 import { LastSessionCard } from "./LastSessionCard";
@@ -52,15 +53,12 @@ export default function TodayScreen() {
   // State A: No active routine
   if (!settings.activeRoutineId || routine === null) {
     return (
-      <div className="flex h-full flex-col items-center justify-center gap-4 p-5">
-        <h1 className="text-2xl font-extrabold tracking-tight font-heading">No Active Routine</h1>
-        <p className="text-sm text-muted-foreground text-center">
-          Import a routine in Settings to get started.
-        </p>
-        <Link to="/settings" className={cn(buttonVariants({ variant: "outline" }))}>
-          Go to Settings
-        </Link>
-      </div>
+      <EmptyState
+        icon={CalendarCheck}
+        heading="No Active Routine"
+        body="Import a routine in Settings to get started."
+        action={{ label: "Go to Settings", onClick: () => navigate("/settings") }}
+      />
     );
   }
 

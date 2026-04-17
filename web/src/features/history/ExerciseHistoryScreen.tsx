@@ -7,9 +7,10 @@ import { toDisplayWeight } from "@/domain/unit-conversion";
 import { getEffectiveUnit } from "@/domain/unit-helpers";
 import type { LoggedSet } from "@/domain/types";
 import type { SetTag } from "@/domain/enums";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Dumbbell } from "lucide-react";
 import { buttonVariants } from "@/shared/ui/button";
 import { cn } from "@/shared/lib/utils";
+import { EmptyState } from "@/shared/components/EmptyState";
 import { SectionHeader } from "@/shared/components/SectionHeader";
 
 /** Group a sorted list of logged sets into blocks by blockIndex. */
@@ -54,9 +55,12 @@ export default function ExerciseHistoryScreen() {
       <h1 className="text-2xl font-extrabold tracking-tight font-heading">{name}</h1>
 
       {groups === null || groups === undefined ? null : groups.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          No history for this exercise.
-        </p>
+        <EmptyState
+          icon={Dumbbell}
+          heading="No History Yet"
+          body="Log a workout with this exercise to see it here."
+          className="py-12"
+        />
       ) : (
         <div className="space-y-4">
           {groups.map((group) => (
