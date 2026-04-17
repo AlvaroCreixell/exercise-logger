@@ -755,6 +755,43 @@ describe("session-service", () => {
       expect(exercises[0]!.exerciseNameSnapshot).toBe("Barbell Back Squat");
       expect(exercises[0]!.setBlocksSnapshot).toHaveLength(1);
     });
+
+    // --- [R4] Rotation guard on corrupt dayOrderSnapshot ---
+
+    it("[R4] throws when session.dayId is not in dayOrderSnapshot", async () => {
+      const routine = makeRoutine({
+        A: { label: "Day A", entries: [] },
+        B: { label: "Day B", entries: [] },
+      });
+      await db.routines.add(routine);
+      const sessionData = await startSessionWithCatalog(db, routine, "A");
+
+      // Corrupt the snapshot: remove "A" from the order.
+      await db.sessions.update(sessionData.session.id, {
+        dayOrderSnapshot: ["Z"],
+      });
+
+      await expect(finishSession(db, sessionData.session.id)).rejects.toThrow(
+        /Corrupt dayOrderSnapshot/
+      );
+    });
+
+    it("[R4] throws when dayOrderSnapshot is empty", async () => {
+      const routine = makeRoutine({
+        A: { label: "Day A", entries: [] },
+      });
+      await db.routines.add(routine);
+      const sessionData = await startSessionWithCatalog(db, routine, "A");
+
+      // Empty snapshot → indexOf returns -1 for any dayId.
+      await db.sessions.update(sessionData.session.id, {
+        dayOrderSnapshot: [],
+      });
+
+      await expect(finishSession(db, sessionData.session.id)).rejects.toThrow(
+        /Corrupt dayOrderSnapshot/
+      );
+    });
   });
 
   // =====================================================================

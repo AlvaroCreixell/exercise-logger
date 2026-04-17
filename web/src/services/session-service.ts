@@ -439,6 +439,14 @@ export async function finishSession(
       if (routine) {
         const dayOrder = session.dayOrderSnapshot;
         const currentIndex = dayOrder.indexOf(session.dayId);
+        // [R4] Guard against corrupt dayOrderSnapshot: surface the invariant
+        // violation immediately instead of silently wrapping to index 0.
+        // Also handles empty dayOrder (indexOf returns -1 for any value).
+        if (currentIndex === -1) {
+          throw new Error(
+            `Corrupt dayOrderSnapshot: session.dayId "${session.dayId}" not in [${dayOrder.join(", ")}]`
+          );
+        }
         const nextIndex = (currentIndex + 1) % dayOrder.length;
         const nextDayId = dayOrder[nextIndex]!;
 
