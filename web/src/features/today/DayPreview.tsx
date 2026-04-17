@@ -1,4 +1,5 @@
 import type { RoutineDay, SetBlock } from "@/domain/types";
+import { Stat } from "@/shared/components/Stat";
 
 interface DayPreviewProps {
   day: RoutineDay;
@@ -25,8 +26,14 @@ function displayName(exerciseId: string, lookup: Map<string, string>): string {
 }
 
 export function DayPreview({ day, exerciseNames }: DayPreviewProps) {
+  const exerciseCount = day.entries.reduce(
+    (n, e) => n + (e.kind === "exercise" ? 1 : e.items.length),
+    0,
+  );
+
   return (
-    <div className="border-t border-border-strong pt-3">
+    <div className="border-t border-border-strong pt-3 space-y-3">
+      <Stat value={exerciseCount} label={exerciseCount === 1 ? "exercise" : "exercises"} size="sm" />
       <div className="space-y-1.5">
         {day.entries.map((entry) => {
           if (entry.kind === "exercise") {

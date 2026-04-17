@@ -25,7 +25,7 @@ describe("SessionProgress", () => {
       />
     );
     expect(screen.getByText("6")).toBeVisible();
-    expect(screen.getByText(/\/ 18/)).toBeVisible();
+    expect(screen.getByText(/of 18 sets/)).toBeVisible();
     expect(screen.getByText(/30 min/)).toBeVisible();
   });
 

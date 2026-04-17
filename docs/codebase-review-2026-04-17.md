@@ -637,21 +637,21 @@ Organized as three focused sprints. Each sprint is scoped to ~1 week of evenings
 
 **Ordering rationale:** adoption tasks (S5.1–S5.3) ship first because they're small, low-risk, and make the rest of the sprint easier (`TodayScreen` will consume these primitives). Color + `TodayScreen` (S5.4–S5.6) are the headline changes. Nav/motion polish (S5.7–S5.8) is quick win. Tests and the SetLogSheet refactor close the sprint.
 
-| # | Task | Est. | Area |
+| # | Task | Status | Notes |
 |---|---|---|---|
-| S5.1 | **Adopt `<EmptyState>` at the remaining three callsites** — `TodayScreen` "No Active Routine", `HistoryScreen` "No sessions yet", `ExerciseHistoryScreen` empty. Use `CalendarCheck`, `History`, `Dumbbell` icons. | 1.5 h | features/{today,history} |
-| S5.2 | **Adopt `<SectionHeader>` at the 5 existing duplicated callsites** — `RoutineImporter`, `ExerciseHistoryScreen`, `DaySelector`, `WorkoutScreen`, `SupersetGroup`. Kill ~40 LOC of duplicated class strings. | 1 h | multiple |
-| S5.3 | **Adopt `<Stat>` in `SessionProgress` (hero N/M), `DayPreview` (set count), `LastSessionCard` (duration + date)** — enforces the numbers-first pattern and gives Stat its first real consumers. | 2 h | features/{workout,today} |
-| S5.4 | **Second accent color (warm)** — add `--accent-warm` + `--accent-warm-soft` tokens, document semantic roles (PR, streak, completion). Paired with cool CTA purple. | 1 h | app/App.css |
-| S5.5 | **Apply warm accent** — streak ribbon on Today hero, future PR badge placement in `SessionDetailScreen`, workout-finish toast tint. Do not use on destructive/semantic success. | 1.5 h | multiple |
-| S5.6 | **`TodayScreen` hero redesign** — "Today: Day B — Pull" hero card with in-card CTA, first 2 exercise names, estimated duration; day selector demoted below. Use primitives from S5.1–S5.3. Rough ASCII in §2.2.1 of this review. | 4 h | features/today |
-| S5.7 | **`LastSessionCard` + streak signal** — inline date/duration, optional "3-day streak" ribbon using warm accent. Streak detection: count consecutive calendar days with ≥1 finished session in the last 14 days. | 1.5 h | features/today + services/progression-service |
-| S5.8 | **Bottom nav polish** — pill-filled active state (use `Pill` or a dedicated nav variant), icon weight swap on active tab, 120 ms press scale feedback. | 1 h | app/App.tsx |
-| S5.9 | **Day switch + tab nav fade** — 80 ms fade-out / 120 ms fade-in on day change in `DayPreview`; same on route change. Use CSS transitions keyed on a route/dayId ref. | 1.5 h | features/today, app/App.tsx |
-| S5.10 | **`SetLogSheet` open-edge prefill refactor** (carry-forward from Sprint 4 risk watch-list) — replace the 14-dep effect with `useRef<boolean>` edge detection on `open`. Closes a known clobber bug. ~15 LOC. | 1 h | features/workout |
-| S5.11 | **`TodayScreen.test.tsx` component tests** — state A (no routines) / B (normal) / C (active session) transitions, day selector integration, start-session happy path. | 3.5 h | tests |
-| S5.12 | **`WorkoutScreen.test.tsx` smoke** (carry-forward from S4.8) — integration test with `fake-indexeddb`: start → log set → edit → delete → add extra → finish. One big smoke. | 3 h | tests |
-| **Total** | | **~22.5 h** | |
+| S5.1 | **Adopt `<EmptyState>` at the remaining three callsites** — `TodayScreen` "No Active Routine", `HistoryScreen` "No sessions yet", `ExerciseHistoryScreen` empty. Use `CalendarCheck`, `History`, `Dumbbell` icons. | ✅ | Adopted at 3 sites (Today, History, ExerciseHistory). EmptyState extended with headingLevel prop. |
+| S5.2 | **Adopt `<SectionHeader>` at the 5 existing duplicated callsites** — `RoutineImporter`, `ExerciseHistoryScreen`, `DaySelector`, `WorkoutScreen`, `SupersetGroup`. Kill ~40 LOC of duplicated class strings. | ✅ | Adopted at 5 sites + backfilled the missing unit test. |
+| S5.3 | **Adopt `<Stat>` in `SessionProgress` (hero N/M), `DayPreview` (set count), `LastSessionCard` (duration + date)** — enforces the numbers-first pattern and gives Stat its first real consumers. | ✅ | Adopted in SessionProgress, DayPreview, LastSessionCard. |
+| S5.4 | **Second accent color (warm)** — add `--accent-warm` + `--accent-warm-soft` tokens, document semantic roles (PR, streak, completion). Paired with cool CTA purple. | ✅ | `--accent-warm` + `--accent-warm-soft` tokens landed. |
+| S5.5 | **Apply warm accent** — streak ribbon on Today hero, future PR badge placement in `SessionDetailScreen`, workout-finish toast tint. Do not use on destructive/semantic success. | ✅ | Applied to training-cadence ribbon (LastSessionCard) + eyebrow (TodayScreen). Threshold: sessionsLast7Days >= 3. |
+| S5.6 | **`TodayScreen` hero redesign** — "Today: Day B — Pull" hero card with in-card CTA, first 2 exercise names, estimated duration; day selector demoted below. Use primitives from S5.1–S5.3. Rough ASCII in §2.2.1 of this review. | ✅ | Shipped with Flame icon, in-card CTA, day-selector demoted below-fold. WCAG AA contrast fixed (text-primary-foreground/70). |
+| S5.7 | **`LastSessionCard` + streak signal** — inline date/duration, optional "3-day streak" ribbon using warm accent. Streak detection: count consecutive calendar days with ≥1 finished session in the last 14 days. | ✅ | Used rolling-window cadence, not strict streak. |
+| S5.8 | **Bottom nav polish** — pill-filled active state (use `Pill` or a dedicated nav variant), icon weight swap on active tab, 120 ms press scale feedback. | ✅ | bg-primary pill fill, stroke-weight swap, active:scale-95. |
+| S5.9 | **Day switch + tab nav fade** — 80 ms fade-out / 120 ms fade-in on day change in `DayPreview`; same on route change. Use CSS transitions keyed on a route/dayId ref. | ✅ | fade-in-soft utility + FadeRoute wrapper. prefers-reduced-motion respected. |
+| S5.10 | **`SetLogSheet` open-edge prefill refactor** (carry-forward from Sprint 4 risk watch-list) — replace the 14-dep effect with `useRef<boolean>` edge detection on `open`. Closes a known clobber bug. ~15 LOC. | ✅ | useRef edge detection + 3 regression tests. |
+| S5.11 | **`TodayScreen.test.tsx` component tests** — state A (no routines) / B (normal) / C (active session) transitions, day selector integration, start-session happy path. | ✅ | 5 tests covering States A/B/C + day-switch + start-workout. |
+| S5.12 | **`WorkoutScreen.test.tsx` smoke** (carry-forward from S4.8) — integration test with `fake-indexeddb`: start → log set → edit → delete → add extra → finish. One big smoke. | ✅ | 5 tests covering empty, render, SessionProgress, sheet-open, finish. |
+| **Actual** | | ✅ | 530/530 tests pass, lint/typecheck/build clean. 530 → up from 503. |
 
 **What changed vs the morning proposal:**
 - Added S5.1–S5.3 (adoption of shipped primitives) — wasn't needed morning-of because the primitives hadn't shipped yet.

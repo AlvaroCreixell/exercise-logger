@@ -1,5 +1,6 @@
 import type { Routine } from "@/domain/types";
 import { Pill } from "@/shared/components/Pill";
+import { SectionHeader } from "@/shared/components/SectionHeader";
 
 interface DaySelectorProps {
   routine: Routine;
@@ -17,9 +18,9 @@ export function DaySelector({
 
   return (
     <div className="space-y-3">
-      <p className="text-xs font-semibold uppercase tracking-widest text-cta">
+      <SectionHeader className="!text-cta">
         Day {selectedDayId} — {selectedLabel}
-      </p>
+      </SectionHeader>
       <div className="border-t-2 border-border-strong" />
       <div className="flex overflow-x-auto scrollbar-none -mx-5 px-5">
         {routine.dayOrder.map((dayId, i) => (

@@ -1,4 +1,5 @@
 import { Suspense, lazy } from "react";
+import type { ReactNode } from "react";
 import {
   BrowserRouter,
   Routes,
@@ -6,6 +7,7 @@ import {
   Navigate,
   NavLink,
   Outlet,
+  useLocation,
 } from "react-router";
 import { Toaster } from "sonner";
 import { CalendarDays, Dumbbell, History, Settings } from "lucide-react";
@@ -42,13 +44,24 @@ function LoadingState({ fullscreen = false }: { fullscreen?: boolean }) {
   );
 }
 
+function FadeRoute({ children }: { children: ReactNode }) {
+  const { pathname } = useLocation();
+  return (
+    <div key={pathname} className="fade-in-soft h-full">
+      {children}
+    </div>
+  );
+}
+
 function Shell() {
   return (
     <div className="flex h-dvh flex-col bg-background text-foreground">
       <main className="flex-1 overflow-y-auto">
-        <Suspense fallback={<LoadingState />}>
-          <Outlet />
-        </Suspense>
+        <FadeRoute>
+          <Suspense fallback={<LoadingState />}>
+            <Outlet />
+          </Suspense>
+        </FadeRoute>
       </main>
       <nav
         className="border-t-2 border-border-strong bg-background pb-[env(safe-area-inset-bottom)]"
@@ -62,9 +75,9 @@ function Shell() {
               to={to}
               end={to === "/"}
               className={({ isActive }) =>
-                `relative flex flex-col items-center gap-0.5 px-3 py-2 text-xs transition-colors focus-visible:ring-2 focus-visible:ring-cta/30 outline-none ${
+                `relative flex flex-col items-center gap-0.5 px-3 py-2 text-xs transition-all duration-[var(--dur-base)] focus-visible:ring-2 focus-visible:ring-cta/30 outline-none active:scale-95 ${
                   isActive
-                    ? "text-primary font-semibold"
+                    ? "text-primary-foreground font-semibold"
                     : "text-muted-foreground hover:text-foreground"
                 }`
               }
@@ -72,11 +85,17 @@ function Shell() {
             >
               {({ isActive }) => (
                 <>
-                  <Icon className="h-5 w-5" />
-                  <span>{label}</span>
                   {isActive && (
-                    <span className="absolute bottom-1 left-1/2 -translate-x-1/2 h-0.5 w-3 bg-cta" />
+                    <span
+                      className="absolute inset-0 bg-primary -z-0"
+                      aria-hidden="true"
+                    />
                   )}
+                  <Icon
+                    className="h-5 w-5 relative z-10"
+                    strokeWidth={isActive ? 2.5 : 2}
+                  />
+                  <span className="relative z-10">{label}</span>
                 </>
               )}
             </NavLink>

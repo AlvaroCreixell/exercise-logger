@@ -58,4 +58,18 @@ describe("EmptyState", () => {
     );
     expect(screen.queryByRole("button")).toBeNull();
   });
+
+  it("renders heading at the specified level when headingLevel is provided", () => {
+    render(
+      <EmptyState
+        icon={Dumbbell}
+        heading="No History Yet"
+        body="Log a workout to see it here."
+        headingLevel="h2"
+      />,
+    );
+    expect(
+      screen.getByRole("heading", { level: 2, name: "No History Yet" }),
+    ).toBeVisible();
+  });
 });

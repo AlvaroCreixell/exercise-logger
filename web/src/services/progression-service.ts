@@ -538,3 +538,65 @@ export async function getExtraExerciseHistory(
     sessionDate: mostRecentSession.finishedAt ?? mostRecentSession.startedAt,
   };
 }
+
+// ---------------------------------------------------------------------------
+// Training cadence (Sprint 5)
+// ---------------------------------------------------------------------------
+
+/**
+ * Rolling-window session counts + a calendar-day-granularity
+ * "last session was N days ago" signal.
+ *
+ * Used by TodayScreen + LastSessionCard to surface training cadence without
+ * committing to a strict "consecutive days" streak definition (which is a bad
+ * fit for typical 3-day-per-week splits).
+ *
+ * Semantics:
+ * - `sessionsLast7Days`: count of finished sessions whose `startedAt` is within
+ *   the last 7 × 24 hours of `now`.
+ * - `sessionsLast30Days`: same, last 30 × 24 hours.
+ * - `daysSinceLastSession`: integer number of calendar days between the most
+ *   recent finished session's `startedAt` and `now` (both truncated to UTC
+ *   midnight). 0 = today. `null` if no finished sessions exist.
+ * - Active and discarded sessions are excluded.
+ */
+export async function computeTrainingCadence(
+  db: ExerciseLoggerDB,
+  now: Date = new Date(),
+): Promise<{
+  sessionsLast7Days: number;
+  sessionsLast30Days: number;
+  daysSinceLastSession: number | null;
+}> {
+  const finished = await db.sessions
+    .where("status")
+    .equals("finished")
+    .toArray();
+
+  if (finished.length === 0) {
+    return { sessionsLast7Days: 0, sessionsLast30Days: 0, daysSinceLastSession: null };
+  }
+
+  const nowMs = now.getTime();
+  const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+  const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
+
+  let sessionsLast7Days = 0;
+  let sessionsLast30Days = 0;
+  let mostRecentStartMs = -Infinity;
+
+  for (const s of finished) {
+    const startMs = new Date(s.startedAt).getTime();
+    const ageMs = nowMs - startMs;
+    if (ageMs >= 0 && ageMs < sevenDaysMs) sessionsLast7Days += 1;
+    if (ageMs >= 0 && ageMs < thirtyDaysMs) sessionsLast30Days += 1;
+    if (startMs > mostRecentStartMs) mostRecentStartMs = startMs;
+  }
+
+  const last = new Date(mostRecentStartMs);
+  const lastMidnight = Date.UTC(last.getUTCFullYear(), last.getUTCMonth(), last.getUTCDate());
+  const nowMidnight = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  const daysSinceLastSession = Math.max(0, Math.round((nowMidnight - lastMidnight) / (24 * 60 * 60 * 1000)));
+
+  return { sessionsLast7Days, sessionsLast30Days, daysSinceLastSession };
+}

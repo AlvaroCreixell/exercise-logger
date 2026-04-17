@@ -1,4 +1,6 @@
+import { History } from "lucide-react";
 import { useFinishedSessionSummaries } from "@/shared/hooks/useFinishedSessionSummaries";
+import { EmptyState } from "@/shared/components/EmptyState";
 import { SessionCard } from "./SessionCard";
 
 export default function HistoryScreen() {
@@ -8,12 +10,11 @@ export default function HistoryScreen() {
 
   if (summaries.length === 0) {
     return (
-      <div className="flex h-full flex-col items-center justify-center gap-2 p-5">
-        <h1 className="text-2xl font-extrabold tracking-tight font-heading">No History Yet</h1>
-        <p className="text-sm text-muted-foreground">
-          Complete a workout to see it here.
-        </p>
-      </div>
+      <EmptyState
+        icon={History}
+        heading="No History Yet"
+        body="Complete a workout to see it here."
+      />
     );
   }
 

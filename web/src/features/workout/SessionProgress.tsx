@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Stat } from "@/shared/components/Stat";
 
 interface SessionProgressProps {
   startedAt: string;
@@ -32,13 +33,11 @@ export function SessionProgress({
   return (
     <div>
       <div className="flex items-baseline justify-between gap-4 px-5 py-1.5 border-b border-border">
-        <span className="text-value tabular-nums">
-          {loggedSets}
-          <span className="text-base text-muted-foreground"> / {totalSets}</span>
-          <span className="text-xs text-muted-foreground ml-1.5 font-medium tracking-wide uppercase">
-            sets
-          </span>
-        </span>
+        <Stat
+          value={loggedSets}
+          label={`of ${totalSets} sets`}
+          size="sm"
+        />
         <span className="text-xs text-muted-foreground tabular-nums">
           {elapsedMin} min · {totalExercises} {totalExercises === 1 ? "exercise" : "exercises"}
         </span>

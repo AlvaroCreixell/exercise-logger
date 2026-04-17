@@ -13,6 +13,7 @@ interface EmptyStateProps {
   body: string;
   action?: EmptyStateAction;
   className?: string;
+  headingLevel?: "h1" | "h2" | "h3";
 }
 
 export function EmptyState({
@@ -21,7 +22,9 @@ export function EmptyState({
   body,
   action,
   className,
+  headingLevel = "h1",
 }: EmptyStateProps) {
+  const Heading = headingLevel;
   return (
     <div
       className={cn(
@@ -32,9 +35,9 @@ export function EmptyState({
       <div className="flex h-16 w-16 items-center justify-center bg-muted/60 text-muted-foreground">
         <Icon className="h-8 w-8" strokeWidth={1.5} />
       </div>
-      <h1 className="text-2xl font-extrabold tracking-tight font-heading">
+      <Heading className="text-2xl font-extrabold tracking-tight font-heading">
         {heading}
-      </h1>
+      </Heading>
       <p className="text-sm text-muted-foreground max-w-xs leading-relaxed">
         {body}
       </p>

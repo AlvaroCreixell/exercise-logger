@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { Button } from "@/shared/ui/button";
 import { Textarea } from "@/shared/ui/textarea";
+import { SectionHeader } from "@/shared/components/SectionHeader";
 import { db } from "@/db/database";
 import { validateParseAndImportRoutine } from "@/services/routine-service";
 import { toast } from "sonner";
@@ -66,14 +67,10 @@ export function RoutineImporter() {
       </p>
 
       <div className="space-y-2">
-        <label
-          htmlFor="routine-yaml-paste"
-          className="text-xs font-semibold uppercase tracking-widest text-muted-foreground"
-        >
-          Paste YAML
-        </label>
+        <SectionHeader id="routine-yaml-paste-label">Paste YAML</SectionHeader>
         <Textarea
           id="routine-yaml-paste"
+          aria-labelledby="routine-yaml-paste-label"
           rows={8}
           placeholder="version: 1&#10;name: ..."
           value={pastedYaml}
