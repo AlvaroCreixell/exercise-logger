@@ -123,6 +123,43 @@
   }
 }
 
+@layer utilities {
+  .text-hero {
+    font-family: var(--font-heading);
+    font-weight: 700;
+    font-size: 2.25rem;  /* text-4xl */
+    line-height: 1;
+    letter-spacing: -0.025em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .text-value {
+    font-family: var(--font-heading);
+    font-weight: 700;
+    font-size: 1.125rem; /* text-lg */
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .text-value-sm {
+    font-family: var(--font-heading);
+    font-weight: 600;
+    font-size: 0.875rem; /* text-sm */
+    line-height: 1.2;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .text-eyebrow {
+    font-family: var(--font-sans);
+    font-weight: 600;
+    font-size: 0.6875rem; /* ~11px */
+    line-height: 1;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+}
+
 /* Softened Swiss — motion, shadow, flash */
 
 :root {
@@ -134,11 +171,23 @@
 }
 
 @keyframes flash-logged {
-  0%   { transform: scale(1.05); }
-  60%  { transform: scale(1); }
-  100% { transform: scale(1); }
+  0%   { transform: scale(1); box-shadow: 0 0 0 0 var(--success); }
+  15%  { transform: scale(1.06); box-shadow: 0 0 0 4px color-mix(in oklch, var(--success) 40%, transparent); }
+  45%  { transform: scale(1); box-shadow: 0 0 0 8px color-mix(in oklch, var(--success) 15%, transparent); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 transparent; }
 }
 
 .flash-logged {
   animation: flash-logged var(--dur-slow) var(--ease-out-soft);
+}
+
+@keyframes save-pulse {
+  0%   { transform: scale(1); }
+  30%  { transform: scale(0.97); }
+  60%  { transform: scale(1.02); }
+  100% { transform: scale(1); }
+}
+
+.save-pulse {
+  animation: save-pulse 320ms var(--ease-out-soft);
 }
