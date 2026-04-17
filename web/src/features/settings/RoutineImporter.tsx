@@ -1,10 +1,7 @@
 import { useRef, useState } from "react";
 import { Button } from "@/shared/ui/button";
 import { db } from "@/db/database";
-import {
-  validateAndNormalizeRoutine,
-  importRoutine,
-} from "@/services/routine-service";
+import { validateParseAndImportRoutine } from "@/services/routine-service";
 import { toast } from "sonner";
 
 export function RoutineImporter() {
@@ -12,35 +9,30 @@ export function RoutineImporter() {
   const [errors, setErrors] = useState<string[]>([]);
   const [importing, setImporting] = useState(false);
 
-  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
+  async function runImport(yamlText: string) {
     setErrors([]);
     setImporting(true);
-
     try {
-      const yaml = await file.text();
-
-      const exercises = await db.exercises.toArray();
-      const lookup = new Map(exercises.map((ex) => [ex.id, ex]));
-
-      const result = validateAndNormalizeRoutine(yaml, lookup);
-
+      const result = await validateParseAndImportRoutine(db, yamlText);
       if (!result.ok) {
-        setErrors(result.errors.map((err) => `${err.path}: ${err.message}`));
+        setErrors(result.errors);
         return;
       }
-
-      await importRoutine(db, result.routine);
-      toast.success(`Routine "${result.routine.name}" imported`);
+      toast.success(`Routine "${result.routineName}" imported`);
       setErrors([]);
     } catch (err) {
       setErrors([err instanceof Error ? err.message : "Import failed"]);
     } finally {
       setImporting(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
     }
+  }
+
+  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const yaml = await file.text();
+    await runImport(yaml);
+    if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
   return (
