@@ -1,6 +1,0 @@
-- Negative weights and negative reps (perhaps duration, distance too)...Should be limited to positive numbers
-- When logging a set, the second and subsequent sets should load the most recently logged weight.
---- So, last week I did exercise XXX 3*(1-12) for 120 lbs, 12-12-12....
---- So the suggested weight on set 1 this week should be >120lbs, say 130lbs
---- So the default before logging should be 130lbs
---- But if for some reason I actually used 135lbs on set 1, then set 2 should keep the 135lbs

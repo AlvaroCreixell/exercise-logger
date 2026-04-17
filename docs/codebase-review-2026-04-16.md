@@ -100,10 +100,23 @@ Ranked by (user impact × leverage ÷ effort). Detailed breakdowns in each secti
 - ✅ Archival cleanup: 8 shipped plans/specs/reviews moved from tracked `docs/superpowers/**` to gitignored `docs/archive/` (copies already existed there).
 - ✅ `docs/superpowers/plans/2026-04-16-invariant-hardening.md` and the `services/CLAUDE.md` editSet note updated.
 
+### Sprint 3 — PWA Ship-to-Friends Polish (2026-04-17)
+
+**Shipped** (see `git log a7f1336..HEAD`, 6 commits):
+
+- ✅ **#8 / P1** Service worker `registerType` flipped from `"autoUpdate"` to `"prompt"` with "Update available" reload toast. Stale-tab confusion solved.
+- ✅ **#13 / P3-P5** Icon suite (192, 256, 384, 512, plus dedicated **maskable** variant with safe-zone padding), iOS `apple-mobile-web-app-*` meta tags in `index.html`, and `beforeinstallprompt` capture via `useInstallPrompt` hook + manual Install button in Settings. Follow-up refactor stores the event as a plain object in state; double-fire test locks the dedupe behavior.
+- 🟡 **#14 / P6** Bundle slim (partial): `yaml` library dynamic-imported from `routine-service.ts` (~50 kB off main bundle via `await import("yaml")`). `manualChunks` for `SettingsScreen` and dialogs still pending.
+- ✅ **G5** (from §4.3) GPT instruction hardening: strict kebab-case catalog-ID rule, verbatim-copy discipline, out-of-catalog substitution policy, common user-phrase → catalog-ID trap list, and a self-check that now requires a literal lookup pass per `exercise_id`. Action-validator scaffolding deleted — iterating on prompt-only first; revisit if drift returns.
+- ✅ Test infra: jsdom polyfill for Element pointer-capture methods so primitives that call `setPointerCapture` stop crashing under vitest.
+
 ### Still partial / not started
 
-- 🟡 Component test coverage: 9 new tests (SetSlot flash, RoutineImporter paste). Workout / SetLogSheet / Settings / Today still pending.
-- Remaining critical-path items: #7, #8, #11 (rest), #12, #13, #14 — see checklist below.
+- 🟡 **#7** GPT instructions — `version: 1` enforcement and out-of-catalog fallback (G5) shipped; **Android copy-paste guidance block still pending**.
+- 🟡 **#11** Component test coverage — `SetSlot` + `RoutineImporter` + `useInstallPrompt` done; `WorkoutScreen` / `SetLogSheet` / `SettingsScreen` / `TodayScreen` still pending.
+- 🟡 **#12** PWA file handoff — maskable icon shipped with #13; **`file_handlers` manifest entry + `launchQueue.setConsumer`** still pending (the proper Android YAML-handoff fix).
+- 🟡 **#14** Bundle — yaml dynamic-import shipped; `manualChunks` for Settings + dialogs still pending.
+- Remaining critical-path items: #7 (Android guidance), #12 (file_handlers), rest of #14, rest of #11.
 
 ### Decisions locked in from Appendix B
 
@@ -125,14 +138,14 @@ Ranked by (user impact × leverage ÷ effort). Detailed breakdowns in each secti
 [x]  4. ExerciseCard: remove `uppercase` from names; vertical-stack last-time + suggest   (30m)  ✅ shipped S1
 [x]  5. Global: p-4 → p-5 baseline across feature screens; space-y-4 between cards        (30m)  ✅ shipped S1
 [x]  6. set-service.ts: wrap logSet weighted-bodyweight promotion in db.transaction       (2h)   ✅ shipped S2
-[ ]  7. GPT instructions: require `version: 1`, add copy-paste Android guidance           (30m)
-[ ]  8. vite.config: registerType "autoUpdate" → "prompt"; add update-available toast     (2h)
+[~]  7. GPT instructions: require `version: 1`, add copy-paste Android guidance           (30m)  🟡 partial (version:1 + G5 out-of-catalog fallback shipped S3; Android copy-paste still pending)
+[x]  8. vite.config: registerType "autoUpdate" → "prompt"; add update-available toast     (2h)   ✅ shipped S3
 [x]  9. tests/e2e/full-workflow.spec.ts: replace .catch() guards with real assertions     (2h)   ✅ shipped S2
 [x] 10. CLAUDE.md: 391 → 440 tests (and note drift)                                        (5m)  ✅ shipped S1
-[~] 11. Component tests: WorkoutScreen, SetLogSheet, SettingsScreen, TodayScreen          (3d)  🟡 partial (SetSlot+RoutineImporter done)
-[ ] 12. Manifest: file_handlers + launchQueue consumer; maskable icon with safe-zone       (1d)
-[ ] 13. Icons: add 256 + 384; iOS apple-mobile-web-app-* meta; "Install" Settings button  (3h)
-[ ] 14. Bundle: manualChunks for SettingsScreen + dialogs; target <150 kB gzipped          (4h)
+[~] 11. Component tests: WorkoutScreen, SetLogSheet, SettingsScreen, TodayScreen          (3d)  🟡 partial (SetSlot + RoutineImporter + useInstallPrompt done)
+[~] 12. Manifest: file_handlers + launchQueue consumer; maskable icon with safe-zone       (1d)  🟡 partial (maskable icon shipped S3; file_handlers + launchQueue still pending)
+[x] 13. Icons: add 256 + 384; iOS apple-mobile-web-app-* meta; "Install" Settings button  (3h)   ✅ shipped S3
+[~] 14. Bundle: manualChunks for SettingsScreen + dialogs; target <150 kB gzipped          (4h)  🟡 partial (yaml dynamic-import shipped S3; Settings/dialog manualChunks still pending)
 [x] 15. finishSession: guard currentIndex === -1; add test for corrupt dayOrder            (1h)  ✅ shipped S2
 
 Also shipped (not in original numbered list, from §1.2):

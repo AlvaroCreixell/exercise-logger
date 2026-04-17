@@ -2,7 +2,7 @@
 
 ## Supersedes
 
-This spec supersedes the following sections of the original product spec (`docs/superpowers/specs/2026-03-28-gym-routine-tracker-design.md`):
+This spec supersedes the following sections of the original product spec (archived at `docs/archive/specs/2026-03-28-gym-routine-tracker-design.md`; the active successor lives at `docs/design-spec.md`):
 
 - **Section 4.6 (Rest Timer):** Timer is permanently removed. All timer UI, Zustand store, superset round detection, and timer-related acceptance criteria are voided.
 - **Section 2.1 (Target Platforms):** Desktop is no longer a secondary target. This is a phone-only PWA. The app should not break on wider screens but no responsive breakpoints or desktop-specific layouts are designed.
@@ -10,6 +10,18 @@ This spec supersedes the following sections of the original product spec (`docs/
 - **Acceptance criteria referencing timer behavior** (Sections 12.5, 12.6, 12.14, any others): Voided.
 
 Where the original spec and this document conflict, **this document governs**.
+
+## Drift / Status as of 2026-04-17
+
+This spec was written against an earlier visual direction. Current code (post-Sprint 1 visual polish and Appendix B decisions) differs; where it conflicts with the sections below, the code is authoritative:
+
+- **§2 Typography — Font:** Urbanist (headings) + DM Sans (body) via `@fontsource-variable/*`. The "Geist Variable" line is historical.
+- **§2 Color tokens — Dark mode:** dropped. The dark-mode column in the token table and any `.dark` references are voided. The app is light-only.
+- **§4.2 Exercise name styling:** no longer uppercase. Current: `text-base font-semibold tracking-tight` (Sprint 1).
+- **§4.2 Logged set slot:** current `bg-success text-white` with `min-h-[48px]` and focus ring (Sprint 1). The `bg-success-soft text-success` variant described here is superseded.
+- **§4.2 Discard Workout dialog:** the double-confirmation step is still in place but flagged for removal (review §2.3 High 4).
+
+Current progress tracker: `docs/codebase-review-2026-04-16.md`.
 
 ---
 
