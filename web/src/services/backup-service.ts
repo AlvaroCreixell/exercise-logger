@@ -142,6 +142,21 @@ export function downloadBackupFile(envelope: BackupEnvelope): void {
 // Import validation helpers
 // ---------------------------------------------------------------------------
 
+/** Collect `record.id` strings from an array of unvalidated records. Used for
+ *  FK-integrity checks during backup import validation. Records whose `id`
+ *  isn't a string are silently skipped — structural validation elsewhere in
+ *  the pipeline surfaces those as errors. */
+function collectIds(records: unknown[]): Set<string> {
+  const ids = new Set<string>();
+  for (const r of records) {
+    if (typeof r === "object" && r !== null) {
+      const id = (r as Record<string, unknown>).id;
+      if (isString(id)) ids.add(id);
+    }
+  }
+  return ids;
+}
+
 const VALID_EXERCISE_TYPES: ExerciseType[] = [
   "weight",
   "bodyweight",
@@ -911,26 +926,9 @@ export function validateBackupPayload(
   // -------------------------------------------------------------------------
 
   // Build ID sets from the imported data
-  const routineIds = new Set<string>();
-  for (const r of routines) {
-    if (typeof r === "object" && r !== null && isString((r as Record<string, unknown>).id)) {
-      routineIds.add((r as Record<string, unknown>).id as string);
-    }
-  }
-
-  const sessionIds = new Set<string>();
-  for (const s of sessions) {
-    if (typeof s === "object" && s !== null && isString((s as Record<string, unknown>).id)) {
-      sessionIds.add((s as Record<string, unknown>).id as string);
-    }
-  }
-
-  const sessionExerciseIds = new Set<string>();
-  for (const se of sessionExercises) {
-    if (typeof se === "object" && se !== null && isString((se as Record<string, unknown>).id)) {
-      sessionExerciseIds.add((se as Record<string, unknown>).id as string);
-    }
-  }
+  const routineIds = collectIds(routines);
+  const sessionIds = collectIds(sessions);
+  const sessionExerciseIds = collectIds(sessionExercises);
 
   // settings.activeRoutineId -> must match an imported routine (or be null)
   const settingsObj = data.settings as Record<string, unknown>;
