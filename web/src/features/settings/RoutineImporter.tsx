@@ -114,6 +114,7 @@ export function RoutineImporter() {
       {errors.length > 0 && (
         <div
           role="alert"
+          aria-live="assertive"
           className="border border-warning bg-warning-soft p-3 space-y-1"
         >
           {errors.map((err, i) => (
