@@ -4,7 +4,7 @@ import { render, screen, cleanup, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import TodayScreen from "@/features/today/TodayScreen";
-import { db } from "@/db/database";
+import { db, initializeSettings } from "@/db/database";
 import type { Routine, Session } from "@/domain/types";
 
 function renderAt(path = "/") {
@@ -99,7 +99,6 @@ describe("TodayScreen", () => {
   beforeEach(async () => {
     // Clear all tables on the singleton db (we can't swap the instance —
     // TodayScreen imports `db` directly). Then re-seed default settings.
-    const { initializeSettings } = await import("@/db/database");
     await Promise.all([
       db.settings.clear(),
       db.routines.clear(),
@@ -198,12 +197,10 @@ describe("TodayScreen", () => {
     user.click(btn).catch(() => {});
 
     // Button text flips to "Starting..." while the session is created.
-    await waitFor(() => {
-      // Either the button text has updated or the session was created — check the DB.
-      return expect(
-        screen.queryByRole("button", { name: /Starting/i }) ||
-        db.sessions.count().then((n) => n > 0),
-      ).toBeTruthy();
+    await waitFor(async () => {
+      const hasLoadingBtn = screen.queryByRole("button", { name: /Starting/i }) !== null;
+      const sessionCreated = (await db.sessions.count()) > 0;
+      expect(hasLoadingBtn || sessionCreated).toBe(true);
     });
   });
 });
