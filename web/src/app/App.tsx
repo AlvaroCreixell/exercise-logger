@@ -1,4 +1,5 @@
 import { Suspense, lazy } from "react";
+import type { ReactNode } from "react";
 import {
   BrowserRouter,
   Routes,
@@ -6,6 +7,7 @@ import {
   Navigate,
   NavLink,
   Outlet,
+  useLocation,
 } from "react-router";
 import { Toaster } from "sonner";
 import { CalendarDays, Dumbbell, History, Settings } from "lucide-react";
@@ -42,13 +44,24 @@ function LoadingState({ fullscreen = false }: { fullscreen?: boolean }) {
   );
 }
 
+function FadeRoute({ children }: { children: ReactNode }) {
+  const { pathname } = useLocation();
+  return (
+    <div key={pathname} className="fade-in-soft h-full">
+      {children}
+    </div>
+  );
+}
+
 function Shell() {
   return (
     <div className="flex h-dvh flex-col bg-background text-foreground">
       <main className="flex-1 overflow-y-auto">
-        <Suspense fallback={<LoadingState />}>
-          <Outlet />
-        </Suspense>
+        <FadeRoute>
+          <Suspense fallback={<LoadingState />}>
+            <Outlet />
+          </Suspense>
+        </FadeRoute>
       </main>
       <nav
         className="border-t-2 border-border-strong bg-background pb-[env(safe-area-inset-bottom)]"

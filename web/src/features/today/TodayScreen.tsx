@@ -149,7 +149,7 @@ export default function TodayScreen() {
           <SectionHeader className="!text-primary-foreground/70">
             Today · Day {dayId}
           </SectionHeader>
-          <h1 className="text-3xl font-heading font-bold tracking-tight">
+          <h1 key={dayId} className="text-3xl font-heading font-bold tracking-tight fade-in-soft">
             {dayDisplayName}
           </h1>
           {firstTwoNames.length > 0 && (
@@ -211,7 +211,11 @@ export default function TodayScreen() {
             selectedDayId={dayId}
             onSelectDay={setSelectedDayId}
           />
-          {day && <DayPreview day={day} exerciseNames={exerciseNames} />}
+          {day && (
+            <div key={dayId} className="fade-in-soft">
+              <DayPreview day={day} exerciseNames={exerciseNames} />
+            </div>
+          )}
         </div>
       </div>
     </div>
