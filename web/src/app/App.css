@@ -6,8 +6,6 @@
 @import "@fontsource/dm-sans/500.css";
 @import "@fontsource/dm-sans/600.css";
 
-@custom-variant dark (&:is(.dark *));
-
 @theme inline {
     --font-heading: 'Urbanist Variable', sans-serif;
     --font-sans: 'DM Sans', sans-serif;
@@ -112,52 +110,6 @@
     --cta: oklch(0.546 0.245 262.88);
 }
 
-.dark {
-    --background: oklch(0 0 0);
-    --foreground: oklch(1 0 0);
-    --card: oklch(0.05 0 0);
-    --card-foreground: oklch(1 0 0);
-    --popover: oklch(0.05 0 0);
-    --popover-foreground: oklch(1 0 0);
-    --primary: oklch(1 0 0);
-    --primary-foreground: oklch(0 0 0);
-    --secondary: oklch(0.269 0 0);
-    --secondary-foreground: oklch(1 0 0);
-    --muted: oklch(0.269 0 0);
-    --muted-foreground: oklch(0.708 0 0);
-    --accent: oklch(0.269 0 0);
-    --accent-foreground: oklch(1 0 0);
-    --destructive: oklch(0.704 0.191 22.216);
-    --border: oklch(1 0 0 / 12%);
-    --input: oklch(1 0 0 / 15%);
-    --ring: oklch(0.556 0 0);
-    --success: oklch(0.78 0.20 145);
-    --success-foreground: oklch(0.15 0 0);
-    --success-soft: oklch(0.25 0.08 145);
-    --info: oklch(0.75 0.15 195);
-    --info-foreground: oklch(0.15 0 0);
-    --info-soft: oklch(0.25 0.08 195);
-    --warning: oklch(0.80 0.15 85);
-    --warning-foreground: oklch(0.15 0 0);
-    --warning-soft: oklch(0.30 0.08 85);
-    --destructive-foreground: oklch(0.98 0 0);
-    --destructive-soft: oklch(0.25 0.08 27);
-    --chart-1: oklch(0.87 0 0);
-    --chart-2: oklch(0.556 0 0);
-    --chart-3: oklch(0.439 0 0);
-    --chart-4: oklch(0.371 0 0);
-    --chart-5: oklch(0.269 0 0);
-    --sidebar: oklch(0.205 0 0);
-    --sidebar-foreground: oklch(0.985 0 0);
-    --sidebar-primary: oklch(0.488 0.243 264.376);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.269 0 0);
-    --sidebar-accent-foreground: oklch(0.985 0 0);
-    --sidebar-border: oklch(1 0 0 / 10%);
-    --sidebar-ring: oklch(0.556 0 0);
-    --border-strong: oklch(0.85 0 0);
-    --cta: oklch(0.637 0.237 261.35);
-}
 
 @layer base {
   * {
@@ -179,10 +131,6 @@
   --dur-base: 180ms;
   --dur-slow: 600ms;
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.04), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
-}
-
-.dark {
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.25), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
 }
 
 @keyframes flash-logged {

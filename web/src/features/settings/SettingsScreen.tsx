@@ -2,7 +2,7 @@ import { useSettings } from "@/shared/hooks/useSettings";
 import { useAllRoutines } from "@/shared/hooks/useRoutine";
 import { useActiveSession } from "@/shared/hooks/useActiveSession";
 import { db } from "@/db/database";
-import { setUnits, setTheme } from "@/services/settings-service";
+import { setUnits } from "@/services/settings-service";
 import {
   exportBackup,
   downloadBackupFile,
@@ -12,7 +12,7 @@ import {
   validateBackupPayload,
   type BackupEnvelope,
 } from "@/services/backup-service";
-import type { UnitSystem, ThemePreference } from "@/domain/enums";
+import type { UnitSystem } from "@/domain/enums";
 import { Button } from "@/shared/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
 import { Separator } from "@/shared/ui/separator";
@@ -38,18 +38,6 @@ export default function SettingsScreen() {
 
   function handleUnits(units: UnitSystem) {
     setUnits(db, units);
-  }
-
-  function handleTheme(theme: ThemePreference) {
-    setTheme(db, theme);
-    if (theme === "dark") {
-      document.documentElement.classList.add("dark");
-    } else if (theme === "light") {
-      document.documentElement.classList.remove("dark");
-    } else {
-      const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-      document.documentElement.classList.toggle("dark", prefersDark);
-    }
   }
 
   async function handleExport() {
@@ -93,7 +81,6 @@ export default function SettingsScreen() {
   }
 
   const unitOptions: UnitSystem[] = ["kg", "lbs"];
-  const themeOptions: ThemePreference[] = ["light", "dark", "system"];
 
   return (
     <div className="p-5 space-y-8 pb-8">
@@ -139,26 +126,6 @@ export default function SettingsScreen() {
                   }`}
                 >
                   {u}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium">Theme</label>
-            <div className="flex overflow-hidden">
-              {themeOptions.map((t, i) => (
-                <button
-                  key={t}
-                  onClick={() => handleTheme(t)}
-                  className={`flex-1 py-2 text-sm font-medium capitalize transition-colors border-[1.5px] border-border-strong ${
-                    i > 0 ? "-ml-[1.5px]" : ""
-                  } ${
-                    settings.theme === t
-                      ? "bg-primary text-primary-foreground z-10"
-                      : "hover:bg-muted"
-                  }`}
-                >
-                  {t}
                 </button>
               ))}
             </div>

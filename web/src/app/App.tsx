@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect } from "react";
+import { Suspense, lazy } from "react";
 import {
   BrowserRouter,
   Routes,
@@ -10,7 +10,6 @@ import {
 import { Toaster } from "sonner";
 import { CalendarDays, Dumbbell, History, Settings } from "lucide-react";
 import { useAppInit } from "@/shared/hooks/useAppInit";
-import { useSettings } from "@/shared/hooks/useSettings";
 
 const TodayScreen = lazy(() => import("@/features/today/TodayScreen"));
 const WorkoutScreen = lazy(() => import("@/features/workout/WorkoutScreen"));
@@ -30,27 +29,6 @@ const tabs = [
   { to: "/settings", label: "Settings", icon: Settings },
 ] as const;
 
-function ThemeSync() {
-  const settings = useSettings();
-  const theme = settings?.theme;
-  useEffect(() => {
-    if (!settings) return;
-    if (theme === "dark") {
-      document.documentElement.classList.add("dark");
-    } else if (theme === "light") {
-      document.documentElement.classList.remove("dark");
-    } else {
-      const mq = window.matchMedia("(prefers-color-scheme: dark)");
-      const apply = () =>
-        document.documentElement.classList.toggle("dark", mq.matches);
-      apply();
-      mq.addEventListener("change", apply);
-      return () => mq.removeEventListener("change", apply);
-    }
-  }, [settings, theme]);
-  return null;
-}
-
 function LoadingState({ fullscreen = false }: { fullscreen?: boolean }) {
   return (
     <div
@@ -66,7 +44,6 @@ function LoadingState({ fullscreen = false }: { fullscreen?: boolean }) {
 function Shell() {
   return (
     <div className="flex h-dvh flex-col bg-background text-foreground">
-      <ThemeSync />
       <main className="flex-1 overflow-y-auto">
         <Suspense fallback={<LoadingState />}>
           <Outlet />
