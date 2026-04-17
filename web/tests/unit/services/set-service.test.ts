@@ -428,6 +428,54 @@ describe("set-service", () => {
 
     // --- [P4-G] setIndex validation ---
 
+    it("[R1] logSet: sequential upserts on the same bodyweight slot land exactly one row + one promotion", async () => {
+      // Regression guard for the transaction wrap. The real race is a rapid
+      // double-tap; fake-indexeddb can't model concurrent transactions
+      // faithfully. This test verifies the end-state contract: two sequential
+      // logSet calls on a bodyweight slot yield one row, one promotion, and
+      // the correct final weight. The transaction wrap on logSet is what
+      // actually closes the race in production.
+      const routine = makeRoutine([
+        {
+          kind: "exercise",
+          entryId: "A-e0",
+          exerciseId: "pull-up",
+          setBlocks: [STANDARD_BLOCK],
+        },
+      ]);
+      await db.routines.add(routine);
+      const sessionData = await startSessionWithCatalog(db, routine, "A");
+      const seId = sessionData.sessionExercises[0]!.id;
+
+      // First tap: no weight yet. Creates the row, no promotion.
+      await logSet(db, seId, 0, 0, {
+        performedWeightKg: null,
+        performedReps: 5,
+        performedDurationSec: null,
+        performedDistanceM: null,
+      });
+      const seMiddle = await db.sessionExercises.get(seId);
+      expect(seMiddle!.effectiveType).toBe("bodyweight");
+
+      // Second tap: adds weight. Upserts the same row AND promotes.
+      await logSet(db, seId, 0, 0, {
+        performedWeightKg: 10,
+        performedReps: 5,
+        performedDurationSec: null,
+        performedDistanceM: null,
+      });
+
+      // Exactly one row.
+      const rows = await db.loggedSets.toArray();
+      expect(rows.filter((r) => r.sessionExerciseId === seId)).toHaveLength(1);
+
+      // Promotion stuck + final weight.
+      const seAfter = await db.sessionExercises.get(seId);
+      expect(seAfter!.effectiveType).toBe("weight");
+      const finalRow = rows.find((r) => r.sessionExerciseId === seId)!;
+      expect(finalRow.performedWeightKg).toBe(10);
+    });
+
     it("[P4-G] throws if setIndex is out of range for block count", async () => {
       const routine = makeRoutine([
         {
@@ -675,6 +723,127 @@ describe("set-service", () => {
           performedDistanceM: null,
         })
       ).rejects.toThrow('LoggedSet "nonexistent" not found');
+    });
+
+    it("[R2] editSet: does not promote effectiveType on finished sessions", async () => {
+      const routine = makeRoutine([
+        {
+          kind: "exercise",
+          entryId: "A-e0",
+          exerciseId: "pull-up",
+          setBlocks: [STANDARD_BLOCK],
+        },
+      ]);
+      await db.routines.add(routine);
+      const { session, sessionExercises } = await startSessionWithCatalog(
+        db,
+        routine,
+        "A"
+      );
+      const se = sessionExercises[0]!;
+
+      // Log with null weight — no promotion triggered.
+      const logged = await logSet(db, se.id, 0, 0, {
+        performedWeightKg: null,
+        performedReps: 5,
+        performedDurationSec: null,
+        performedDistanceM: null,
+      });
+      let currentSe = await db.sessionExercises.get(se.id);
+      expect(currentSe?.effectiveType).toBe("bodyweight");
+
+      // Finish the session.
+      await finishSession(db, session.id);
+
+      // Edit the set to add weight on a now-finished session.
+      await editSet(db, logged.id, {
+        performedWeightKg: 20,
+        performedReps: 5,
+        performedDurationSec: null,
+        performedDistanceM: null,
+      });
+
+      // The set itself updated.
+      const updatedSet = await db.loggedSets.get(logged.id);
+      expect(updatedSet?.performedWeightKg).toBe(20);
+
+      // But the snapshot did NOT get promoted.
+      currentSe = await db.sessionExercises.get(se.id);
+      expect(currentSe?.effectiveType).toBe("bodyweight");
+    });
+
+    it("[R2] editSet: STILL promotes on active sessions (regression guard)", async () => {
+      const routine = makeRoutine([
+        {
+          kind: "exercise",
+          entryId: "A-e0",
+          exerciseId: "pull-up",
+          setBlocks: [STANDARD_BLOCK],
+        },
+      ]);
+      await db.routines.add(routine);
+      const { sessionExercises } = await startSessionWithCatalog(
+        db,
+        routine,
+        "A"
+      );
+      const se = sessionExercises[0]!;
+
+      const logged = await logSet(db, se.id, 0, 0, {
+        performedWeightKg: null,
+        performedReps: 5,
+        performedDurationSec: null,
+        performedDistanceM: null,
+      });
+
+      // Session still active.
+      await editSet(db, logged.id, {
+        performedWeightKg: 15,
+        performedReps: 5,
+        performedDurationSec: null,
+        performedDistanceM: null,
+      });
+
+      const currentSe = await db.sessionExercises.get(se.id);
+      expect(currentSe?.effectiveType).toBe("weight");
+    });
+
+    it("[R3] editSet: throws when sessionExercise is missing (race with discard)", async () => {
+      const routine = makeRoutine([
+        {
+          kind: "exercise",
+          entryId: "A-e0",
+          exerciseId: "barbell-back-squat",
+          setBlocks: [STANDARD_BLOCK],
+        },
+      ]);
+      await db.routines.add(routine);
+      const { sessionExercises } = await startSessionWithCatalog(
+        db,
+        routine,
+        "A"
+      );
+      const se = sessionExercises[0]!;
+
+      const logged = await logSet(db, se.id, 0, 0, {
+        performedWeightKg: 100,
+        performedReps: 5,
+        performedDurationSec: null,
+        performedDistanceM: null,
+      });
+
+      // Simulate the sessionExercise being deleted concurrently.
+      await db.sessionExercises.delete(se.id);
+
+      // Edit with non-null weight triggers the sessionExercise read + throw.
+      await expect(
+        editSet(db, logged.id, {
+          performedWeightKg: 110,
+          performedReps: 5,
+          performedDurationSec: null,
+          performedDistanceM: null,
+        })
+      ).rejects.toThrow(/SessionExercise ".*" not found/);
     });
   });
 

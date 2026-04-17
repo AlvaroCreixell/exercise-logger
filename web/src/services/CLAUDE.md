@@ -17,7 +17,7 @@ Pure business logic functions. Every function takes `db: ExerciseLoggerDB` as it
 ### `set-service.ts` — Set logging
 
 - `logSet(db, sessionExerciseId, blockIndex, setIndex, input)` → LoggedSet — Upsert (invariant 9). Validates blockIndex and setIndex bounds. Denormalizes exerciseId, instanceLabel, blockSignature. Weighted bodyweight promotion runs on BOTH create and update paths.
-- `editSet(db, loggedSetId, input)` → LoggedSet — Works on active AND finished sessions. Also triggers weighted bodyweight promotion.
+- `editSet(db, loggedSetId, input)` → LoggedSet — Works on active AND finished sessions. Weighted bodyweight promotion runs **only on active sessions** to keep finished-session snapshots immutable.
 - `deleteSet(db, loggedSetId)` → void — Hard delete.
 
 **SetLogInput:** `{ performedWeightKg, performedReps, performedDurationSec, performedDistanceM }` — all nullable.

@@ -103,112 +103,120 @@ export async function logSet(
 ): Promise<LoggedSet> {
   validateSetInput(input);
 
-  const sessionExercise = await db.sessionExercises.get(sessionExerciseId);
-  if (!sessionExercise) {
-    throw new Error(`SessionExercise "${sessionExerciseId}" not found`);
-  }
+  return db.transaction(
+    "rw",
+    db.sessions,
+    db.sessionExercises,
+    db.loggedSets,
+    async () => {
+      const sessionExercise = await db.sessionExercises.get(sessionExerciseId);
+      if (!sessionExercise) {
+        throw new Error(`SessionExercise "${sessionExerciseId}" not found`);
+      }
 
-  // Verify the session is active
-  const session = await db.sessions.get(sessionExercise.sessionId);
-  if (!session) {
-    throw new Error(`Session "${sessionExercise.sessionId}" not found`);
-  }
-  if (session.status !== "active") {
-    throw new Error(
-      `Cannot log set: session "${session.id}" is "${session.status}", expected "active"`
-    );
-  }
+      // Verify the session is active
+      const session = await db.sessions.get(sessionExercise.sessionId);
+      if (!session) {
+        throw new Error(`Session "${sessionExercise.sessionId}" not found`);
+      }
+      if (session.status !== "active") {
+        throw new Error(
+          `Cannot log set: session "${session.id}" is "${session.status}", expected "active"`
+        );
+      }
 
-  // Resolve block signature and tag from the set block snapshot
-  let blockSignature: string;
-  let tag: SetTag | null = null;
+      // Resolve block signature and tag from the set block snapshot
+      let blockSignature: string;
+      let tag: SetTag | null = null;
 
-  if (sessionExercise.origin === "extra" || sessionExercise.setBlocksSnapshot.length === 0) {
-    // Extra exercises have no set blocks -- use a generic signature
-    blockSignature = "extra:0:count0:tagnormal";
-  } else {
-    const block = sessionExercise.setBlocksSnapshot[blockIndex];
-    if (!block) {
-      throw new Error(
-        `Block index ${blockIndex} out of range for session exercise "${sessionExerciseId}" (has ${sessionExercise.setBlocksSnapshot.length} blocks)`
-      );
+      if (sessionExercise.origin === "extra" || sessionExercise.setBlocksSnapshot.length === 0) {
+        // Extra exercises have no set blocks -- use a generic signature
+        blockSignature = "extra:0:count0:tagnormal";
+      } else {
+        const block = sessionExercise.setBlocksSnapshot[blockIndex];
+        if (!block) {
+          throw new Error(
+            `Block index ${blockIndex} out of range for session exercise "${sessionExerciseId}" (has ${sessionExercise.setBlocksSnapshot.length} blocks)`
+          );
+        }
+
+        // [P4-G] Validate setIndex against block count
+        if (setIndex < 0 || setIndex >= block.count) {
+          throw new Error(
+            `Set index ${setIndex} out of range for block ${blockIndex} of session exercise "${sessionExerciseId}" (block has ${block.count} sets)`
+          );
+        }
+
+        blockSignature = generateBlockSignature(block);
+        tag = block.tag ?? null;
+      }
+
+      const now = nowISO();
+
+      // Invariant 9: check if this slot already exists
+      const existing = await db.loggedSets
+        .where("[sessionExerciseId+blockIndex+setIndex]")
+        .equals([sessionExerciseId, blockIndex, setIndex])
+        .first();
+
+      // Normalize instanceLabel: store "" instead of null for compound index compatibility
+      const instanceLabel = sessionExercise.instanceLabel ?? "";
+
+      // [P4-D] Use result variable so promotion runs for BOTH create and update paths
+      let result: LoggedSet;
+
+      if (existing) {
+        // Update existing slot
+        const updated: Partial<LoggedSet> = {
+          performedWeightKg: input.performedWeightKg,
+          performedReps: input.performedReps,
+          performedDurationSec: input.performedDurationSec,
+          performedDistanceM: input.performedDistanceM,
+          updatedAt: now,
+        };
+        await db.loggedSets.update(existing.id, updated);
+        result = { ...existing, ...updated } as LoggedSet;
+      } else {
+        // Create new logged set
+        const loggedSet: LoggedSet = {
+          id: generateId(),
+          sessionId: sessionExercise.sessionId,
+          sessionExerciseId,
+          exerciseId: sessionExercise.exerciseId,
+          instanceLabel,
+          origin: sessionExercise.origin,
+          blockIndex,
+          blockSignature,
+          setIndex,
+          tag,
+          performedWeightKg: input.performedWeightKg,
+          performedReps: input.performedReps,
+          performedDurationSec: input.performedDurationSec,
+          performedDistanceM: input.performedDistanceM,
+          loggedAt: now,
+          updatedAt: now,
+        };
+
+        await db.loggedSets.add(loggedSet);
+        result = loggedSet;
+      }
+
+      // [P4-D] Weighted bodyweight runtime detection runs for BOTH create and update:
+      // If the user logs a non-null weight for a bodyweight exercise, promote the
+      // sessionExercise's effectiveType from "bodyweight" to "weight" so the
+      // progression engine and UI treat it as a weighted movement for this session.
+      if (
+        input.performedWeightKg !== null &&
+        sessionExercise.effectiveType === "bodyweight"
+      ) {
+        await db.sessionExercises.update(sessionExerciseId, {
+          effectiveType: "weight",
+        });
+      }
+
+      return result;
     }
-
-    // [P4-G] Validate setIndex against block count
-    if (setIndex < 0 || setIndex >= block.count) {
-      throw new Error(
-        `Set index ${setIndex} out of range for block ${blockIndex} of session exercise "${sessionExerciseId}" (block has ${block.count} sets)`
-      );
-    }
-
-    blockSignature = generateBlockSignature(block);
-    tag = block.tag ?? null;
-  }
-
-  const now = nowISO();
-
-  // Invariant 9: check if this slot already exists
-  const existing = await db.loggedSets
-    .where("[sessionExerciseId+blockIndex+setIndex]")
-    .equals([sessionExerciseId, blockIndex, setIndex])
-    .first();
-
-  // Normalize instanceLabel: store "" instead of null for compound index compatibility
-  const instanceLabel = sessionExercise.instanceLabel ?? "";
-
-  // [P4-D] Use result variable so promotion runs for BOTH create and update paths
-  let result: LoggedSet;
-
-  if (existing) {
-    // Update existing slot
-    const updated: Partial<LoggedSet> = {
-      performedWeightKg: input.performedWeightKg,
-      performedReps: input.performedReps,
-      performedDurationSec: input.performedDurationSec,
-      performedDistanceM: input.performedDistanceM,
-      updatedAt: now,
-    };
-    await db.loggedSets.update(existing.id, updated);
-    result = { ...existing, ...updated } as LoggedSet;
-  } else {
-    // Create new logged set
-    const loggedSet: LoggedSet = {
-      id: generateId(),
-      sessionId: sessionExercise.sessionId,
-      sessionExerciseId,
-      exerciseId: sessionExercise.exerciseId,
-      instanceLabel,
-      origin: sessionExercise.origin,
-      blockIndex,
-      blockSignature,
-      setIndex,
-      tag,
-      performedWeightKg: input.performedWeightKg,
-      performedReps: input.performedReps,
-      performedDurationSec: input.performedDurationSec,
-      performedDistanceM: input.performedDistanceM,
-      loggedAt: now,
-      updatedAt: now,
-    };
-
-    await db.loggedSets.add(loggedSet);
-    result = loggedSet;
-  }
-
-  // [P4-D] Weighted bodyweight runtime detection runs for BOTH create and update:
-  // If the user logs a non-null weight for a bodyweight exercise, promote the
-  // sessionExercise's effectiveType from "bodyweight" to "weight" so the
-  // progression engine and UI treat it as a weighted movement for this session.
-  if (
-    input.performedWeightKg !== null &&
-    sessionExercise.effectiveType === "bodyweight"
-  ) {
-    await db.sessionExercises.update(sessionExerciseId, {
-      effectiveType: "weight",
-    });
-  }
-
-  return result;
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -249,10 +257,19 @@ export async function editSet(
 
   await db.loggedSets.update(loggedSetId, updated);
 
-  // [P4-E] Weighted bodyweight promotion on edit
+  // [P4-E / R2 / R3] Weighted bodyweight promotion on edit:
+  // - Fail loudly if the sessionExercise row is gone (race with discard).
+  // - Only promote on active sessions — finished snapshots are write-once.
   if (input.performedWeightKg !== null) {
     const sessionExercise = await db.sessionExercises.get(existing.sessionExerciseId);
-    if (sessionExercise && sessionExercise.effectiveType === "bodyweight") {
+    if (!sessionExercise) {
+      throw new Error(`SessionExercise "${existing.sessionExerciseId}" not found`);
+    }
+    const session = await db.sessions.get(sessionExercise.sessionId);
+    if (
+      session?.status === "active" &&
+      sessionExercise.effectiveType === "bodyweight"
+    ) {
       await db.sessionExercises.update(existing.sessionExerciseId, {
         effectiveType: "weight",
       });
