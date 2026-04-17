@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import { Check } from "lucide-react";
 import type { LoggedSet } from "@/domain/types";
 import type { UnitSystem } from "@/domain/enums";
@@ -19,6 +20,32 @@ export function SetSlot({
   onClick,
   disabled = false,
 }: SetSlotProps) {
+  const [flashing, setFlashing] = useState(false);
+  const prevUpdatedAtRef = useRef<string | undefined>(loggedSet?.updatedAt);
+  const hasMountedRef = useRef(false);
+
+  useEffect(() => {
+    const current = loggedSet?.updatedAt;
+    const prev = prevUpdatedAtRef.current;
+
+    // Skip initial mount — don't flash pre-existing state.
+    if (!hasMountedRef.current) {
+      hasMountedRef.current = true;
+      prevUpdatedAtRef.current = current;
+      return;
+    }
+
+    // Flash only when updatedAt actually changed and we now have a logged set.
+    if (current && current !== prev) {
+      setFlashing(true);
+      const t = window.setTimeout(() => setFlashing(false), 600);
+      prevUpdatedAtRef.current = current;
+      return () => window.clearTimeout(t);
+    }
+
+    prevUpdatedAtRef.current = current;
+  }, [loggedSet?.updatedAt]);
+
   const isLogged = loggedSet !== undefined;
 
   function formatValue(ls: LoggedSet): string {
@@ -53,7 +80,7 @@ export function SetSlot({
         isLogged
           ? "border-l-2 border-l-success/60 border border-success bg-success text-white"
           : "border-[1.5px] border-border-strong text-muted-foreground hover:bg-muted/50"
-      }`}
+      }${flashing ? " flash-logged" : ""}`}
     >
       {isLogged ? (
         <>
