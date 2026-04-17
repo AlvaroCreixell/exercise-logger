@@ -20,6 +20,7 @@ This spec was written against an earlier visual direction. Current code (post-Sp
 - **§4.2 Exercise name styling:** no longer uppercase. Current: `text-base font-semibold tracking-tight` (Sprint 1).
 - **§4.2 Logged set slot:** current `bg-success text-white` with `min-h-[48px]` and focus ring (Sprint 1). The `bg-success-soft text-success` variant described here is superseded.
 - **§4.2 Discard Workout dialog:** the double-confirmation step is still in place but flagged for removal (review §2.3 High 4).
+- **Sprint 4 shipped (2026-04-17):** Workout screen upgraded with `SessionProgress` meter; `ExerciseCard` refactored around `BlockStripe` with left colored stripe per block and combined Last/Suggestion line. `SetLogSheet` redesigned with inline context + tile inputs + `SetDots` + save-pulse animation. New shared primitives `Stat`, `Pill`, `SectionHeader`, `EmptyState`. Where this spec text differs from current code, the code is authoritative.
 
 Current progress tracker: `docs/codebase-review-2026-04-16.md`.
 
