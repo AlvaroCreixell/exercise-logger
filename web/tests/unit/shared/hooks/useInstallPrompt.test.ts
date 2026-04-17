@@ -69,4 +69,25 @@ describe("useInstallPrompt", () => {
     });
     expect(result.current.canInstall).toBe(false);
   });
+
+  it("a second beforeinstallprompt overrides the first", async () => {
+    const { result } = renderHook(() => useInstallPrompt());
+    const ev1 = makeFakePromptEvent();
+    const ev2 = makeFakePromptEvent();
+    act(() => {
+      window.dispatchEvent(ev1);
+    });
+    act(() => {
+      window.dispatchEvent(ev2);
+    });
+    expect(result.current.canInstall).toBe(true);
+
+    // Calling promptInstall should invoke prompt() on the *second* event,
+    // not the first.
+    await act(async () => {
+      await result.current.promptInstall();
+    });
+    expect(ev2.prompt).toHaveBeenCalled();
+    expect(ev1.prompt).not.toHaveBeenCalled();
+  });
 });
