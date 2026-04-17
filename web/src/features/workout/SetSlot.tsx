@@ -69,9 +69,9 @@ export function SetSlot({
       <div
         data-testid="set-slot"
         aria-label={`Set ${setIndex + 1}: empty`}
-        className="min-h-[48px] min-w-[4rem] rounded-sm px-2 text-xs font-medium tabular-nums flex items-center justify-center gap-1 shrink-0 border border-border/50 text-muted-foreground/40"
+        className="min-h-[56px] min-w-[5rem] rounded-sm px-2.5 flex items-center justify-center gap-1.5 shrink-0 border border-border/50 text-muted-foreground/40"
       >
-        <span>{setIndex + 1}</span>
+        <span className="text-sm font-medium tabular-nums">{setIndex + 1}</span>
       </div>
     );
   }
@@ -81,7 +81,7 @@ export function SetSlot({
       data-testid="set-slot"
       onClick={onClick}
       aria-label={isLogged ? `Set ${setIndex + 1}: ${formatValue(loggedSet)}` : `Set ${setIndex + 1}: empty`}
-      className={`min-h-[48px] min-w-[4rem] rounded-sm px-2 text-xs font-medium tabular-nums flex items-center justify-center gap-1 transition-colors duration-[var(--dur-base)] shrink-0 focus-visible:border-cta focus-visible:ring-2 focus-visible:ring-cta/30 active:scale-95 hover:border-cta ${
+      className={`min-h-[56px] min-w-[5rem] rounded-sm px-2.5 flex items-center justify-center gap-1.5 transition-colors duration-[var(--dur-base)] shrink-0 focus-visible:border-cta focus-visible:ring-2 focus-visible:ring-cta/30 active:scale-95 hover:border-cta ${
         isLogged
           ? "border-l-2 border-l-success/60 border border-success bg-success text-white"
           : "border-[1.5px] border-border-strong text-muted-foreground hover:bg-muted/50"
@@ -89,11 +89,11 @@ export function SetSlot({
     >
       {isLogged ? (
         <>
-          <Check className="h-3 w-3 shrink-0" />
-          <span>{formatValue(loggedSet)}</span>
+          <Check className="h-3.5 w-3.5 shrink-0" strokeWidth={2.5} />
+          <span className="text-value-sm">{formatValue(loggedSet)}</span>
         </>
       ) : (
-        <span>{setIndex + 1}</span>
+        <span className="text-sm font-medium tabular-nums">{setIndex + 1}</span>
       )}
     </button>
   );
