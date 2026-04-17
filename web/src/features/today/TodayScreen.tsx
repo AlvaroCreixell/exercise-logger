@@ -21,9 +21,9 @@ import type { RoutineDay } from "@/domain/types";
 function estimateDayDurationMin(day: RoutineDay): number {
   let totalSets = 0;
   for (const entry of day.entries) {
-    if (entry.kind === "exercise" && entry.setBlocks) {
+    if (entry.kind === "exercise") {
       totalSets += entry.setBlocks.reduce((s, b) => s + b.count, 0);
-    } else if (entry.kind === "superset" && entry.items) {
+    } else if (entry.kind === "superset") {
       for (const item of entry.items) {
         totalSets += item.setBlocks.reduce((s, b) => s + b.count, 0);
       }
@@ -121,16 +121,14 @@ export default function TodayScreen() {
   }
 
   const dayDisplayName = day?.label ?? dayId;
-  const firstTwoNames = day
-    ? day.entries
-        .flatMap((e) => (e.kind === "exercise" ? [e] : e.items))
-        .slice(0, 2)
-        .map((e) => exerciseNames.get(e.exerciseId) ?? e.exerciseId.replace(/-/g, " "))
+  const flatEntries = day
+    ? day.entries.flatMap((e) => (e.kind === "exercise" ? [e] : e.items))
     : [];
+  const firstTwoNames = flatEntries
+    .slice(0, 2)
+    .map((e) => exerciseNames.get(e.exerciseId) ?? e.exerciseId.replace(/-/g, " "));
   const estMin = day ? estimateDayDurationMin(day) : 0;
-  const remainingCount = day
-    ? day.entries.flatMap((e) => (e.kind === "exercise" ? [e] : e.items)).length - firstTwoNames.length
-    : 0;
+  const remainingCount = flatEntries.length - firstTwoNames.length;
 
   return (
     <div className="flex flex-col h-full">
@@ -160,7 +158,7 @@ export default function TodayScreen() {
                 <p key={name} className="font-medium truncate">{name}</p>
               ))}
               {remainingCount > 0 && (
-                <p className="text-primary-foreground/60 text-xs">
+                <p className="text-primary-foreground/70 text-xs">
                   + {remainingCount} more
                 </p>
               )}
@@ -175,7 +173,7 @@ export default function TodayScreen() {
           >
             {starting ? "Starting..." : "▶ Start Workout"}
           </Button>
-          <p className="text-xs text-primary-foreground/60 tabular-nums text-center">
+          <p className="text-xs text-primary-foreground/70 tabular-nums text-center">
             ~{estMin} min
           </p>
         </div>
