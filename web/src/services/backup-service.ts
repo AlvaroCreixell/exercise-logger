@@ -164,7 +164,6 @@ const VALID_EQUIPMENT: ExerciseEquipment[] = [
 const VALID_SESSION_STATUSES: SessionStatus[] = [
   "active",
   "finished",
-  "discarded",
 ];
 
 const VALID_ORIGINS: SessionExerciseOrigin[] = ["routine", "extra"];

@@ -13,8 +13,12 @@ export type ExerciseEquipment =
   | "medicine-ball"
   | "other";
 
-/** Session lifecycle status. */
-export type SessionStatus = "active" | "finished" | "discarded";
+/** Session lifecycle status.
+ *  [R9] "discarded" was removed — discard() hard-deletes the row, so the value
+ *  can never appear on a persisted Session. No data migration needed: past
+ *  exports never included discarded rows either (they were deleted before
+ *  the export ran). */
+export type SessionStatus = "active" | "finished";
 
 /** How a session exercise was added. */
 export type SessionExerciseOrigin = "routine" | "extra";
