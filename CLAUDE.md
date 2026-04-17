@@ -36,7 +36,7 @@ Layer-specific guides:
 
 ```bash
 cd web
-npm test              # 391 unit+integration tests (Vitest)
+npm test              # 440 unit+integration tests (Vitest)
 npm run test:watch    # Watch mode
 npm run build         # Production build (includes PWA)
 npm run dev           # Dev server (localhost:5173)
