@@ -824,3 +824,42 @@ export async function importRoutine(
 ): Promise<void> {
   await db.routines.add(routine);
 }
+
+// ---------------------------------------------------------------------------
+// Combined validate + import helper for UI entry points
+// ---------------------------------------------------------------------------
+
+/** User-facing result of running a YAML import end-to-end. */
+export type ImportRoutineResult =
+  | { ok: true; routineName: string }
+  | { ok: false; errors: string[] };
+
+/**
+ * Validate a YAML string, normalize it into a Routine, and import it.
+ *
+ * Shared entry point for both the file-picker and paste-to-import UI flows.
+ * Returns a user-friendly result: `routineName` on success, or an array of
+ * `"path: message"` strings on failure.
+ */
+export async function validateParseAndImportRoutine(
+  db: ExerciseLoggerDB,
+  yamlText: string
+): Promise<ImportRoutineResult> {
+  if (!yamlText.trim()) {
+    return { ok: false, errors: ["input: YAML is empty"] };
+  }
+
+  const exercises = await db.exercises.toArray();
+  const lookup = new Map(exercises.map((ex) => [ex.id, ex]));
+
+  const result = validateAndNormalizeRoutine(yamlText, lookup);
+  if (!result.ok) {
+    return {
+      ok: false,
+      errors: result.errors.map((e) => `${e.path}: ${e.message}`),
+    };
+  }
+
+  await importRoutine(db, result.routine);
+  return { ok: true, routineName: result.routine.name };
+}

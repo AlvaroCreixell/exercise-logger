@@ -1180,6 +1180,99 @@ days:
 });
 
 // ---------------------------------------------------------------------------
+// validateParseAndImportRoutine
+// ---------------------------------------------------------------------------
+
+import { validateParseAndImportRoutine } from "@/services/routine-service";
+
+describe("validateParseAndImportRoutine", () => {
+  let db2: ExerciseLoggerDB;
+
+  beforeEach(async () => {
+    db2 = new ExerciseLoggerDB();
+    await db2.open();
+    // Seed the one exercise referenced in validYaml
+    await db2.exercises.put({
+      id: "barbell-back-squat",
+      name: "Barbell Back Squat",
+      type: "weight",
+      equipment: "barbell",
+      muscleGroups: ["quads", "glutes"],
+    });
+  });
+
+  afterEach(async () => {
+    await db2.delete();
+  });
+
+  const validYaml = `
+version: 1
+name: Minimal Test
+rest_default_sec: 90
+rest_superset_sec: 60
+day_order: [a]
+days:
+  a:
+    label: Day A
+    entries:
+      - exercise_id: barbell-back-squat
+        sets:
+          - reps: 5
+            count: 3
+`;
+
+  it("imports a valid routine and returns the name", async () => {
+    const result = await validateParseAndImportRoutine(db2, validYaml);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.routineName).toBe("Minimal Test");
+
+    const routines = await db2.routines.toArray();
+    expect(routines).toHaveLength(1);
+    expect(routines[0].name).toBe("Minimal Test");
+  });
+
+  it("returns validation errors for malformed YAML", async () => {
+    const invalid = "this: is: not: valid: yaml: [[[";
+    const result = await validateParseAndImportRoutine(db2, invalid);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.errors.length).toBeGreaterThan(0);
+    const routines = await db2.routines.toArray();
+    expect(routines).toHaveLength(0);
+  });
+
+  it("returns validation errors for schema violations", async () => {
+    const missingVersion = `
+name: No Version
+rest_default_sec: 90
+rest_superset_sec: 60
+day_order: [a]
+days:
+  a:
+    label: A
+    entries: []
+`;
+    const result = await validateParseAndImportRoutine(db2, missingVersion);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.errors.some((e) => e.includes("version"))).toBe(true);
+  });
+
+  it("returns an error for empty input", async () => {
+    const result = await validateParseAndImportRoutine(db2, "");
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.errors.length).toBeGreaterThan(0);
+  });
+
+  it("returns an error when input is only whitespace", async () => {
+    const result = await validateParseAndImportRoutine(db2, "   \n\n  ");
+    expect(result.ok).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Integration: real catalog + real routine YAML
 // ---------------------------------------------------------------------------
 
