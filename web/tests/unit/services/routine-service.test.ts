@@ -4,6 +4,7 @@ import { ExerciseLoggerDB } from "@/db/database";
 import {
   validateAndNormalizeRoutine,
   importRoutine,
+  validateParseAndImportRoutine,
   type ValidationError,
 } from "@/services/routine-service";
 import type { Exercise, Routine } from "@/domain/types";
@@ -1183,16 +1184,14 @@ days:
 // validateParseAndImportRoutine
 // ---------------------------------------------------------------------------
 
-import { validateParseAndImportRoutine } from "@/services/routine-service";
-
 describe("validateParseAndImportRoutine", () => {
-  let db2: ExerciseLoggerDB;
+  let db: ExerciseLoggerDB;
 
   beforeEach(async () => {
-    db2 = new ExerciseLoggerDB();
-    await db2.open();
+    db = new ExerciseLoggerDB();
+    await db.open();
     // Seed the one exercise referenced in validYaml
-    await db2.exercises.put({
+    await db.exercises.put({
       id: "barbell-back-squat",
       name: "Barbell Back Squat",
       type: "weight",
@@ -1202,7 +1201,7 @@ describe("validateParseAndImportRoutine", () => {
   });
 
   afterEach(async () => {
-    await db2.delete();
+    await db.delete();
   });
 
   const validYaml = `
@@ -1222,23 +1221,23 @@ days:
 `;
 
   it("imports a valid routine and returns the name", async () => {
-    const result = await validateParseAndImportRoutine(db2, validYaml);
+    const result = await validateParseAndImportRoutine(db, validYaml);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.routineName).toBe("Minimal Test");
 
-    const routines = await db2.routines.toArray();
+    const routines = await db.routines.toArray();
     expect(routines).toHaveLength(1);
     expect(routines[0].name).toBe("Minimal Test");
   });
 
   it("returns validation errors for malformed YAML", async () => {
     const invalid = "this: is: not: valid: yaml: [[[";
-    const result = await validateParseAndImportRoutine(db2, invalid);
+    const result = await validateParseAndImportRoutine(db, invalid);
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(result.errors.length).toBeGreaterThan(0);
-    const routines = await db2.routines.toArray();
+    const routines = await db.routines.toArray();
     expect(routines).toHaveLength(0);
   });
 
@@ -1253,21 +1252,21 @@ days:
     label: A
     entries: []
 `;
-    const result = await validateParseAndImportRoutine(db2, missingVersion);
+    const result = await validateParseAndImportRoutine(db, missingVersion);
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(result.errors.some((e) => e.includes("version"))).toBe(true);
   });
 
   it("returns an error for empty input", async () => {
-    const result = await validateParseAndImportRoutine(db2, "");
+    const result = await validateParseAndImportRoutine(db, "");
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(result.errors.length).toBeGreaterThan(0);
   });
 
   it("returns an error when input is only whitespace", async () => {
-    const result = await validateParseAndImportRoutine(db2, "   \n\n  ");
+    const result = await validateParseAndImportRoutine(db, "   \n\n  ");
     expect(result.ok).toBe(false);
   });
 });
