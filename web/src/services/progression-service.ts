@@ -302,9 +302,11 @@ export function calculateBlockSuggestion(
       const roundedLbs = roundToIncrement(rawLbs, effectiveEquipment, "lbs");
       // P5-C: Use lbsToKg() helper instead of hardcoded / 2.20462
       suggestedWeightKg = lbsToKg(roundedLbs);
-      // Round the kg to avoid floating point noise (0.01 precision)
-      suggestedWeightKg = Math.round(suggestedWeightKg * 100) / 100;
     }
+    // [R6] Apply 0.01 kg cleanup rounding uniformly to both branches so kg
+    // path doesn't emit floating-point noise (e.g. 102.4999999997) and
+    // produces output consistent with the lbs path.
+    suggestedWeightKg = Math.round(suggestedWeightKg * 100) / 100;
 
     // P5-B [CERTAIN — BUG]: Ensure the suggestion is at least one increment
     // above the previous weight. Use getIncrement() directly instead of
