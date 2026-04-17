@@ -285,3 +285,46 @@ describe("SetLogSheet prefill", () => {
     expect(weight.value).toBe("125");
   });
 });
+
+describe("SetLogSheet — inline context", () => {
+  it("shows SetDots in the header with the right current index", () => {
+    renderSheet({ setIndex: 1 });
+    expect(screen.getByLabelText(/set 2 of 3/i)).toBeInTheDocument();
+  });
+
+  it("shows Last-time context when lastTime is provided", () => {
+    renderSheet({
+      lastTime: {
+        blockIndex: 0,
+        blockLabel: "Set block 1",
+        tag: null,
+        sets: [
+          { weightKg: 100, reps: 8, durationSec: null, distanceM: null },
+        ],
+      },
+    });
+    expect(screen.getByText(/100kg/i)).toBeVisible();
+    expect(screen.getByText(/last time/i)).toBeVisible();
+  });
+
+  it("shows suggestion inline when provided", () => {
+    renderSheet({
+      suggestion: {
+        blockIndex: 0,
+        suggestedWeightKg: 105,
+        isProgression: true,
+        previousWeightKg: 100,
+      },
+    });
+    expect(screen.getByText(/105kg/i)).toBeVisible();
+    expect(screen.getByText(/suggested/i)).toBeVisible();
+  });
+
+  it("renders weight and reps fields as tile-style (h-14)", () => {
+    renderSheet();
+    const weight = document.querySelector('input[name="weight"]');
+    const reps = document.querySelector('input[name="reps"]');
+    expect(weight?.className).toMatch(/h-14/);
+    expect(reps?.className).toMatch(/h-14/);
+  });
+});
