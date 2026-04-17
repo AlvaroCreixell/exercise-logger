@@ -36,9 +36,14 @@ export function SetSlot({
     }
 
     // Flash only when updatedAt actually changed and we now have a logged set.
+    // The setState calls here are intentional: the effect synchronizes a
+    // transient CSS animation class with a prop-driven event (new/edited set).
+    // Suppressing react-hooks/set-state-in-effect for this pattern.
     if (current && current !== prev) {
+      /* eslint-disable react-hooks/set-state-in-effect */
       setFlashing(true);
       const t = window.setTimeout(() => setFlashing(false), 600);
+      /* eslint-enable react-hooks/set-state-in-effect */
       prevUpdatedAtRef.current = current;
       return () => window.clearTimeout(t);
     }
