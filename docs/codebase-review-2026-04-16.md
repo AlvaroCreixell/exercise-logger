@@ -74,47 +74,70 @@ Ranked by (user impact × leverage ÷ effort). Detailed breakdowns in each secti
 
 ---
 
-## Progress Update — 2026-04-16 PM
+## Progress Update
 
-**Shipped since the review was written** (see `git log b5a7bfc..HEAD` for 16 commits):
+### Sprint 1 — Visual Polish (2026-04-16 PM)
 
-- ✅ Plan A item #1: **Clipboard-paste YAML import** (app-side)
-- ✅ Plan A item #2: **Workout screen header hierarchy** — verified already in place pre-review; no code change needed
-- ✅ Plan A item #3: **Set slot redesign** (saturated `bg-success`, `min-h-[48px]`, focus ring, scale press, 600ms flash on log)
-- ✅ Plan A item #4: **Exercise-name typography** (`tracking-tight`, `text-base`, no-uppercase) + **vertical last-time/suggestion stack**
-- ✅ Plan A item #5: **Spacing outliers** fixed (WorkoutScreen, HistoryScreen, Card primitive defaults)
-- ✅ Plan A item #10: **CLAUDE.md test count** 391 → 440
+**Shipped** (see `git log b5a7bfc..093126b`, 16 commits):
+
+- ✅ Plan A #1 **Clipboard-paste YAML import** (app-side)
+- ✅ Plan A #2 **Workout screen header hierarchy** — verified already in place pre-review
+- ✅ Plan A #3 **Set slot redesign** (saturated `bg-success`, `min-h-[48px]`, focus ring, scale press, 600ms flash on log)
+- ✅ Plan A #4 **Exercise-name typography** (`tracking-tight`, `text-base`, no-uppercase) + **vertical last-time/suggestion stack**
+- ✅ Plan A #5 **Spacing outliers** fixed (WorkoutScreen, HistoryScreen, Card primitive defaults)
+- ✅ Plan A #10 **CLAUDE.md test count** 391 → 440
 - ✅ Phase 2 #13-14 carried forward: motion tokens + `--success` saturation + `flash-logged` keyframe + Softened-Swiss pivot across Card, Dialog, Alert-Dialog, Sheet, Toaster, and Button primitives
-- 🟡 Component test coverage: **SetSlot** (flash mechanism, 4 tests) and **RoutineImporter** (paste flow, 5 tests) — 9 new tests. Workout/SetLogSheet/Settings/Today still pending.
 
-**Decisions locked in from Appendix B:**
+### Sprint 2 — Invariant Hardening (2026-04-16 late / 2026-04-17)
+
+**Shipped** (see `git log 093126b..a7f1336`, 5 commits + archival cleanup):
+
+- ✅ **R1** `logSet` wrapped in `db.transaction("rw", sessions + sessionExercises + loggedSets)` — closes the promotion race. `set-service.ts` now atomic end-to-end.
+- ✅ **R2** `editSet` blocks `effectiveType` promotion on finished sessions (option B: snapshots stay write-once). Active-session regression guard test included.
+- ✅ **R3** `editSet` throws on missing `sessionExercise` (fail loudly instead of silent skip).
+- ✅ **R4 / #15** `finishSession` throws on corrupt `dayOrderSnapshot` (`indexOf === -1` or empty array).
+- ✅ **T1 / #9** E2E `full-workflow.spec.ts` `.catch(() => false)` hedges removed; hard assertions across set-log, save, confirm dialog, history, and export download.
+- ✅ Archival cleanup: 8 shipped plans/specs/reviews moved from tracked `docs/superpowers/**` to gitignored `docs/archive/` (copies already existed there).
+- ✅ `docs/superpowers/plans/2026-04-16-invariant-hardening.md` and the `services/CLAUDE.md` editSet note updated.
+
+### Still partial / not started
+
+- 🟡 Component test coverage: 9 new tests (SetSlot flash, RoutineImporter paste). Workout / SetLogSheet / Settings / Today still pending.
+- Remaining critical-path items: #7, #8, #11 (rest), #12, #13, #14 — see checklist below.
+
+### Decisions locked in from Appendix B
+
 - Zero-radius commitment **dropped** → Softened Swiss (4–6 px radii, soft shadows, 180 ms motion) is now the baseline language
 - Dark mode **dropped** → light-only going forward; the `.dark` tokens and `ThemeSync` are now removable
 - Routine count: 1-2 typical, up to 5-6 max → current picker UX is fine, no list navigation needed
 - URL-based routine sharing: **yes**, moves up in priority
 - Catalog contributions: **defer**
-- `editSet` promotion on finished sessions: **pending discussion** — user asked for options
+- `editSet` promotion on finished sessions: **resolved** → option B (block) shipped in Sprint 2
 
 ---
 
 ## Unified Critical Path (Ranked Checklist)
 
 ```
-[x]  1. RoutineImporter: add <textarea> + "Import from text" button                       (2-3h)  ✅ shipped
-[x]  2. WorkoutScreen header: routine name as <h1>, day label as <p>                       (10m)  ✅ verified already done
-[x]  3. SetSlot: bg-success + white text for logged; min 48×64; border-cta on focus       (30m)  ✅ shipped
-[x]  4. ExerciseCard: remove `uppercase` from names; vertical-stack last-time + suggest   (30m)  ✅ shipped
-[x]  5. Global: p-4 → p-5 baseline across feature screens; space-y-4 between cards        (30m)  ✅ shipped
-[ ]  6. set-service.ts: wrap logSet weighted-bodyweight promotion in db.transaction       (2h)
+[x]  1. RoutineImporter: add <textarea> + "Import from text" button                       (2-3h)  ✅ shipped S1
+[x]  2. WorkoutScreen header: routine name as <h1>, day label as <p>                       (10m)  ✅ verified done
+[x]  3. SetSlot: bg-success + white text for logged; min 48×64; border-cta on focus       (30m)  ✅ shipped S1
+[x]  4. ExerciseCard: remove `uppercase` from names; vertical-stack last-time + suggest   (30m)  ✅ shipped S1
+[x]  5. Global: p-4 → p-5 baseline across feature screens; space-y-4 between cards        (30m)  ✅ shipped S1
+[x]  6. set-service.ts: wrap logSet weighted-bodyweight promotion in db.transaction       (2h)   ✅ shipped S2
 [ ]  7. GPT instructions: require `version: 1`, add copy-paste Android guidance           (30m)
 [ ]  8. vite.config: registerType "autoUpdate" → "prompt"; add update-available toast     (2h)
-[ ]  9. tests/e2e/full-workflow.spec.ts: replace .catch() guards with real assertions     (2h)
-[x] 10. CLAUDE.md: 391 → 440 tests (and note drift)                                        (5m)  ✅ shipped
+[x]  9. tests/e2e/full-workflow.spec.ts: replace .catch() guards with real assertions     (2h)   ✅ shipped S2
+[x] 10. CLAUDE.md: 391 → 440 tests (and note drift)                                        (5m)  ✅ shipped S1
 [~] 11. Component tests: WorkoutScreen, SetLogSheet, SettingsScreen, TodayScreen          (3d)  🟡 partial (SetSlot+RoutineImporter done)
 [ ] 12. Manifest: file_handlers + launchQueue consumer; maskable icon with safe-zone       (1d)
 [ ] 13. Icons: add 256 + 384; iOS apple-mobile-web-app-* meta; "Install" Settings button  (3h)
 [ ] 14. Bundle: manualChunks for SettingsScreen + dialogs; target <150 kB gzipped          (4h)
-[ ] 15. finishSession: guard currentIndex === -1; add test for corrupt dayOrder            (1h)
+[x] 15. finishSession: guard currentIndex === -1; add test for corrupt dayOrder            (1h)  ✅ shipped S2
+
+Also shipped (not in original numbered list, from §1.2):
+[x]  R2  editSet: block promotion on finished sessions (option B)                          (30m) ✅ shipped S2
+[x]  R3  editSet: throw on missing sessionExercise                                         (15m) ✅ shipped S2
 ```
 
 ---
