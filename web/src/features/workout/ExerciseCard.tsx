@@ -128,7 +128,7 @@ export function ExerciseCard({
             )}
             {onUnitToggle && (
               <button
-                className="ml-auto shrink-0 border border-border-strong px-2 py-0.5 text-[11px] font-medium tabular-nums text-muted-foreground hover:bg-muted/50"
+                className="ml-auto shrink-0 rounded-sm border border-border-strong px-2 py-0.5 text-[11px] font-medium tabular-nums text-muted-foreground transition-colors duration-[var(--dur-base)] hover:bg-muted/50 hover:border-cta focus-visible:border-cta focus-visible:ring-2 focus-visible:ring-cta/30"
                 onClick={(e) => {
                   e.stopPropagation();
                   onUnitToggle(units === "kg" ? "lbs" : "kg");
