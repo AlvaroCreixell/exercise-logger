@@ -116,11 +116,11 @@ export function ExerciseCard({
 
   return (
     <Card className={readOnly ? "border-t border-border bg-transparent shadow-none rounded-none" : undefined}>
-      <CardContent className={`${readOnly ? "px-0" : ""} py-3 space-y-3`}>
+      <CardContent className={`${readOnly ? "px-0" : ""} py-4 space-y-3`}>
         {/* Header */}
         {!hideHeader && (
           <div className="flex items-center gap-2">
-            <h3 className="text-sm font-semibold uppercase tracking-wide truncate">
+            <h3 className="text-base font-semibold tracking-tight truncate">
               {se.exerciseNameSnapshot}
             </h3>
             {isExtra && (
@@ -169,23 +169,23 @@ export function ExerciseCard({
 
                 {/* History + suggestion */}
                 {(lastTime || suggestion) && (
-                  <div className="flex items-center gap-2 flex-wrap">
+                  <div className="space-y-1 tabular-nums">
                     {lastTime && lastTime.sets.length > 0 && (
-                      <span className="text-xs text-muted-foreground tabular-nums">
+                      <p className="text-xs text-muted-foreground">
                         Last: {formatLastTime(lastTime.sets, units)}
-                      </span>
+                      </p>
                     )}
                     {suggestion && suggestion.isProgression && (
-                      <span className="text-xs text-success tabular-nums font-medium inline-flex items-center gap-0.5">
+                      <p className="text-xs text-success font-semibold inline-flex items-center gap-1">
                         <ArrowUp className="h-3 w-3" />
                         {toDisplayWeight(suggestion.suggestedWeightKg, units)}{units}
-                      </span>
+                      </p>
                     )}
                     {suggestion && !suggestion.isProgression && (
-                      <span className="text-xs text-info tabular-nums font-medium inline-flex items-center gap-0.5">
+                      <p className="text-xs text-info font-medium inline-flex items-center gap-1">
                         <Repeat className="h-3 w-3" />
                         {toDisplayWeight(suggestion.suggestedWeightKg, units)}{units}
-                      </span>
+                      </p>
                     )}
                   </div>
                 )}
