@@ -1,4 +1,5 @@
 import type { Routine } from "@/domain/types";
+import { Pill } from "@/shared/components/Pill";
 
 interface DaySelectorProps {
   routine: Routine;
@@ -21,28 +22,18 @@ export function DaySelector({
       </p>
       <div className="border-t-2 border-border-strong" />
       <div className="flex overflow-x-auto scrollbar-none -mx-5 px-5">
-        {routine.dayOrder.map((dayId, i) => {
-          const isSelected = dayId === selectedDayId;
-          const isSuggested = dayId === routine.nextDayId;
-          return (
-            <button
-              key={dayId}
-              onClick={() => onSelectDay(dayId)}
-              className={`relative shrink-0 px-4 py-2 text-sm font-semibold transition-colors border-[1.5px] border-border-strong focus-visible:ring-2 focus-visible:ring-cta/30 ${
-                i > 0 ? "-ml-[1.5px]" : ""
-              } ${
-                isSelected
-                  ? "bg-primary text-primary-foreground z-10"
-                  : "bg-background text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <span>{dayId}</span>
-              {isSuggested && !isSelected && (
-                <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-cta" />
-              )}
-            </button>
-          );
-        })}
+        {routine.dayOrder.map((dayId, i) => (
+          <Pill
+            key={dayId}
+            onClick={() => onSelectDay(dayId)}
+            selected={dayId === selectedDayId}
+            indicator={dayId === routine.nextDayId}
+            aria-label={`Day ${dayId}`}
+            className={i > 0 ? "-ml-[1.5px]" : ""}
+          >
+            {dayId}
+          </Pill>
+        ))}
       </div>
     </div>
   );
