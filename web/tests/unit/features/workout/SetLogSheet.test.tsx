@@ -351,8 +351,7 @@ describe("SetLogSheet — open-edge prefill", () => {
     );
 
     // Initial prefill runs — weight defaults to "0" since showWeight path hits no carryover/suggest/last.
-    const weightInput = document.querySelector('input[name="weight"]') as HTMLInputElement;
-    expect(weightInput).not.toBeNull();
+    const weightInput = screen.getByRole("spinbutton", { name: /weight/i }) as HTMLInputElement;
 
     // User types 80 over the default
     await user.clear(weightInput);
@@ -377,6 +376,122 @@ describe("SetLogSheet — open-edge prefill", () => {
     );
 
     // User's typed value should NOT be clobbered by the new suggestion's prefill.
+    expect(weightInput.value).toBe("80");
+  });
+
+  it("does not re-prefill when blockSetsInSession identity changes while open", async () => {
+    const user = userEvent.setup();
+
+    const { rerender } = render(
+      <SetLogSheet
+        open={true}
+        onOpenChange={vi.fn()}
+        sessionExercise={makeSessionExercise()}
+        blockIndex={0}
+        setIndex={0}
+        existingSet={undefined}
+        suggestion={undefined}
+        lastTime={undefined}
+        blockSetsInSession={[]}
+        units="kg"
+        onSave={vi.fn()}
+      />,
+    );
+
+    const weightInput = screen.getByRole("spinbutton", { name: /weight/i }) as HTMLInputElement;
+    await user.clear(weightInput);
+    await user.type(weightInput, "80");
+    expect(weightInput.value).toBe("80");
+
+    // Parent re-renders with a fresh blockSetsInSession (simulates a different set being logged elsewhere).
+    // The carryover-candidate set carries 100kg — but the user's "80" must not be clobbered.
+    rerender(
+      <SetLogSheet
+        open={true}
+        onOpenChange={vi.fn()}
+        sessionExercise={makeSessionExercise()}
+        blockIndex={0}
+        setIndex={0}
+        existingSet={undefined}
+        suggestion={undefined}
+        lastTime={undefined}
+        blockSetsInSession={[
+          {
+            id: "ls-1",
+            sessionId: "s-1",
+            sessionExerciseId: makeSessionExercise().id,
+            blockIndex: 0,
+            setIndex: 0,
+            performedWeightKg: 100,
+            performedReps: 5,
+            performedDurationSec: null,
+            performedDistanceM: null,
+            instanceLabel: "",
+            exerciseId: "barbell-bench-press",
+            blockSignature: "reps:8-12:count3:tagnormal",
+            origin: "routine",
+            tag: null,
+            loggedAt: "2026-04-17T12:00:00Z",
+            updatedAt: "2026-04-17T12:00:00Z",
+          },
+        ]}
+        units="kg"
+        onSave={vi.fn()}
+      />,
+    );
+
+    expect(weightInput.value).toBe("80");
+  });
+
+  it("does not re-prefill when lastTime identity changes while open", async () => {
+    const user = userEvent.setup();
+
+    const { rerender } = render(
+      <SetLogSheet
+        open={true}
+        onOpenChange={vi.fn()}
+        sessionExercise={makeSessionExercise()}
+        blockIndex={0}
+        setIndex={0}
+        existingSet={undefined}
+        suggestion={undefined}
+        lastTime={undefined}
+        blockSetsInSession={[]}
+        units="kg"
+        onSave={vi.fn()}
+      />,
+    );
+
+    const weightInput = screen.getByRole("spinbutton", { name: /weight/i }) as HTMLInputElement;
+    await user.clear(weightInput);
+    await user.type(weightInput, "80");
+    expect(weightInput.value).toBe("80");
+
+    // Parent re-renders with a newly-loaded lastTime (simulates useExerciseHistory resolving).
+    // lastTime suggests 100kg — but the user's "80" must not be clobbered.
+    rerender(
+      <SetLogSheet
+        open={true}
+        onOpenChange={vi.fn()}
+        sessionExercise={makeSessionExercise()}
+        blockIndex={0}
+        setIndex={0}
+        existingSet={undefined}
+        suggestion={undefined}
+        lastTime={{
+          blockIndex: 0,
+          blockLabel: "Set block 1",
+          tag: null,
+          sets: [
+            { weightKg: 100, reps: 10, durationSec: null, distanceM: null },
+          ],
+        }}
+        blockSetsInSession={[]}
+        units="kg"
+        onSave={vi.fn()}
+      />,
+    );
+
     expect(weightInput.value).toBe("80");
   });
 });
