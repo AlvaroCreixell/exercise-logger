@@ -115,7 +115,7 @@ export function ExerciseCard({
   }
 
   return (
-    <Card className={readOnly ? "border-t border-border bg-transparent" : undefined}>
+    <Card className={readOnly ? "border-t border-border bg-transparent shadow-none rounded-none" : undefined}>
       <CardContent className={`${readOnly ? "px-0" : ""} py-3 space-y-3`}>
         {/* Header */}
         {!hideHeader && (
