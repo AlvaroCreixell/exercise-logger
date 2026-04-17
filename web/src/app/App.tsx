@@ -156,7 +156,7 @@ export default function App() {
         closeButton
         duration={3000}
         toastOptions={{
-          className: "!rounded-none !border-2 !border-border-strong !shadow-none font-sans",
+          className: "!rounded !border-[1.5px] !border-border-strong !shadow-sm font-sans",
         }}
       />
     </>
