@@ -1,0 +1,118 @@
+version: 1
+name: "4-Day Simple Strength Rebuild"
+rest_default_sec: 75
+rest_superset_sec: 60
+day_order: [A, B, C, D]
+
+days:
+  A:
+    label: "Lower Body Basics"
+    entries:
+      - exercise_id: leg-press
+        sets:
+          - { reps: [10, 15], count: 3 }
+
+      - exercise_id: dumbbell-romanian-deadlift
+        sets:
+          - { reps: [8, 12], count: 3 }
+
+      - exercise_id: dumbbell-reverse-lunge
+        sets:
+          - { reps: [8, 10], count: 2 }
+        notes: "Each leg"
+
+      - exercise_id: calf-raise-machine
+        sets:
+          - { reps: [12, 15], count: 2 }
+
+      - exercise_id: plank
+        sets:
+          - { duration: [20, 40], count: 3 }
+
+  B:
+    label: "Upper Push (Chest/Shoulders/Arms)"
+    entries:
+      - exercise_id: chest-press-machine
+        sets:
+          - { reps: [8, 12], count: 3 }
+
+      - exercise_id: dumbbell-shoulder-press
+        sets:
+          - { reps: [8, 12], count: 3 }
+
+      - exercise_id: dumbbell-lateral-raise
+        sets:
+          - { reps: [10, 15], count: 2 }
+
+      - exercise_id: tricep-pushdown
+        sets:
+          - { reps: [10, 15], count: 2 }
+
+      - exercise_id: push-up
+        sets:
+          - { reps: [6, 10], count: 2 }
+        notes: "Use incline if needed"
+
+  C:
+    label: "Lower Body + Core Stability"
+    entries:
+      - exercise_id: squat
+        type_override: weight
+        equipment_override: dumbbell
+        sets:
+          - { reps: [8, 12], count: 3 }
+
+      - exercise_id: leg-curl
+        sets:
+          - { reps: [10, 15], count: 3 }
+
+      - exercise_id: glute-bridge-hold
+        sets:
+          - { duration: [20, 40], count: 3 }
+
+      - exercise_id: cable-crunch
+        sets:
+          - { reps: [10, 15], count: 2 }
+
+      - exercise_id: farmers-carry
+        type_override: weight
+        equipment_override: dumbbell
+        sets:
+          - { duration: [30, 45], count: 2 }
+
+  D:
+    label: "Upper Pull (Back/Arms/Posture)"
+    entries:
+      - exercise_id: lat-pulldown
+        sets:
+          - { reps: [8, 12], count: 3 }
+
+      - exercise_id: seated-cable-row
+        sets:
+          - { reps: [8, 12], count: 3 }
+
+      - exercise_id: dumbbell-rear-delt-fly
+        sets:
+          - { reps: [10, 15], count: 2 }
+
+      - exercise_id: dumbbell-curl
+        sets:
+          - { reps: [10, 15], count: 2 }
+
+      - exercise_id: face-pull
+        sets:
+          - { reps: [10, 15], count: 2 }
+
+cardio:
+  notes: "Keep it light, enjoyable, and optional—goal is consistency, not exhaustion"
+  options:
+    - { name: "Walk", detail: "15–30 min, stroller walk totally counts" }
+    - { name: "Stationary Bike", detail: "10–20 min easy pace" }
+    - { name: "Rowing Machine", detail: "5–10 min relaxed effort" }
+
+notes:
+  - "Rotate A-B-C-D across the week; no need to match calendar days perfectly."
+  - "Stop each set with 2-3 reps left in reserve (no grinding)."
+  - "Progress by adding reps first, then small weight increases."
+  - "If energy is low, reduce sets by 1 instead of skipping entirely."
+  - "Focus on rebuilding the habit and feeling good after sessions."

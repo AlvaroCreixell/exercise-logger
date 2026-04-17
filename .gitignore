@@ -28,3 +28,6 @@ Thumbs.db
 .claude/
 .superpowers/
 .worktrees/
+
+# Local doc archive (historical plans/specs/reviews)
+docs/archive/

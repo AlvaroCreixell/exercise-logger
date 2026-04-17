@@ -1,0 +1,67 @@
+openapi: 3.1.0
+info:
+  title: Exercise Logger Routine Validator
+  version: 1.0.0
+  description: >
+    Validates Exercise Logger routine YAML against the project's real import
+    rules. Use this action before returning final YAML to the user.
+servers:
+  - url: https://YOUR_VALIDATOR_DOMAIN
+paths:
+  /validate-routine:
+    post:
+      operationId: validateRoutineYaml
+      summary: Validate workout routine YAML
+      description: >
+        Validate a complete Exercise Logger routine YAML document. Use this on
+        the exact YAML draft before returning it to the user. If validation
+        fails, repair the YAML using the returned field-level errors and try
+        again.
+      x-openai-isConsequential: false
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                yaml:
+                  type: string
+                  description: The complete routine YAML to validate.
+              required:
+                - yaml
+      responses:
+        "200":
+          description: Validation result
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  ok:
+                    type: boolean
+                    description: True when the YAML is valid.
+                  message:
+                    type: string
+                    description: Short validation summary.
+                  errors:
+                    type: array
+                    description: Field-level validation errors when ok is false.
+                    items:
+                      type: object
+                      additionalProperties: false
+                      properties:
+                        path:
+                          type: string
+                          description: Field path that failed validation.
+                        message:
+                          type: string
+                          description: Human-readable error message.
+                      required:
+                        - path
+                        - message
+                required:
+                  - ok
+                  - message
