@@ -28,7 +28,12 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: "prompt",
-      includeAssets: ["icons/icon-192.png", "icons/icon-512.png"],
+      includeAssets: [
+        "icons/icon-192.png",
+        "icons/icon-256.png",
+        "icons/icon-384.png",
+        "icons/icon-512.png",
+      ],
       manifest: {
         name: "Exercise Logger",
         short_name: "ExLog",
@@ -39,10 +44,23 @@ export default defineConfig({
         orientation: "portrait",
         scope: "/exercise-logger/",
         start_url: "/exercise-logger/",
+        categories: ["fitness", "health"],
         icons: [
           {
             src: "icons/icon-192.png",
             sizes: "192x192",
+            type: "image/png",
+            purpose: "any",
+          },
+          {
+            src: "icons/icon-256.png",
+            sizes: "256x256",
+            type: "image/png",
+            purpose: "any",
+          },
+          {
+            src: "icons/icon-384.png",
+            sizes: "384x384",
             type: "image/png",
             purpose: "any",
           },

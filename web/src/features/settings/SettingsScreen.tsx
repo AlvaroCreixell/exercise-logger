@@ -1,6 +1,7 @@
 import { useSettings } from "@/shared/hooks/useSettings";
 import { useAllRoutines } from "@/shared/hooks/useRoutine";
 import { useActiveSession } from "@/shared/hooks/useActiveSession";
+import { useInstallPrompt } from "@/shared/hooks/useInstallPrompt";
 import { db } from "@/db/database";
 import { setUnits } from "@/services/settings-service";
 import {
@@ -31,6 +32,7 @@ export default function SettingsScreen() {
   const jsonInputRef = useRef<HTMLInputElement>(null);
   const [clearOpen, setClearOpen] = useState(false);
   const [importErrors, setImportErrors] = useState<string[]>([]);
+  const { canInstall, promptInstall } = useInstallPrompt();
 
   if (!settings || routines === undefined) return null;
 
@@ -132,6 +134,30 @@ export default function SettingsScreen() {
           </div>
         </CardContent>
       </Card>
+
+      {canInstall && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+              Install
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <p className="text-xs text-muted-foreground">
+              Install Exercise Logger on this device for faster access and offline use.
+            </p>
+            <Button
+              variant="default"
+              className="w-full"
+              onClick={() => {
+                void promptInstall();
+              }}
+            >
+              Install App
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>
