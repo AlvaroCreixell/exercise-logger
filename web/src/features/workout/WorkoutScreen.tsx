@@ -15,6 +15,9 @@ import { SetLogSheet } from "./SetLogSheet";
 import { SupersetGroup } from "./SupersetGroup";
 import { ExercisePicker } from "./ExercisePicker";
 import { WorkoutFooter } from "./WorkoutFooter";
+import { SessionProgress } from "./SessionProgress";
+import { EmptyState } from "@/shared/components/EmptyState";
+import { Dumbbell } from "lucide-react";
 import { toast } from "sonner";
 import type { SessionExercise, LoggedSet } from "@/domain/types";
 
@@ -39,12 +42,11 @@ export default function WorkoutScreen() {
   // Empty state
   if (activeSession === null) {
     return (
-      <div className="flex h-full flex-col items-center justify-center gap-2 p-5">
-        <h1 className="text-2xl font-extrabold tracking-tight font-heading">No Active Workout</h1>
-        <p className="text-sm text-muted-foreground">
-          Start a workout from the Today tab.
-        </p>
-      </div>
+      <EmptyState
+        icon={Dumbbell}
+        heading="No Active Workout"
+        body="Start a workout from the Today tab."
+      />
     );
   }
 
@@ -152,14 +154,22 @@ export default function WorkoutScreen() {
 
   return (
     <div className="flex flex-col h-full">
-      {/* Sticky header */}
-      <div className="sticky top-0 z-10 bg-background border-b-2 border-border-strong px-5 py-3">
-        <p className="text-xs font-semibold uppercase tracking-widest text-cta truncate">
-          {session.dayLabelSnapshot}
-        </p>
-        <h1 className="text-2xl font-extrabold tracking-tight font-heading truncate">
-          {session.routineNameSnapshot}
-        </h1>
+      {/* Sticky header + progress */}
+      <div className="sticky top-0 z-10 bg-background border-b-2 border-border-strong">
+        <div className="px-5 pt-3 pb-2">
+          <p className="text-xs font-semibold uppercase tracking-widest text-cta truncate">
+            {session.dayLabelSnapshot}
+          </p>
+          <h1 className="text-2xl font-extrabold tracking-tight font-heading truncate">
+            {session.routineNameSnapshot}
+          </h1>
+        </div>
+        <SessionProgress
+          startedAt={session.startedAt}
+          totalSets={totalPrescribed}
+          loggedSets={loggedSets.filter((ls) => ls.origin === "routine").length}
+          totalExercises={sessionExercises.length}
+        />
       </div>
 
       {/* Scrollable body */}
