@@ -10,6 +10,7 @@ import {
 import { Toaster } from "sonner";
 import { CalendarDays, Dumbbell, History, Settings } from "lucide-react";
 import { useAppInit } from "@/shared/hooks/useAppInit";
+import { SWUpdatePrompt } from "./SWUpdatePrompt";
 
 const TodayScreen = lazy(() => import("@/features/today/TodayScreen"));
 const WorkoutScreen = lazy(() => import("@/features/workout/WorkoutScreen"));
@@ -136,6 +137,7 @@ export default function App() {
           className: "!rounded !border-[1.5px] !border-border-strong !shadow-sm font-sans",
         }}
       />
+      <SWUpdatePrompt />
     </>
   );
 }

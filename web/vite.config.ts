@@ -27,7 +27,7 @@ export default defineConfig({
     react(),
     tailwindcss(),
     VitePWA({
-      registerType: "autoUpdate",
+      registerType: "prompt",
       includeAssets: ["icons/icon-192.png", "icons/icon-512.png"],
       manifest: {
         name: "Exercise Logger",
