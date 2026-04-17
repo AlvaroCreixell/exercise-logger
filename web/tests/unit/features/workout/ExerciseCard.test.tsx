@@ -68,7 +68,7 @@ describe("ExerciseCard", () => {
     expect(screen.getByText("Barbell Back Squat")).toBeVisible();
   });
 
-  it("renders distance-only history under 'Last:' for routine blocks", () => {
+  it("renders distance-only history under 'Last' for routine blocks", () => {
     const distanceBlock: SetBlock = {
       targetKind: "distance",
       exactValue: 2000,
@@ -104,7 +104,7 @@ describe("ExerciseCard", () => {
       />
     );
 
-    expect(screen.getByText(/Last:\s*2000m,\s*2050m/)).toBeVisible();
+    expect(screen.getByText(/Last\s+2000m,\s*2050m/)).toBeVisible();
   });
 
   it("renders distance-only history under 'Recent:' for extra exercises", () => {
@@ -213,7 +213,7 @@ describe("ExerciseCard", () => {
     expect(onSetTap).toHaveBeenCalledWith(0, 3);
   });
 
-  it("renders duration+distance history as combined 'min' + 'm' under 'Last:'", () => {
+  it("renders duration+distance history as combined 'min' + 'm' under 'Last'", () => {
     // Running workout: one "set" that captures both a 30min duration AND a 5K distance.
     const runBlock: SetBlock = {
       targetKind: "duration",
@@ -247,7 +247,7 @@ describe("ExerciseCard", () => {
       />
     );
 
-    expect(screen.getByText(/Last:\s*30min\s+5000m/)).toBeVisible();
+    expect(screen.getByText(/Last\s+30min\s+5000m/)).toBeVisible();
   });
 
   it("renders duration-only history in minutes when divisible by 60", () => {
@@ -283,7 +283,7 @@ describe("ExerciseCard", () => {
       />
     );
 
-    expect(screen.getByText(/Last:\s*30min/)).toBeVisible();
+    expect(screen.getByText(/Last\s+30min/)).toBeVisible();
   });
 
   it("renders a duration target as minutes when exactValue is divisible by 60", () => {
@@ -396,6 +396,92 @@ describe("ExerciseCard", () => {
       />
     );
 
-    expect(screen.getByText(/Last:\s*45s/)).toBeVisible();
+    expect(screen.getByText(/Last\s+45s/)).toBeVisible();
+  });
+});
+
+describe("ExerciseCard — block stripe integration", () => {
+  it("wraps each block in a BlockStripe", () => {
+    const multiBlock = makeSessionExercise({
+      setBlocksSnapshot: [
+        { targetKind: "reps", minValue: 6, maxValue: 8, count: 1, tag: "top" } as SetBlock,
+        { targetKind: "reps", minValue: 8, maxValue: 12, count: 3 } as SetBlock,
+      ],
+    });
+    const { container } = render(
+      <ExerciseCard
+        sessionExercise={multiBlock}
+        loggedSets={[]}
+        units="kg"
+        historyData={undefined}
+        extraHistory={undefined}
+        onSetTap={() => {}}
+      />
+    );
+    const stripes = container.querySelectorAll("[data-stripe]");
+    expect(stripes.length).toBe(2);
+  });
+
+  it("renders block label chips", () => {
+    const multiBlock = makeSessionExercise({
+      setBlocksSnapshot: [
+        { targetKind: "reps", minValue: 6, maxValue: 8, count: 1, tag: "top" } as SetBlock,
+        { targetKind: "reps", minValue: 8, maxValue: 12, count: 3 } as SetBlock,
+      ],
+    });
+    render(
+      <ExerciseCard
+        sessionExercise={multiBlock}
+        loggedSets={[]}
+        units="kg"
+        historyData={undefined}
+        extraHistory={undefined}
+        onSetTap={() => {}}
+      />
+    );
+    expect(screen.getByText("Top")).toBeVisible();
+    expect(screen.getByText("Back-off")).toBeVisible();
+  });
+});
+
+describe("ExerciseCard — combined history + suggestion", () => {
+  it("renders last-time and suggestion on a single line when both exist", () => {
+    const hist: ExerciseHistoryData = {
+      lastTime: [
+        {
+          blockIndex: 0,
+          blockLabel: "Set block 1",
+          tag: null,
+          sets: [
+            { weightKg: 100, reps: 8, durationSec: null, distanceM: null },
+            { weightKg: 100, reps: 8, durationSec: null, distanceM: null },
+            { weightKg: 100, reps: 7, durationSec: null, distanceM: null },
+          ],
+        },
+      ],
+      suggestions: [
+        {
+          blockIndex: 0,
+          suggestedWeightKg: 105,
+          isProgression: true,
+          previousWeightKg: 100,
+        },
+      ],
+    };
+    render(
+      <ExerciseCard
+        sessionExercise={makeSessionExercise()}
+        loggedSets={[]}
+        units="kg"
+        historyData={hist}
+        extraHistory={undefined}
+        onSetTap={() => {}}
+      />
+    );
+    const last = screen.getByText(/100kg x 8, 8, 7/);
+    const suggestion = screen.getByText(/105kg/);
+    expect(last).toBeVisible();
+    expect(suggestion).toBeVisible();
+    expect(last.parentElement).toBe(suggestion.parentElement);
   });
 });

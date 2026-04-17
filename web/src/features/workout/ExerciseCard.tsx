@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/shared/ui/card";
 import { SetSlot } from "./SetSlot";
 import { ArrowUp, Repeat } from "lucide-react";
 import type { SetBlock } from "@/domain/types";
+import { BlockStripe, type BlockStripeVariant } from "./BlockStripe";
 
 interface ExerciseCardProps {
   sessionExercise: SessionExercise;
@@ -24,10 +25,10 @@ interface ExerciseCardProps {
   onUnitToggle?: (newUnit: UnitSystem) => void;
 }
 
-function blockLabelVariant(label: string) {
-  if (label === "Top") return "bg-warning-soft text-warning";
-  if (label === "AMRAP") return "bg-info-soft text-info";
-  return "bg-muted text-muted-foreground";
+function blockStripeVariant(label: string): BlockStripeVariant {
+  if (label === "Top") return "top";
+  if (label === "AMRAP") return "amrap";
+  return "default";
 }
 
 function formatDurationShort(sec: number): string {
@@ -120,7 +121,7 @@ export function ExerciseCard({
         {/* Header */}
         {!hideHeader && (
           <div className="flex items-center gap-2">
-            <h3 className="text-base font-semibold tracking-tight truncate">
+            <h3 className="text-lg font-heading font-bold tracking-tight truncate">
               {se.exerciseNameSnapshot}
             </h3>
             {isExtra && (
@@ -153,45 +154,46 @@ export function ExerciseCard({
             const lastTime = historyData?.lastTime[blockIndex];
             const suggestion = historyData?.suggestions.find((s) => s.blockIndex === blockIndex);
 
+            const variant = blockStripeVariant(label ?? "");
             return (
-              <div key={blockIndex} className="space-y-1.5">
-                {/* Block label + target */}
-                <div className="flex items-center gap-2 flex-wrap">
-                  {label && (
-                    <span className={`inline-flex items-center px-1.5 py-0.5 text-[11px] font-medium ${blockLabelVariant(label)}`}>
-                      {label}
-                    </span>
-                  )}
-                  <span className="text-xs font-medium tabular-nums">
-                    {formatTarget(block)}
-                  </span>
-                </div>
+              <BlockStripe
+                key={blockIndex}
+                label={label ?? ""}
+                variant={variant}
+              >
+                {/* Target line (quieter) */}
+                <p className="text-xs text-muted-foreground tabular-nums">
+                  {formatTarget(block)}
+                </p>
 
-                {/* History + suggestion */}
+                {/* Combined history + suggestion on one line */}
                 {(lastTime || suggestion) && (
-                  <div className="space-y-1 tabular-nums">
+                  <p className="text-xs tabular-nums">
                     {lastTime && lastTime.sets.length > 0 && (
-                      <p className="text-xs text-muted-foreground">
-                        Last: {formatLastTime(lastTime.sets, units)}
-                      </p>
+                      <span className="text-muted-foreground">
+                        Last {formatLastTime(lastTime.sets, units)}
+                      </span>
+                    )}
+                    {lastTime && lastTime.sets.length > 0 && suggestion && (
+                      <span className="text-muted-foreground"> · </span>
                     )}
                     {suggestion && suggestion.isProgression && (
-                      <p className="text-xs text-success font-semibold inline-flex items-center gap-1">
+                      <span className="text-success font-semibold inline-flex items-center gap-1">
                         <ArrowUp className="h-3 w-3" />
                         {toDisplayWeight(suggestion.suggestedWeightKg, units)}{units}
-                      </p>
+                      </span>
                     )}
                     {suggestion && !suggestion.isProgression && (
-                      <p className="text-xs text-info font-medium inline-flex items-center gap-1">
+                      <span className="text-info font-medium inline-flex items-center gap-1">
                         <Repeat className="h-3 w-3" />
                         {toDisplayWeight(suggestion.suggestedWeightKg, units)}{units}
-                      </p>
+                      </span>
                     )}
-                  </div>
+                  </p>
                 )}
 
-                {/* Set slots */}
-                <div className="flex gap-2 overflow-x-auto scrollbar-none">
+                {/* Set slot row */}
+                <div className="flex gap-2 overflow-x-auto scrollbar-none pt-1">
                   {Array.from({ length: block.count }, (_, setIndex) => (
                     <SetSlot
                       key={setIndex}
@@ -203,7 +205,7 @@ export function ExerciseCard({
                     />
                   ))}
                 </div>
-              </div>
+              </BlockStripe>
             );
           })
         ) : isExtra && extraHistory ? (

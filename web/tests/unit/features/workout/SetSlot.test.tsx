@@ -79,3 +79,29 @@ describe("SetSlot — flash on log", () => {
     expect(screen.getByTestId("set-slot").className).not.toMatch(/flash-logged/);
   });
 });
+
+describe("SetSlot — value typography", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
+  it("renders logged value with text-value-sm utility", () => {
+    render(
+      <SetSlot setIndex={0} loggedSet={makeLoggedSet()} units="kg" onClick={() => {}} />
+    );
+    const slot = screen.getByTestId("set-slot");
+    const valueSpan = slot.querySelector("span");
+    expect(valueSpan).not.toBeNull();
+    expect(valueSpan!.className).toMatch(/text-value-sm/);
+  });
+
+  it("unlogged slot shows set number in muted text, not heading font", () => {
+    render(
+      <SetSlot setIndex={0} loggedSet={undefined} units="kg" onClick={() => {}} />
+    );
+    const slot = screen.getByTestId("set-slot");
+    const numberSpan = slot.querySelector("span");
+    expect(numberSpan).not.toBeNull();
+    expect(numberSpan!.className ?? "").not.toMatch(/text-value/);
+  });
+});

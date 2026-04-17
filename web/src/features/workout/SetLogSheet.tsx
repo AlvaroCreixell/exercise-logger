@@ -15,6 +15,7 @@ import { getBlockLabel } from "@/services/progression-service";
 import { toDisplayWeight, toCanonicalKg } from "@/domain/unit-conversion";
 import { toast } from "sonner";
 import { isSetInputEmpty } from "./set-log-validation";
+import { SetDots } from "./SetDots";
 
 interface SetLogSheetProps {
   open: boolean;
@@ -76,6 +77,7 @@ export function SetLogSheet({
   const [distance, setDistance] = useState("");
   const [showWeightForBodyweight, setShowWeightForBodyweight] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [savePulse, setSavePulse] = useState(false);
 
   // Pre-fill on open.
   // Caveat: this effect re-runs whenever suggestion/lastTime/blockSetsInSession
@@ -153,6 +155,8 @@ export function SetLogSheet({
       return;
     }
     setSaving(true);
+    setSavePulse(true);
+    setTimeout(() => setSavePulse(false), 320);
     try {
       await onSave(input);
       onOpenChange(false);
@@ -168,16 +172,56 @@ export function SetLogSheet({
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="bottom" className="max-h-[70dvh]" showCloseButton={false}>
-        <SheetHeader className="pb-4">
-          <SheetTitle className="text-base">
-            {se.exerciseNameSnapshot}
-            {blockLabel ? ` — ${blockLabel}` : ""}
-            {" — "}
-            <span className="tabular-nums">Set {setIndex + 1} of {totalSets}</span>
-          </SheetTitle>
+        <SheetHeader className="pb-3">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <SheetTitle className="text-lg font-heading font-bold tracking-tight truncate">
+                {se.exerciseNameSnapshot}
+              </SheetTitle>
+              {blockLabel && (
+                <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mt-0.5">
+                  {blockLabel}
+                </p>
+              )}
+            </div>
+            {typeof totalSets === "number" && totalSets > 0 && (
+              <SetDots total={totalSets} current={setIndex} />
+            )}
+          </div>
         </SheetHeader>
 
         <div className="space-y-4 pb-4 overflow-y-auto flex-1 min-h-0">
+          {/* Inline context: Last time + Suggestion */}
+          {(lastTime?.sets.length || suggestion) && (
+            <div className="-mt-1 pb-2 space-y-0.5 text-xs tabular-nums">
+              {lastTime && lastTime.sets.length > 0 && (
+                <p className="text-muted-foreground">
+                  <span className="uppercase tracking-widest text-[11px] font-semibold">Last time</span>
+                  <span className="mx-1.5">·</span>
+                  <span className="text-foreground">
+                    {(() => {
+                      const s = lastTime.sets[setIndex] ?? lastTime.sets[0]!;
+                      if (s.weightKg != null && s.reps != null) {
+                        return `${toDisplayWeight(s.weightKg, units)}${units} × ${s.reps}`;
+                      }
+                      if (s.reps != null) return `${s.reps} reps`;
+                      if (s.durationSec != null) return `${s.durationSec}s`;
+                      if (s.distanceM != null) return `${s.distanceM}m`;
+                      return "—";
+                    })()}
+                  </span>
+                </p>
+              )}
+              {suggestion && (
+                <p className={suggestion.isProgression ? "text-success font-semibold" : "text-info font-medium"}>
+                  <span className="uppercase tracking-widest text-[11px]">Suggested</span>
+                  <span className="mx-1.5 font-normal">·</span>
+                  {toDisplayWeight(suggestion.suggestedWeightKg, units)}{units}
+                  {suggestion.isProgression && " ↑"}
+                </p>
+              )}
+            </div>
+          )}
           {/* Weight field */}
           {showWeight && (
             <div className="space-y-1.5">
@@ -187,7 +231,7 @@ export function SetLogSheet({
                 name="weight"
                 type="number"
                 inputMode="decimal"
-                className="text-lg tabular-nums h-12"
+                className="text-value h-14 text-center"
                 value={weight}
                 onChange={(e) => setWeight(e.target.value)}
                 autoFocus
@@ -212,7 +256,7 @@ export function SetLogSheet({
                 name="weight"
                 type="number"
                 inputMode="decimal"
-                className="text-lg tabular-nums h-12"
+                className="text-value h-14 text-center"
                 value={weight}
                 onChange={(e) => setWeight(e.target.value)}
               />
@@ -231,7 +275,7 @@ export function SetLogSheet({
                 name="reps"
                 type="number"
                 inputMode="numeric"
-                className="text-lg tabular-nums h-12"
+                className="text-value h-14 text-center"
                 value={reps}
                 onChange={(e) => setReps(e.target.value)}
                 autoFocus={!showWeight}
@@ -247,7 +291,7 @@ export function SetLogSheet({
                 name="duration"
                 type="number"
                 inputMode={durationInMinutes ? "decimal" : "numeric"}
-                className="text-lg tabular-nums h-12"
+                className="text-value h-14 text-center"
                 value={duration}
                 onChange={(e) => setDuration(e.target.value)}
               />
@@ -262,7 +306,7 @@ export function SetLogSheet({
                 name="distance"
                 type="number"
                 inputMode="decimal"
-                className="text-lg tabular-nums h-12"
+                className="text-value h-14 text-center"
                 value={distance}
                 onChange={(e) => setDistance(e.target.value)}
               />
@@ -271,7 +315,13 @@ export function SetLogSheet({
         </div>
 
         <div className="space-y-2 pb-2 shrink-0">
-          <Button variant="cta" className="w-full" size="lg" onClick={handleSave} disabled={saving}>
+          <Button
+            variant="cta"
+            className={`w-full ${savePulse ? "save-pulse" : ""}`}
+            size="lg"
+            onClick={handleSave}
+            disabled={saving}
+          >
             Save
           </Button>
           {existingSet && onDelete && (
