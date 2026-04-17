@@ -206,3 +206,11 @@
 .fade-in-soft {
   animation: fade-in-soft var(--dur-base) var(--ease-out-soft);
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .fade-in-soft,
+  .flash-logged,
+  .save-pulse {
+    animation: none;
+  }
+}

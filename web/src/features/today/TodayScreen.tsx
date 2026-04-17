@@ -149,7 +149,7 @@ export default function TodayScreen() {
           <SectionHeader className="!text-primary-foreground/70">
             Today · Day {dayId}
           </SectionHeader>
-          <h1 key={dayId} className="text-3xl font-heading font-bold tracking-tight fade-in-soft">
+          <h1 className="text-3xl font-heading font-bold tracking-tight">
             {dayDisplayName}
           </h1>
           {firstTwoNames.length > 0 && (
