@@ -21,7 +21,6 @@ export function SessionProgress({
   const [elapsedMin, setElapsedMin] = useState(() => computeElapsedMin(startedAt));
 
   useEffect(() => {
-    setElapsedMin(computeElapsedMin(startedAt));
     const id = setInterval(() => {
       setElapsedMin(computeElapsedMin(startedAt));
     }, 60_000);
