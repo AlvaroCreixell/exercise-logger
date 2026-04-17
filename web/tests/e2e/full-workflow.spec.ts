@@ -44,88 +44,62 @@ test.describe("Exercise Logger E2E Smoke Test", () => {
     });
     await page.getByText(/start workout/i).click();
 
-    // Step 3: Should be on the Workout screen with exercises
+    // Step 2: Should be on the Workout screen with exercises
     await expect(page.getByText(/finish workout/i)).toBeVisible({
       timeout: 5000,
     });
 
-    // ERRATA P7-E: Actually log a set
-    // Find a set slot button and tap it to open the logging dialog
+    // Step 3: Log a set — hard assertions, no .catch guards.
     const setSlot = page.locator('[data-testid="set-slot"]').first();
-    if (await setSlot.isVisible({ timeout: 2000 }).catch(() => false)) {
-      await setSlot.click();
+    await expect(setSlot).toBeVisible({ timeout: 5000 });
+    await setSlot.click();
 
-      // Try to fill in the set log form and submit
-      const weightInput = page
-        .locator(
-          'input[name="weight"], input[placeholder*="Weight"], input[type="number"]'
-        )
-        .first();
-      if (
-        await weightInput.isVisible({ timeout: 1000 }).catch(() => false)
-      ) {
-        await weightInput.fill("60");
+    const weightInput = page.locator('input[name="weight"]').first();
+    await expect(weightInput).toBeVisible({ timeout: 3000 });
+    await weightInput.fill("60");
 
-        const repsInput = page
-          .locator(
-            'input[name="reps"], input[placeholder*="Reps"], input[type="number"]'
-          )
-          .nth(1);
-        if (
-          await repsInput.isVisible({ timeout: 1000 }).catch(() => false)
-        ) {
-          await repsInput.fill("10");
-        }
+    const repsInput = page.locator('input[name="reps"]').first();
+    await expect(repsInput).toBeVisible();
+    await repsInput.fill("10");
 
-        // Submit the form
-        const saveButton = page.getByRole("button", {
-          name: /save|log|submit/i,
-        });
-        if (
-          await saveButton.isVisible({ timeout: 1000 }).catch(() => false)
-        ) {
-          await saveButton.click();
-        }
-      }
-    }
+    const saveButton = page.getByRole("button", { name: /^save$/i });
+    await expect(saveButton).toBeVisible();
+    await saveButton.click();
 
-    // Step 4: Finish the workout
-    await page.getByText(/finish workout/i).click();
+    // Sheet should close; the logged set should appear (success toast or slot update).
+    await expect(page.locator('[data-testid="set-slot"]').first()).toBeVisible();
 
-    // Confirm if there is a confirmation dialog
-    const confirmButton = page.getByRole("button", { name: /finish/i });
-    if (
-      await confirmButton.isVisible({ timeout: 1000 }).catch(() => false)
-    ) {
-      await confirmButton.click();
-    }
+    // Step 4: Finish the workout (confirm dialog is an AlertDialog primitive).
+    await page.getByRole("button", { name: /^finish workout$/i }).click();
+    // Confirm dialog shows its own "Finish Workout" button inside role=alertdialog.
+    const dialogFinish = page
+      .getByRole("alertdialog")
+      .getByRole("button", { name: /^finish workout$/i });
+    await expect(dialogFinish).toBeVisible({ timeout: 3000 });
+    await dialogFinish.click();
 
-    // Step 5: Check History
+    // Step 5: History should list the finished session.
     await page.getByRole("link", { name: /history/i }).click();
     await expect(
       page.getByText(/full body 3-day rotation/i).first()
     ).toBeVisible({ timeout: 5000 });
 
-    // ERRATA P7-E: Verify export button exists and triggers a download
-    await page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: /settings/i }).click();
+    // Step 6: Export download round-trips end-to-end.
+    await page
+      .getByRole("navigation", { name: "Main navigation" })
+      .getByRole("link", { name: /settings/i })
+      .click();
 
-    const exportButton = page.getByRole("button", {
-      name: /export data/i,
-    });
+    const exportButton = page.getByRole("button", { name: /export data/i });
     await expect(exportButton).toBeVisible();
     await expect(exportButton).toBeEnabled();
 
-    // Verify that clicking export triggers a download
-    const downloadPromise = page
-      .waitForEvent("download", { timeout: 5000 })
-      .catch(() => null);
+    const downloadPromise = page.waitForEvent("download", { timeout: 10000 });
     await exportButton.click();
     const download = await downloadPromise;
-    if (download) {
-      expect(download.suggestedFilename()).toMatch(
-        /exercise-logger-backup.*\.json/
-      );
-    }
+    expect(download.suggestedFilename()).toMatch(
+      /exercise-logger-backup.*\.json/
+    );
   });
 
   test("workout screen shows empty state when no session", async ({
