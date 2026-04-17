@@ -1132,7 +1132,11 @@ describe("session-service", () => {
       expect(stored[0]!.origin).toBe("extra");
     });
 
-    it("carries forward unitOverride with matchAnyLabel for extras", async () => {
+    it("[R5] does NOT inherit unitOverride from routine-core occurrences when added as extra", async () => {
+      // Prior behaviour carried over any prior occurrence of the exercise,
+      // so a routine-core bench press in lbs would flip a later *extra* of
+      // bench press into lbs. That's surprising — the routine's unit choice
+      // is a routine concern. Extras should only match prior extras.
       const routine = makeRoutine({
         A: {
           label: "Day A",
@@ -1145,14 +1149,13 @@ describe("session-service", () => {
       });
       await db.routines.add(routine);
 
-      // First session: set unitOverride on tricep-pushdown with label "rope"
       const first = await startSessionWithCatalog(db, routine, "A");
       await db.sessionExercises.update(first.sessionExercises[0]!.id, {
         unitOverride: "lbs",
       });
       await finishSession(db, first.session.id);
 
-      // Start a new session and add tricep-pushdown as extra (no label)
+      // Start a new session and add tricep-pushdown as an extra (no label).
       const second = await startSessionWithCatalog(db, routine, "A");
       const extra = await addExtraExercise(
         db,
@@ -1160,7 +1163,37 @@ describe("session-service", () => {
         "tricep-pushdown"
       );
 
-      // Should carry forward despite different instanceLabel (matchAnyLabel = true)
+      // No prior *extra* of tricep-pushdown exists, so no override carried over.
+      expect(extra.unitOverride).toBeNull();
+    });
+
+    it("[R5] DOES carry unitOverride forward from a prior extra of the same exercise", async () => {
+      const routine = makeRoutine({
+        A: { label: "Day A", entries: [] },
+      });
+      await db.routines.add(routine);
+
+      // Prior session: user adds tricep-pushdown as an extra and sets lbs.
+      const first = await startSessionWithCatalog(db, routine, "A");
+      const firstExtra = await addExtraExercise(
+        db,
+        first.session.id,
+        "tricep-pushdown"
+      );
+      await db.sessionExercises.update(firstExtra.id, {
+        unitOverride: "lbs",
+      });
+      await finishSession(db, first.session.id);
+
+      // New session: user adds tricep-pushdown as extra again.
+      const second = await startSessionWithCatalog(db, routine, "A");
+      const extra = await addExtraExercise(
+        db,
+        second.session.id,
+        "tricep-pushdown"
+      );
+
+      // Extras-to-extras inheritance is preserved.
       expect(extra.unitOverride).toBe("lbs");
     });
 

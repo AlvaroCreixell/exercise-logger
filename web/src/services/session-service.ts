@@ -82,7 +82,7 @@ async function findPreviousUnitOverride(
   db: ExerciseLoggerDB,
   exerciseId: string,
   instanceLabel: string,
-  matchAnyLabel: boolean = false
+  opts: { matchAnyLabel?: boolean; extrasOnly?: boolean } = {}
 ): Promise<UnitSystem | null> {
   // Get finished sessions, most recent first
   const finishedSessions = await db.sessions
@@ -107,7 +107,12 @@ async function findPreviousUnitOverride(
     const match = exercises.find(
       (se) =>
         se.exerciseId === exerciseId &&
-        (matchAnyLabel || se.instanceLabel === instanceLabel)
+        (opts.matchAnyLabel || se.instanceLabel === instanceLabel) &&
+        // [R5] When called from addExtraExercise, scope the match to prior
+        // extras only. A bench press logged as a routine-core exercise in
+        // kg should not override the lbs preference set on a prior extra
+        // (or vice versa). Routine-core preferences belong to the routine.
+        (!opts.extrasOnly || se.origin === "extra")
     );
 
     if (match) {
@@ -481,12 +486,14 @@ export async function addExtraExercise(
 
   let sessionExercise: SessionExercise | null = null;
 
-  // Look up previous unitOverride for this extra exercise (matchAnyLabel = true)
+  // [R5] Carry forward unit preference from the user's prior extras of this
+  // exercise only. matchAnyLabel because extras don't have a stable
+  // instance_label; extrasOnly so routine-core preferences don't bleed in.
   const previousOverride = await findPreviousUnitOverride(
     db,
     exercise.id,
     "",
-    true
+    { matchAnyLabel: true, extrasOnly: true }
   );
 
   await db.transaction("rw", db.sessions, db.sessionExercises, async () => {
