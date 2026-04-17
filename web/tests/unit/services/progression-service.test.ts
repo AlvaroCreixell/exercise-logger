@@ -6,6 +6,7 @@ import {
   calculateBlockSuggestion,
   getExerciseHistoryData,
   getExtraExerciseHistory,
+  computeTrainingCadence,
 } from "@/services/progression-service";
 import type {
   Exercise,
@@ -1307,5 +1308,84 @@ describe("progression-service", () => {
       // getExtraExerciseHistory is for display convenience -- it includes all sets
       expect(result!.sets.length).toBeGreaterThanOrEqual(2);
     });
+  });
+});
+
+describe("computeTrainingCadence", () => {
+  let db: ExerciseLoggerDB;
+
+  beforeEach(async () => {
+    db = new ExerciseLoggerDB();
+    await initializeSettings(db);
+  });
+
+  afterEach(async () => {
+    await db.delete();
+    db.close();
+  });
+
+  function makeFinishedSession(id: string, startedAt: string, finishedAt: string): Session {
+    return {
+      id,
+      routineId: "r1",
+      routineNameSnapshot: "Test",
+      dayId: "A",
+      dayLabelSnapshot: "Push",
+      dayOrderSnapshot: ["A"],
+      restDefaultSecSnapshot: 90,
+      restSupersetSecSnapshot: 45,
+      status: "finished",
+      startedAt,
+      finishedAt,
+    };
+  }
+
+  it("returns zeros + null when no finished sessions exist", async () => {
+    const now = new Date("2026-04-17T12:00:00Z");
+    const result = await computeTrainingCadence(db, now);
+    expect(result).toEqual({
+      sessionsLast7Days: 0,
+      sessionsLast30Days: 0,
+      daysSinceLastSession: null,
+    });
+  });
+
+  it("counts finished sessions in the last 7 and 30 days", async () => {
+    const now = new Date("2026-04-17T12:00:00Z");
+    await db.sessions.bulkPut([
+      makeFinishedSession("s1", "2026-04-17T08:00:00Z", "2026-04-17T09:00:00Z"), // today
+      makeFinishedSession("s2", "2026-04-15T10:00:00Z", "2026-04-15T11:00:00Z"), // 2 days ago
+      makeFinishedSession("s3", "2026-04-11T10:00:00Z", "2026-04-11T11:00:00Z"), // 6 days ago
+      makeFinishedSession("s4", "2026-04-01T10:00:00Z", "2026-04-01T11:00:00Z"), // 16 days ago
+      makeFinishedSession("s5", "2026-03-10T10:00:00Z", "2026-03-10T11:00:00Z"), // 38 days ago — outside both
+    ]);
+    const result = await computeTrainingCadence(db, now);
+    expect(result.sessionsLast7Days).toBe(3);
+    expect(result.sessionsLast30Days).toBe(4);
+    expect(result.daysSinceLastSession).toBe(0);
+  });
+
+  it("excludes active and discarded sessions", async () => {
+    const now = new Date("2026-04-17T12:00:00Z");
+    await db.sessions.bulkPut([
+      makeFinishedSession("s1", "2026-04-16T10:00:00Z", "2026-04-16T11:00:00Z"),
+      {
+        ...makeFinishedSession("s2", "2026-04-15T10:00:00Z", "2026-04-15T11:00:00Z"),
+        status: "active",
+        finishedAt: null,
+      } as Session,
+    ]);
+    const result = await computeTrainingCadence(db, now);
+    expect(result.sessionsLast7Days).toBe(1);
+    expect(result.daysSinceLastSession).toBe(1);
+  });
+
+  it("daysSinceLastSession uses calendar-day math, not 24-hour math", async () => {
+    const now = new Date("2026-04-17T05:00:00Z"); // 5am UTC
+    await db.sessions.bulkPut([
+      makeFinishedSession("s1", "2026-04-16T22:00:00Z", "2026-04-16T23:00:00Z"), // 6 hours before now
+    ]);
+    const result = await computeTrainingCadence(db, now);
+    expect(result.daysSinceLastSession).toBe(1); // 1 calendar day, even though <24h passed
   });
 });
