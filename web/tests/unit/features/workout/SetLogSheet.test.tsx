@@ -1,6 +1,7 @@
 // web/tests/unit/features/workout/SetLogSheet.test.tsx
 import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { SetLogSheet } from "@/features/workout/SetLogSheet";
 import type { SessionExercise, LoggedSet, SetBlock } from "@/domain/types";
 import type { BlockSuggestion, BlockLastTime } from "@/services/progression-service";
@@ -326,5 +327,56 @@ describe("SetLogSheet — inline context", () => {
     const reps = document.querySelector('input[name="reps"]');
     expect(weight?.className).toMatch(/h-14/);
     expect(reps?.className).toMatch(/h-14/);
+  });
+});
+
+describe("SetLogSheet — open-edge prefill", () => {
+  it("does not re-prefill when parent re-renders with new props while open", async () => {
+    const user = userEvent.setup();
+
+    const { rerender } = render(
+      <SetLogSheet
+        open={true}
+        onOpenChange={vi.fn()}
+        sessionExercise={makeSessionExercise()}
+        blockIndex={0}
+        setIndex={0}
+        existingSet={undefined}
+        suggestion={undefined}
+        lastTime={undefined}
+        blockSetsInSession={[]}
+        units="kg"
+        onSave={vi.fn()}
+      />,
+    );
+
+    // Initial prefill runs — weight defaults to "0" since showWeight path hits no carryover/suggest/last.
+    const weightInput = document.querySelector('input[name="weight"]') as HTMLInputElement;
+    expect(weightInput).not.toBeNull();
+
+    // User types 80 over the default
+    await user.clear(weightInput);
+    await user.type(weightInput, "80");
+    expect(weightInput.value).toBe("80");
+
+    // Parent re-renders with a new suggestion (simulates useLiveQuery refresh).
+    rerender(
+      <SetLogSheet
+        open={true}
+        onOpenChange={vi.fn()}
+        sessionExercise={makeSessionExercise()}
+        blockIndex={0}
+        setIndex={0}
+        existingSet={undefined}
+        suggestion={{ blockIndex: 0, suggestedWeightKg: 100, isProgression: true, previousWeightKg: 95 }}
+        lastTime={undefined}
+        blockSetsInSession={[]}
+        units="kg"
+        onSave={vi.fn()}
+      />,
+    );
+
+    // User's typed value should NOT be clobbered by the new suggestion's prefill.
+    expect(weightInput.value).toBe("80");
   });
 });

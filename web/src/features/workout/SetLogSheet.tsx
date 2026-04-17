@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Sheet,
   SheetContent,
@@ -79,13 +79,19 @@ export function SetLogSheet({
   const [saving, setSaving] = useState(false);
   const [savePulse, setSavePulse] = useState(false);
 
-  // Pre-fill on open.
-  // Caveat: this effect re-runs whenever suggestion/lastTime/blockSetsInSession
-  // identity changes, not just on open/close edges. A parent re-render while
-  // the sheet is open can re-apply the prefill and clobber in-flight user input.
-  // If that causes real UX pain, switch to edge-detecting `open` with a useRef.
+  // Pre-fill on open transition only. Using a ref to track the prior `open`
+  // value means prefill fires once per false→true edge, not on every re-render
+  // while the sheet is open — which closes a clobber bug where a parent
+  // re-render with new history identity would overwrite in-flight user input.
+  const prevOpenRef = useRef(false);
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      prevOpenRef.current = false;
+      return;
+    }
+    if (prevOpenRef.current) return; // already open; skip
+    prevOpenRef.current = true;
+
     setShowWeightForBodyweight(false);
 
     if (existingSet) {
@@ -103,10 +109,7 @@ export function SetLogSheet({
       return;
     }
 
-    // Priority 2: in-session weight carryover. Look for the most recent set
-    // logged in this session for the same block with a non-null weight.
-    // Weight only — reps/duration/distance still follow the suggestion /
-    // last-time path below so range targets stay visible.
+    // Priority 2: in-session weight carryover.
     const carryoverSet = blockSetsInSession
       .filter(
         (ls) =>
@@ -134,7 +137,8 @@ export function SetLogSheet({
       ? String(durationInMinutes ? Math.round(lastSet.durationSec / 60 * 100) / 100 : lastSet.durationSec)
       : "");
     setDistance(lastSet?.distanceM != null ? String(lastSet.distanceM) : "");
-  }, [open, existingSet, suggestion, lastTime, blockSetsInSession, se, blockIndex, setIndex, units, block?.minValue, showWeight, targetKind, durationInMinutes]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   const blockLabel = block
     ? getBlockLabel(block, blockIndex, blocks.length, blocks)
