@@ -18,7 +18,7 @@ export default function HistoryScreen() {
   }
 
   return (
-    <div className="p-5 space-y-2">
+    <div className="p-5 space-y-4">
       <h1 className="text-2xl font-extrabold tracking-tight font-heading">History</h1>
       {summaries.map((summary) => (
         <SessionCard key={summary.session.id} summary={summary} />
