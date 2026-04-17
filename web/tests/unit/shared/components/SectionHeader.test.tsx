@@ -21,4 +21,10 @@ describe("SectionHeader", () => {
     const el = screen.getByText("Day A");
     expect(el.className).toContain("!text-cta");
   });
+
+  it("forwards id to the underlying <p>", () => {
+    render(<SectionHeader id="my-label">Section</SectionHeader>);
+    const el = screen.getByText("Section");
+    expect(el.id).toBe("my-label");
+  });
 });

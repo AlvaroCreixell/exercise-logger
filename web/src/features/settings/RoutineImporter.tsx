@@ -67,11 +67,10 @@ export function RoutineImporter() {
       </p>
 
       <div className="space-y-2">
-        <label htmlFor="routine-yaml-paste" className="block">
-          <SectionHeader>Paste YAML</SectionHeader>
-        </label>
+        <SectionHeader id="routine-yaml-paste-label">Paste YAML</SectionHeader>
         <Textarea
           id="routine-yaml-paste"
+          aria-labelledby="routine-yaml-paste-label"
           rows={8}
           placeholder="version: 1&#10;name: ..."
           value={pastedYaml}
