@@ -60,6 +60,7 @@ export default function ExerciseHistoryScreen() {
           heading="No History Yet"
           body="Log a workout with this exercise to see it here."
           className="py-12"
+          headingLevel="h2"
         />
       ) : (
         <div className="space-y-4">
