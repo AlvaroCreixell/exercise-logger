@@ -120,9 +120,9 @@ describe("Scenario 1: Catalog seed succeeds", () => {
 // =========================================================================
 
 describe("Scenario 2: Valid routine YAML imports successfully", () => {
-  it("validates and normalizes the Full Body 3-Day Rotation", () => {
+  it("validates and normalizes the Full Body 3-Day Rotation", async () => {
     const yamlStr = loadRealRoutineYaml();
-    const result = validateAndNormalizeRoutine(yamlStr, exerciseLookup);
+    const result = await validateAndNormalizeRoutine(yamlStr, exerciseLookup);
 
     expect(result.ok).toBe(true);
     if (result.ok) {
@@ -138,7 +138,7 @@ describe("Scenario 2: Valid routine YAML imports successfully", () => {
 
   it("imports the routine into the database", async () => {
     const yamlStr = loadRealRoutineYaml();
-    const result = validateAndNormalizeRoutine(yamlStr, exerciseLookup);
+    const result = await validateAndNormalizeRoutine(yamlStr, exerciseLookup);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
 
@@ -156,7 +156,7 @@ describe("Scenario 2: Valid routine YAML imports successfully", () => {
 // =========================================================================
 
 describe("Scenario 3: Invalid YAML fails with field-specific messages", () => {
-  it("rejects missing version", () => {
+  it("rejects missing version", async () => {
     const yaml = `
 name: "Test"
 rest_default_sec: 90
@@ -170,7 +170,7 @@ days:
         sets:
           - { reps: [8, 12], count: 3 }
 `;
-    const result = validateAndNormalizeRoutine(yaml, exerciseLookup);
+    const result = await validateAndNormalizeRoutine(yaml, exerciseLookup);
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.errors.length).toBeGreaterThan(0);
@@ -179,7 +179,7 @@ days:
     }
   });
 
-  it("rejects unknown exercise_id with a specific error", () => {
+  it("rejects unknown exercise_id with a specific error", async () => {
     const yaml = `
 version: 1
 name: "Test"
@@ -194,7 +194,7 @@ days:
         sets:
           - { reps: [8, 12], count: 3 }
 `;
-    const result = validateAndNormalizeRoutine(yaml, exerciseLookup);
+    const result = await validateAndNormalizeRoutine(yaml, exerciseLookup);
     expect(result.ok).toBe(false);
     if (!result.ok) {
       const exerciseError = result.errors.find((e) =>
@@ -204,13 +204,13 @@ days:
     }
   });
 
-  it("rejects invalid YAML syntax", () => {
+  it("rejects invalid YAML syntax", async () => {
     const yaml = `
 version: 1
 name: "Test
   this is broken yaml
 `;
-    const result = validateAndNormalizeRoutine(yaml, exerciseLookup);
+    const result = await validateAndNormalizeRoutine(yaml, exerciseLookup);
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(
@@ -229,7 +229,7 @@ name: "Test
 describe("Scenario 4: Starting workout creates active session + snapshot", () => {
   it("creates one active session with full snapshot data", async () => {
     const yamlStr = loadRealRoutineYaml();
-    const result = validateAndNormalizeRoutine(yamlStr, exerciseLookup);
+    const result = await validateAndNormalizeRoutine(yamlStr, exerciseLookup);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
 
@@ -271,7 +271,7 @@ describe("Scenario 4: Starting workout creates active session + snapshot", () =>
 describe("Scenario 5: Relaunch during active session resumes", () => {
   it("resumeSession returns the active session with all data", async () => {
     const yamlStr = loadRealRoutineYaml();
-    const result = validateAndNormalizeRoutine(yamlStr, exerciseLookup);
+    const result = await validateAndNormalizeRoutine(yamlStr, exerciseLookup);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
 
@@ -298,7 +298,7 @@ describe("Scenario 5: Relaunch during active session resumes", () => {
 describe("Scenario 6: Day override works", () => {
   it("suggested B, started A, finished A, next becomes B", async () => {
     const yamlStr = loadRealRoutineYaml();
-    const result = validateAndNormalizeRoutine(yamlStr, exerciseLookup);
+    const result = await validateAndNormalizeRoutine(yamlStr, exerciseLookup);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
 
@@ -334,7 +334,7 @@ describe("Scenario 6: Day override works", () => {
 describe("Scenario 7: Switching routines preserves nextDayId", () => {
   it("each routine keeps its own nextDayId when switching", async () => {
     const yamlStr = loadRealRoutineYaml();
-    const result1 = validateAndNormalizeRoutine(yamlStr, exerciseLookup);
+    const result1 = await validateAndNormalizeRoutine(yamlStr, exerciseLookup);
     expect(result1.ok).toBe(true);
     if (!result1.ok) return;
 
@@ -361,7 +361,7 @@ days:
         sets:
           - { reps: [8, 12], count: 3 }
 `;
-    const result2 = validateAndNormalizeRoutine(yaml2, exerciseLookup);
+    const result2 = await validateAndNormalizeRoutine(yaml2, exerciseLookup);
     expect(result2.ok).toBe(true);
     if (!result2.ok) return;
 
@@ -403,7 +403,7 @@ days:
 describe("Scenario 8: Multi-block exercise shows separate history/suggestions", () => {
   it("top-set and back-off blocks have independent history", async () => {
     const yamlStr = loadRealRoutineYaml();
-    const result = validateAndNormalizeRoutine(yamlStr, exerciseLookup);
+    const result = await validateAndNormalizeRoutine(yamlStr, exerciseLookup);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
 
@@ -479,7 +479,7 @@ describe("Scenario 8: Multi-block exercise shows separate history/suggestions", 
 describe("Scenario 9: Extra exercises excluded from progression", () => {
   it("extra exercises can be added and logged but do not affect routine progression", async () => {
     const yamlStr = loadRealRoutineYaml();
-    const result = validateAndNormalizeRoutine(yamlStr, exerciseLookup);
+    const result = await validateAndNormalizeRoutine(yamlStr, exerciseLookup);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
 
@@ -551,7 +551,7 @@ describe("Scenario 9: Extra exercises excluded from progression", () => {
 describe("Scenario 10: Superset timer starts after both sides logged", () => {
   it("superset round detection requires both members to have the same round logged", async () => {
     const yamlStr = loadRealRoutineYaml();
-    const result = validateAndNormalizeRoutine(yamlStr, exerciseLookup);
+    const result = await validateAndNormalizeRoutine(yamlStr, exerciseLookup);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
 
@@ -640,7 +640,7 @@ describe("Scenario 10: Superset timer starts after both sides logged", () => {
 describe("Scenario 11: Edit/delete set updates history correctly", () => {
   it("editing a set updates the record without duplicating", async () => {
     const yamlStr = loadRealRoutineYaml();
-    const result = validateAndNormalizeRoutine(yamlStr, exerciseLookup);
+    const result = await validateAndNormalizeRoutine(yamlStr, exerciseLookup);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
 
@@ -693,7 +693,7 @@ describe("Scenario 11: Edit/delete set updates history correctly", () => {
 
   it("deleting a set removes the record", async () => {
     const yamlStr = loadRealRoutineYaml();
-    const result = validateAndNormalizeRoutine(yamlStr, exerciseLookup);
+    const result = await validateAndNormalizeRoutine(yamlStr, exerciseLookup);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
 
@@ -734,7 +734,7 @@ describe("Scenario 11: Edit/delete set updates history correctly", () => {
 describe("Scenario 12: Discard session removes records, no rotation advance", () => {
   it("discarding deletes session, sessionExercises, loggedSets and does NOT advance nextDayId", async () => {
     const yamlStr = loadRealRoutineYaml();
-    const result = validateAndNormalizeRoutine(yamlStr, exerciseLookup);
+    const result = await validateAndNormalizeRoutine(yamlStr, exerciseLookup);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
 
@@ -794,7 +794,7 @@ describe("Scenario 12: Discard session removes records, no rotation advance", ()
 describe("Scenario 13: Finishing partial workout allowed", () => {
   it("can finish a session with only some sets logged", async () => {
     const yamlStr = loadRealRoutineYaml();
-    const result = validateAndNormalizeRoutine(yamlStr, exerciseLookup);
+    const result = await validateAndNormalizeRoutine(yamlStr, exerciseLookup);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
 
@@ -840,7 +840,7 @@ describe("Scenario 13: Finishing partial workout allowed", () => {
 describe("Scenario 14: Deleting routine doesn't break history", () => {
   it("historical sessions remain renderable after routine deletion", async () => {
     const yamlStr = loadRealRoutineYaml();
-    const result = validateAndNormalizeRoutine(yamlStr, exerciseLookup);
+    const result = await validateAndNormalizeRoutine(yamlStr, exerciseLookup);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
 
@@ -887,7 +887,7 @@ describe("Scenario 14: Deleting routine doesn't break history", () => {
 describe("Scenario 15: Export -> import round-trips data", () => {
   it("exports and imports all persisted user data faithfully", async () => {
     const yamlStr = loadRealRoutineYaml();
-    const result = validateAndNormalizeRoutine(yamlStr, exerciseLookup);
+    const result = await validateAndNormalizeRoutine(yamlStr, exerciseLookup);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
 
@@ -963,7 +963,7 @@ describe("Scenario 15: Export -> import round-trips data", () => {
 describe("Scenario 16: Import blocked during active session", () => {
   it("rejects import when a local active session exists", async () => {
     const yamlStr = loadRealRoutineYaml();
-    const result = validateAndNormalizeRoutine(yamlStr, exerciseLookup);
+    const result = await validateAndNormalizeRoutine(yamlStr, exerciseLookup);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
 
@@ -982,7 +982,7 @@ describe("Scenario 16: Import blocked during active session", () => {
 
   it("allows import after the active session is finished", async () => {
     const yamlStr = loadRealRoutineYaml();
-    const result = validateAndNormalizeRoutine(yamlStr, exerciseLookup);
+    const result = await validateAndNormalizeRoutine(yamlStr, exerciseLookup);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
 
@@ -1007,7 +1007,7 @@ describe("Scenario 16: Import blocked during active session", () => {
 
   it("allows import after the active session is discarded", async () => {
     const yamlStr = loadRealRoutineYaml();
-    const result = validateAndNormalizeRoutine(yamlStr, exerciseLookup);
+    const result = await validateAndNormalizeRoutine(yamlStr, exerciseLookup);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
 

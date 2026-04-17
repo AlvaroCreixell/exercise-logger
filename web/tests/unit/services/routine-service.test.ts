@@ -59,8 +59,8 @@ days:
 const VALID_LOOKUP = buildLookup(VALID_EXERCISE_IDS);
 
 /** Helper to get error messages from a failed validation result. */
-function getErrors(yamlStr: string, lookup?: Map<string, Exercise>): ValidationError[] {
-  const result = validateAndNormalizeRoutine(yamlStr, lookup ?? VALID_LOOKUP);
+async function getErrors(yamlStr: string, lookup?: Map<string, Exercise>): Promise<ValidationError[]> {
+  const result = await validateAndNormalizeRoutine(yamlStr, lookup ?? VALID_LOOKUP);
   if (result.ok) {
     throw new Error("Expected validation to fail but it succeeded");
   }
@@ -68,8 +68,8 @@ function getErrors(yamlStr: string, lookup?: Map<string, Exercise>): ValidationE
 }
 
 /** Helper to get the routine from a successful validation result. */
-function getRoutine(yamlStr: string, lookup?: Map<string, Exercise>): Routine {
-  const result = validateAndNormalizeRoutine(yamlStr, lookup ?? VALID_LOOKUP);
+async function getRoutine(yamlStr: string, lookup?: Map<string, Exercise>): Promise<Routine> {
+  const result = await validateAndNormalizeRoutine(yamlStr, lookup ?? VALID_LOOKUP);
   if (!result.ok) {
     throw new Error(
       `Expected validation to succeed but it failed:\n${result.errors.map((e) => `  ${e.path}: ${e.message}`).join("\n")}`
@@ -84,7 +84,7 @@ function getRoutine(yamlStr: string, lookup?: Map<string, Exercise>): Routine {
 
 describe("validateAndNormalizeRoutine — validation rules", () => {
   describe("Rule: unknown version", () => {
-    it("rejects missing version", () => {
+    it("rejects missing version", async () => {
       const yaml = `
 name: "Test"
 rest_default_sec: 90
@@ -98,11 +98,11 @@ days:
         sets:
           - { reps: [6, 8], count: 1 }
 `;
-      const errors = getErrors(yaml);
+      const errors = await getErrors(yaml);
       expect(errors.some((e) => e.path === "version")).toBe(true);
     });
 
-    it("rejects unsupported version number", () => {
+    it("rejects unsupported version number", async () => {
       const yaml = `
 version: 99
 name: "Test"
@@ -117,11 +117,11 @@ days:
         sets:
           - { reps: [6, 8], count: 1 }
 `;
-      const errors = getErrors(yaml);
+      const errors = await getErrors(yaml);
       expect(errors.some((e) => e.path === "version" && e.message.includes("Unsupported version"))).toBe(true);
     });
 
-    it("rejects non-numeric version", () => {
+    it("rejects non-numeric version", async () => {
       const yaml = `
 version: "one"
 name: "Test"
@@ -136,13 +136,13 @@ days:
         sets:
           - { reps: [6, 8], count: 1 }
 `;
-      const errors = getErrors(yaml);
+      const errors = await getErrors(yaml);
       expect(errors.some((e) => e.path === "version")).toBe(true);
     });
   });
 
   describe("Rule: missing or duplicate day IDs", () => {
-    it("rejects missing days section", () => {
+    it("rejects missing days section", async () => {
       const yaml = `
 version: 1
 name: "Test"
@@ -150,11 +150,11 @@ rest_default_sec: 90
 rest_superset_sec: 60
 day_order: [A]
 `;
-      const errors = getErrors(yaml);
+      const errors = await getErrors(yaml);
       expect(errors.some((e) => e.path === "days")).toBe(true);
     });
 
-    it("rejects duplicate day IDs in day_order", () => {
+    it("rejects duplicate day IDs in day_order", async () => {
       const yaml = `
 version: 1
 name: "Test"
@@ -169,13 +169,13 @@ days:
         sets:
           - { reps: [6, 8], count: 1 }
 `;
-      const errors = getErrors(yaml);
+      const errors = await getErrors(yaml);
       expect(errors.some((e) => e.message.includes("Duplicate day ID"))).toBe(true);
     });
   });
 
   describe("Rule: day_order does not match declared days exactly", () => {
-    it("rejects day in day_order but not in days", () => {
+    it("rejects day in day_order but not in days", async () => {
       const yaml = `
 version: 1
 name: "Test"
@@ -190,11 +190,11 @@ days:
         sets:
           - { reps: [6, 8], count: 1 }
 `;
-      const errors = getErrors(yaml);
+      const errors = await getErrors(yaml);
       expect(errors.some((e) => e.message.includes('"B" is in day_order but not declared'))).toBe(true);
     });
 
-    it("rejects day in days but not in day_order", () => {
+    it("rejects day in days but not in day_order", async () => {
       const yaml = `
 version: 1
 name: "Test"
@@ -215,13 +215,13 @@ days:
         sets:
           - { reps: [8, 12], count: 2 }
 `;
-      const errors = getErrors(yaml);
+      const errors = await getErrors(yaml);
       expect(errors.some((e) => e.message.includes('"B" is declared in days but not in day_order'))).toBe(true);
     });
   });
 
   describe("Rule: exercise_id does not exist in catalog", () => {
-    it("rejects unknown exercise_id", () => {
+    it("rejects unknown exercise_id", async () => {
       const yaml = `
 version: 1
 name: "Test"
@@ -236,11 +236,11 @@ days:
         sets:
           - { reps: [6, 8], count: 1 }
 `;
-      const errors = getErrors(yaml);
+      const errors = await getErrors(yaml);
       expect(errors.some((e) => e.message.includes('"unknown-exercise" does not exist in the catalog'))).toBe(true);
     });
 
-    it("rejects unknown exercise_id inside a superset", () => {
+    it("rejects unknown exercise_id inside a superset", async () => {
       const yaml = `
 version: 1
 name: "Test"
@@ -259,13 +259,13 @@ days:
             sets:
               - { reps: [8, 12], count: 3 }
 `;
-      const errors = getErrors(yaml);
+      const errors = await getErrors(yaml);
       expect(errors.some((e) => e.message.includes('"nonexistent-exercise" does not exist'))).toBe(true);
     });
   });
 
   describe("Rule: range has min >= max", () => {
-    it("rejects reps range where min >= max", () => {
+    it("rejects reps range where min >= max", async () => {
       const yaml = `
 version: 1
 name: "Test"
@@ -280,11 +280,11 @@ days:
         sets:
           - { reps: [12, 8], count: 3 }
 `;
-      const errors = getErrors(yaml);
+      const errors = await getErrors(yaml);
       expect(errors.some((e) => e.message.includes("min (12) must be less than max (8)"))).toBe(true);
     });
 
-    it("rejects reps range where min equals max", () => {
+    it("rejects reps range where min equals max", async () => {
       const yaml = `
 version: 1
 name: "Test"
@@ -299,11 +299,11 @@ days:
         sets:
           - { reps: [8, 8], count: 3 }
 `;
-      const errors = getErrors(yaml);
+      const errors = await getErrors(yaml);
       expect(errors.some((e) => e.message.includes("min (8) must be less than max (8)"))).toBe(true);
     });
 
-    it("rejects duration range where min >= max", () => {
+    it("rejects duration range where min >= max", async () => {
       const yaml = `
 version: 1
 name: "Test"
@@ -318,13 +318,13 @@ days:
         sets:
           - { duration: [60, 30], count: 2 }
 `;
-      const errors = getErrors(yaml);
+      const errors = await getErrors(yaml);
       expect(errors.some((e) => e.message.includes("min (60) must be less than max (30)"))).toBe(true);
     });
   });
 
   describe("Rule: count < 1", () => {
-    it("rejects count of 0", () => {
+    it("rejects count of 0", async () => {
       const yaml = `
 version: 1
 name: "Test"
@@ -339,11 +339,11 @@ days:
         sets:
           - { reps: [6, 8], count: 0 }
 `;
-      const errors = getErrors(yaml);
+      const errors = await getErrors(yaml);
       expect(errors.some((e) => e.message.includes("count must be an integer >= 1"))).toBe(true);
     });
 
-    it("rejects negative count", () => {
+    it("rejects negative count", async () => {
       const yaml = `
 version: 1
 name: "Test"
@@ -358,11 +358,11 @@ days:
         sets:
           - { reps: [6, 8], count: -1 }
 `;
-      const errors = getErrors(yaml);
+      const errors = await getErrors(yaml);
       expect(errors.some((e) => e.message.includes("count must be an integer >= 1"))).toBe(true);
     });
 
-    it("rejects missing count", () => {
+    it("rejects missing count", async () => {
       const yaml = `
 version: 1
 name: "Test"
@@ -377,13 +377,13 @@ days:
         sets:
           - { reps: [6, 8] }
 `;
-      const errors = getErrors(yaml);
+      const errors = await getErrors(yaml);
       expect(errors.some((e) => e.message.includes("count is required"))).toBe(true);
     });
   });
 
   describe("Rule: more than one of reps/duration/distance in a block", () => {
-    it("rejects block with both reps and duration", () => {
+    it("rejects block with both reps and duration", async () => {
       const yaml = `
 version: 1
 name: "Test"
@@ -398,11 +398,11 @@ days:
         sets:
           - { reps: 8, duration: 30, count: 3 }
 `;
-      const errors = getErrors(yaml);
+      const errors = await getErrors(yaml);
       expect(errors.some((e) => e.message.includes("exactly one of reps/duration/distance"))).toBe(true);
     });
 
-    it("rejects block with all three targets", () => {
+    it("rejects block with all three targets", async () => {
       const yaml = `
 version: 1
 name: "Test"
@@ -417,11 +417,11 @@ days:
         sets:
           - { reps: 8, duration: 30, distance: 1000, count: 3 }
 `;
-      const errors = getErrors(yaml);
+      const errors = await getErrors(yaml);
       expect(errors.some((e) => e.message.includes("exactly one of reps/duration/distance"))).toBe(true);
     });
 
-    it("rejects block with no target", () => {
+    it("rejects block with no target", async () => {
       const yaml = `
 version: 1
 name: "Test"
@@ -436,13 +436,13 @@ days:
         sets:
           - { count: 3 }
 `;
-      const errors = getErrors(yaml);
+      const errors = await getErrors(yaml);
       expect(errors.some((e) => e.message.includes("exactly one of: reps, duration, distance"))).toBe(true);
     });
   });
 
   describe("Rule: superset does not have exactly 2 items", () => {
-    it("rejects superset with 1 item", () => {
+    it("rejects superset with 1 item", async () => {
       const yaml = `
 version: 1
 name: "Test"
@@ -458,11 +458,11 @@ days:
             sets:
               - { reps: [8, 12], count: 3 }
 `;
-      const errors = getErrors(yaml);
+      const errors = await getErrors(yaml);
       expect(errors.some((e) => e.message.includes("exactly 2 items, got 1"))).toBe(true);
     });
 
-    it("rejects superset with 3 items", () => {
+    it("rejects superset with 3 items", async () => {
       const yaml = `
 version: 1
 name: "Test"
@@ -484,13 +484,13 @@ days:
             sets:
               - { reps: [8, 12], count: 3 }
 `;
-      const errors = getErrors(yaml);
+      const errors = await getErrors(yaml);
       expect(errors.some((e) => e.message.includes("exactly 2 items, got 3"))).toBe(true);
     });
   });
 
   describe("Rule: superset pair does not have equal total working set count", () => {
-    it("rejects superset with unequal set counts", () => {
+    it("rejects superset with unequal set counts", async () => {
       const yaml = `
 version: 1
 name: "Test"
@@ -509,7 +509,7 @@ days:
             sets:
               - { reps: [8, 12], count: 2 }
 `;
-      const errors = getErrors(yaml);
+      const errors = await getErrors(yaml);
       expect(
         errors.some(
           (e) =>
@@ -520,7 +520,7 @@ days:
       ).toBe(true);
     });
 
-    it("accepts superset with equal set counts across multiple blocks", () => {
+    it("accepts superset with equal set counts across multiple blocks", async () => {
       const yaml = `
 version: 1
 name: "Test"
@@ -540,13 +540,13 @@ days:
             sets:
               - { reps: [8, 12], count: 3 }
 `;
-      const routine = getRoutine(yaml);
+      const routine = await getRoutine(yaml);
       expect(routine).toBeDefined();
     });
   });
 
   describe("Rule: duplicate same-day exercise entries without instance_label", () => {
-    it("rejects duplicate exercise_id in same day without instance_label", () => {
+    it("rejects duplicate exercise_id in same day without instance_label", async () => {
       const yaml = `
 version: 1
 name: "Test"
@@ -564,11 +564,11 @@ days:
         sets:
           - { reps: [8, 12], count: 3 }
 `;
-      const errors = getErrors(yaml);
+      const errors = await getErrors(yaml);
       expect(errors.some((e) => e.message.includes("Duplicate exercise") && e.message.includes("instance_label"))).toBe(true);
     });
 
-    it("accepts duplicate exercise_id with distinct instance_labels", () => {
+    it("accepts duplicate exercise_id with distinct instance_labels", async () => {
       const yaml = `
 version: 1
 name: "Test"
@@ -588,11 +588,11 @@ days:
         sets:
           - { reps: [8, 12], count: 3 }
 `;
-      const routine = getRoutine(yaml);
+      const routine = await getRoutine(yaml);
       expect(routine).toBeDefined();
     });
 
-    it("rejects when first entry has no label but second does", () => {
+    it("rejects when first entry has no label but second does", async () => {
       const yaml = `
 version: 1
 name: "Test"
@@ -611,13 +611,13 @@ days:
         sets:
           - { reps: [8, 12], count: 3 }
 `;
-      const errors = getErrors(yaml);
+      const errors = await getErrors(yaml);
       expect(errors.some((e) => e.message.includes("Duplicate exercise") || e.message.includes("instance_label"))).toBe(true);
     });
   });
 
   describe("Rule: unsupported type_override or equipment_override", () => {
-    it("rejects unsupported type_override", () => {
+    it("rejects unsupported type_override", async () => {
       const yaml = `
 version: 1
 name: "Test"
@@ -633,11 +633,11 @@ days:
         sets:
           - { reps: [6, 8], count: 1 }
 `;
-      const errors = getErrors(yaml);
+      const errors = await getErrors(yaml);
       expect(errors.some((e) => e.message.includes('Unsupported type_override "swimming"'))).toBe(true);
     });
 
-    it("rejects unsupported equipment_override", () => {
+    it("rejects unsupported equipment_override", async () => {
       const yaml = `
 version: 1
 name: "Test"
@@ -653,11 +653,11 @@ days:
         sets:
           - { reps: [6, 8], count: 1 }
 `;
-      const errors = getErrors(yaml);
+      const errors = await getErrors(yaml);
       expect(errors.some((e) => e.message.includes('Unsupported equipment_override "trampoline"'))).toBe(true);
     });
 
-    it("accepts valid type_override", () => {
+    it("accepts valid type_override", async () => {
       const yaml = `
 version: 1
 name: "Test"
@@ -673,7 +673,7 @@ days:
         sets:
           - { reps: [6, 8], count: 1 }
 `;
-      const routine = getRoutine(yaml);
+      const routine = await getRoutine(yaml);
       const entry = routine.days["A"]!.entries[0]!;
       expect(entry.kind).toBe("exercise");
       if (entry.kind === "exercise") {
@@ -681,7 +681,7 @@ days:
       }
     });
 
-    it("accepts valid equipment_override", () => {
+    it("accepts valid equipment_override", async () => {
       const yaml = `
 version: 1
 name: "Test"
@@ -697,7 +697,7 @@ days:
         sets:
           - { reps: [6, 8], count: 1 }
 `;
-      const routine = getRoutine(yaml);
+      const routine = await getRoutine(yaml);
       const entry = routine.days["A"]!.entries[0]!;
       expect(entry.kind).toBe("exercise");
       if (entry.kind === "exercise") {
@@ -712,8 +712,8 @@ days:
 // ---------------------------------------------------------------------------
 
 describe("validateAndNormalizeRoutine — normalization", () => {
-  it("normalizes a valid minimal YAML into a Routine record", () => {
-    const routine = getRoutine(VALID_YAML);
+  it("normalizes a valid minimal YAML into a Routine record", async () => {
+    const routine = await getRoutine(VALID_YAML);
 
     expect(routine.schemaVersion).toBe(1);
     expect(routine.name).toBe("Test Routine");
@@ -731,8 +731,8 @@ describe("validateAndNormalizeRoutine — normalization", () => {
     );
   });
 
-  it("generates deterministic entryIds from day and position", () => {
-    const routine = getRoutine(VALID_YAML);
+  it("generates deterministic entryIds from day and position", async () => {
+    const routine = await getRoutine(VALID_YAML);
     const entries = routine.days["A"]!.entries;
 
     expect(entries).toHaveLength(1);
@@ -742,8 +742,8 @@ describe("validateAndNormalizeRoutine — normalization", () => {
     }
   });
 
-  it("normalizes set blocks with range values", () => {
-    const routine = getRoutine(VALID_YAML);
+  it("normalizes set blocks with range values", async () => {
+    const routine = await getRoutine(VALID_YAML);
     const entry = routine.days["A"]!.entries[0]!;
     expect(entry.kind).toBe("exercise");
     if (entry.kind === "exercise") {
@@ -767,7 +767,7 @@ describe("validateAndNormalizeRoutine — normalization", () => {
     }
   });
 
-  it("normalizes exact value set blocks", () => {
+  it("normalizes exact value set blocks", async () => {
     const yaml = `
 version: 1
 name: "Test"
@@ -782,7 +782,7 @@ days:
         sets:
           - { reps: 8, count: 3 }
 `;
-    const routine = getRoutine(yaml);
+    const routine = await getRoutine(yaml);
     const entry = routine.days["A"]!.entries[0]!;
     if (entry.kind === "exercise") {
       const block = entry.setBlocks[0]!;
@@ -794,7 +794,7 @@ days:
     }
   });
 
-  it("normalizes duration set blocks", () => {
+  it("normalizes duration set blocks", async () => {
     const yaml = `
 version: 1
 name: "Test"
@@ -809,7 +809,7 @@ days:
         sets:
           - { duration: [30, 60], count: 2 }
 `;
-    const routine = getRoutine(yaml);
+    const routine = await getRoutine(yaml);
     const entry = routine.days["A"]!.entries[0]!;
     if (entry.kind === "exercise") {
       const block = entry.setBlocks[0]!;
@@ -820,7 +820,7 @@ days:
   });
 
   // P3-E: Positive test case for distance target kind
-  it("normalizes distance set blocks", () => {
+  it("normalizes distance set blocks", async () => {
     const yaml = `
 version: 1
 name: "Test"
@@ -835,7 +835,7 @@ days:
         sets:
           - { distance: 2000, count: 1 }
 `;
-    const routine = getRoutine(yaml);
+    const routine = await getRoutine(yaml);
     const entry = routine.days["A"]!.entries[0]!;
     if (entry.kind === "exercise") {
       const block = entry.setBlocks[0]!;
@@ -847,7 +847,7 @@ days:
     }
   });
 
-  it("normalizes superset entries with correct entryIds and groupId", () => {
+  it("normalizes superset entries with correct entryIds and groupId", async () => {
     const yaml = `
 version: 1
 name: "Test"
@@ -867,7 +867,7 @@ days:
               - { reps: [8, 12], count: 3 }
             notes: "Each arm"
 `;
-    const routine = getRoutine(yaml);
+    const routine = await getRoutine(yaml);
     const entry = routine.days["A"]!.entries[0]!;
     expect(entry.kind).toBe("superset");
     if (entry.kind === "superset") {
@@ -881,7 +881,7 @@ days:
     }
   });
 
-  it("normalizes multi-day routines with correct nextDayId", () => {
+  it("normalizes multi-day routines with correct nextDayId", async () => {
     const yaml = `
 version: 1
 name: "Multi-day"
@@ -908,13 +908,13 @@ days:
         sets:
           - { reps: [8, 12], count: 3 }
 `;
-    const routine = getRoutine(yaml);
+    const routine = await getRoutine(yaml);
     expect(routine.dayOrder).toEqual(["A", "B", "C"]);
     expect(routine.nextDayId).toBe("A");
     expect(Object.keys(routine.days)).toHaveLength(3);
   });
 
-  it("normalizes notes and cardio sections", () => {
+  it("normalizes notes and cardio sections", async () => {
     const yaml = `
 version: 1
 name: "With extras"
@@ -937,7 +937,7 @@ cardio:
     - { name: "Walk", detail: "20-30 min" }
     - { name: "Run", detail: "5K" }
 `;
-    const routine = getRoutine(yaml);
+    const routine = await getRoutine(yaml);
     expect(routine.notes).toEqual(["First note", "Second note"]);
     expect(routine.cardio).not.toBeNull();
     expect(routine.cardio!.notes).toBe("After lifting");
@@ -948,7 +948,7 @@ cardio:
     expect(routine.cardio!.options[1]!.detail).toBe("5K");
   });
 
-  it("preserves exercise notes on individual entries", () => {
+  it("preserves exercise notes on individual entries", async () => {
     const yaml = `
 version: 1
 name: "Test"
@@ -964,14 +964,14 @@ days:
           - { reps: [6, 8], count: 1 }
         notes: "Warm up with 2 lighter sets"
 `;
-    const routine = getRoutine(yaml);
+    const routine = await getRoutine(yaml);
     const entry = routine.days["A"]!.entries[0]!;
     if (entry.kind === "exercise") {
       expect(entry.notes).toBe("Warm up with 2 lighter sets");
     }
   });
 
-  it("preserves instanceLabel on entries", () => {
+  it("preserves instanceLabel on entries", async () => {
     const yaml = `
 version: 1
 name: "Test"
@@ -991,7 +991,7 @@ days:
         sets:
           - { reps: [8, 12], count: 3 }
 `;
-    const routine = getRoutine(yaml);
+    const routine = await getRoutine(yaml);
     const entries = routine.days["A"]!.entries;
     expect(entries).toHaveLength(2);
     if (entries[0]!.kind === "exercise") {
@@ -1010,32 +1010,32 @@ days:
 // ---------------------------------------------------------------------------
 
 describe("validateAndNormalizeRoutine — edge cases", () => {
-  it("rejects invalid YAML syntax", () => {
+  it("rejects invalid YAML syntax", async () => {
     const yaml = `
 version: 1
 name: "Test
   this is broken
 `;
-    const result = validateAndNormalizeRoutine(yaml, VALID_LOOKUP);
+    const result = await validateAndNormalizeRoutine(yaml, VALID_LOOKUP);
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.errors[0]!.message).toContain("Invalid YAML");
     }
   });
 
-  it("rejects YAML that parses to a scalar", () => {
+  it("rejects YAML that parses to a scalar", async () => {
     const yaml = "just a string";
-    const result = validateAndNormalizeRoutine(yaml, VALID_LOOKUP);
+    const result = await validateAndNormalizeRoutine(yaml, VALID_LOOKUP);
     expect(result.ok).toBe(false);
   });
 
-  it("rejects YAML that parses to null", () => {
+  it("rejects YAML that parses to null", async () => {
     const yaml = "";
-    const result = validateAndNormalizeRoutine(yaml, VALID_LOOKUP);
+    const result = await validateAndNormalizeRoutine(yaml, VALID_LOOKUP);
     expect(result.ok).toBe(false);
   });
 
-  it("rejects entry with no exercise_id or superset key", () => {
+  it("rejects entry with no exercise_id or superset key", async () => {
     const yaml = `
 version: 1
 name: "Test"
@@ -1049,11 +1049,11 @@ days:
       - sets:
           - { reps: [6, 8], count: 1 }
 `;
-    const errors = getErrors(yaml);
+    const errors = await getErrors(yaml);
     expect(errors.some((e) => e.message.includes("exercise_id") || e.message.includes("superset"))).toBe(true);
   });
 
-  it("rejects exercise entry with no sets", () => {
+  it("rejects exercise entry with no sets", async () => {
     const yaml = `
 version: 1
 name: "Test"
@@ -1066,11 +1066,11 @@ days:
     entries:
       - exercise_id: barbell-back-squat
 `;
-    const errors = getErrors(yaml);
+    const errors = await getErrors(yaml);
     expect(errors.some((e) => e.message.includes("At least one set block is required"))).toBe(true);
   });
 
-  it("rejects exercise entry with empty sets array", () => {
+  it("rejects exercise entry with empty sets array", async () => {
     const yaml = `
 version: 1
 name: "Test"
@@ -1084,11 +1084,11 @@ days:
       - exercise_id: barbell-back-squat
         sets: []
 `;
-    const errors = getErrors(yaml);
+    const errors = await getErrors(yaml);
     expect(errors.some((e) => e.message.includes("At least one set block is required"))).toBe(true);
   });
 
-  it("handles fractional count (non-integer)", () => {
+  it("handles fractional count (non-integer)", async () => {
     const yaml = `
 version: 1
 name: "Test"
@@ -1103,11 +1103,11 @@ days:
         sets:
           - { reps: [6, 8], count: 2.5 }
 `;
-    const errors = getErrors(yaml);
+    const errors = await getErrors(yaml);
     expect(errors.some((e) => e.message.includes("count must be an integer >= 1"))).toBe(true);
   });
 
-  it("handles unsupported tag value", () => {
+  it("handles unsupported tag value", async () => {
     const yaml = `
 version: 1
 name: "Test"
@@ -1122,7 +1122,7 @@ days:
         sets:
           - { reps: [6, 8], count: 1, tag: warmup }
 `;
-    const errors = getErrors(yaml);
+    const errors = await getErrors(yaml);
     expect(errors.some((e) => e.message.includes('Unsupported tag "warmup"'))).toBe(true);
   });
 });
@@ -1143,7 +1143,7 @@ describe("importRoutine", () => {
   });
 
   it("stores a routine in the database", async () => {
-    const routine = getRoutine(VALID_YAML);
+    const routine = await getRoutine(VALID_YAML);
     await importRoutine(db, routine);
 
     const stored = await db.routines.get(routine.id);
@@ -1154,7 +1154,7 @@ describe("importRoutine", () => {
   });
 
   it("stores multiple routines", async () => {
-    const r1 = getRoutine(VALID_YAML);
+    const r1 = await getRoutine(VALID_YAML);
 
     const yaml2 = `
 version: 1
@@ -1170,7 +1170,7 @@ days:
         sets:
           - { reps: [8, 12], count: 3 }
 `;
-    const r2 = getRoutine(yaml2);
+    const r2 = await getRoutine(yaml2);
 
     await importRoutine(db, r1);
     await importRoutine(db, r2);
@@ -1304,7 +1304,7 @@ describe("validateAndNormalizeRoutine — integration with real files", () => {
     const yamlStr = fs.readFileSync(yamlPath, "utf-8");
 
     // Validate and normalize
-    const result = validateAndNormalizeRoutine(yamlStr, lookup);
+    const result = await validateAndNormalizeRoutine(yamlStr, lookup);
 
     // It must succeed
     if (!result.ok) {

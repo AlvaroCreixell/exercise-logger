@@ -1,4 +1,8 @@
-import YAML from "yaml";
+// yaml is dynamically imported inside validateAndNormalizeRoutine (see
+// loadYaml() below) to keep the ~50 kB library out of the main bundle.
+// It only loads when the app actually needs to parse YAML: first-run
+// seed of the bundled routine, or user-triggered routine imports.
+import type YAMLType from "yaml";
 import { generateId } from "@/domain/uuid";
 import { nowISO } from "@/domain/timestamp";
 import type {
@@ -112,15 +116,25 @@ interface RawSetBlock {
  *   Pass the result of loading all exercises from the DB.
  * @returns ValidateRoutineResult with either the normalized Routine or validation errors.
  */
-export function validateAndNormalizeRoutine(
+// Cache the dynamic yaml module so we only fetch the chunk once.
+let yamlModulePromise: Promise<typeof YAMLType> | null = null;
+function loadYaml(): Promise<typeof YAMLType> {
+  if (!yamlModulePromise) {
+    yamlModulePromise = import("yaml").then((m) => m.default);
+  }
+  return yamlModulePromise;
+}
+
+export async function validateAndNormalizeRoutine(
   yamlString: string,
   exerciseLookup: Map<string, Exercise>
-): ValidateRoutineResult {
+): Promise<ValidateRoutineResult> {
   const errors: ValidationError[] = [];
 
   // Parse YAML
   let raw: RawRoutine;
   try {
+    const YAML = await loadYaml();
     raw = YAML.parse(yamlString) as RawRoutine;
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : "Unknown parse error";
@@ -852,7 +866,7 @@ export async function validateParseAndImportRoutine(
   const exercises = await db.exercises.toArray();
   const lookup = new Map(exercises.map((ex) => [ex.id, ex]));
 
-  const result = validateAndNormalizeRoutine(yamlText, lookup);
+  const result = await validateAndNormalizeRoutine(yamlText, lookup);
   if (!result.ok) {
     return {
       ok: false,

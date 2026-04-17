@@ -29,7 +29,7 @@ export function useAppInit(): { ready: boolean; error: string | null } {
         const routineCount = await db.routines.count();
         if (routineCount === 0) {
           const exerciseLookup = new Map(exercises.map((e) => [e.id, e]));
-          const result = validateAndNormalizeRoutine(defaultRoutineYaml, exerciseLookup);
+          const result = await validateAndNormalizeRoutine(defaultRoutineYaml, exerciseLookup);
           if (result.ok) {
             await importRoutine(db, result.routine);
             await setActiveRoutine(db, result.routine.id);
