@@ -106,23 +106,36 @@ export async function exportBackup(
  * @param envelope - The backup envelope from exportBackup().
  */
 export function downloadBackupFile(envelope: BackupEnvelope): void {
-  const json = JSON.stringify(envelope, null, 2);
-  const blob = new Blob([json], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
+  // [R10] Defensive: Blob/URL/anchor can fail in sandboxed iframes, tests
+  // with missing document APIs, or when the browser blocks createObjectURL.
+  // Surface the error rather than swallowing it silently.
+  let url: string | null = null;
+  let a: HTMLAnchorElement | null = null;
+  try {
+    const json = JSON.stringify(envelope, null, 2);
+    const blob = new Blob([json], { type: "application/json" });
+    url = URL.createObjectURL(blob);
 
-  const now = new Date();
-  const yyyy = now.getFullYear();
-  const mm = String(now.getMonth() + 1).padStart(2, "0");
-  const dd = String(now.getDate()).padStart(2, "0");
-  const filename = `exercise-logger-backup-${yyyy}-${mm}-${dd}.json`;
+    const now = new Date();
+    const yyyy = now.getFullYear();
+    const mm = String(now.getMonth() + 1).padStart(2, "0");
+    const dd = String(now.getDate()).padStart(2, "0");
+    const filename = `exercise-logger-backup-${yyyy}-${mm}-${dd}.json`;
 
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+    a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+  } catch (err) {
+    console.error("downloadBackupFile failed", err);
+    throw err;
+  } finally {
+    if (a && a.parentNode === document.body) {
+      document.body.removeChild(a);
+    }
+    if (url) URL.revokeObjectURL(url);
+  }
 }
 
 // ---------------------------------------------------------------------------
