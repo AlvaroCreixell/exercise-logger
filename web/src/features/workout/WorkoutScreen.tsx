@@ -10,6 +10,7 @@ import { addExtraExercise, finishSession, discardSession } from "@/services/sess
 import { setUnitOverride } from "@/services/settings-service";
 import { getEffectiveUnit } from "@/domain/unit-helpers";
 import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
+import { SectionHeader } from "@/shared/components/SectionHeader";
 import { ExerciseCard } from "./ExerciseCard";
 import { SetLogSheet } from "./SetLogSheet";
 import { SupersetGroup } from "./SupersetGroup";
@@ -157,9 +158,9 @@ export default function WorkoutScreen() {
       {/* Sticky header + progress */}
       <div className="sticky top-0 z-10 bg-background border-b-2 border-border-strong">
         <div className="px-5 pt-3 pb-2">
-          <p className="text-xs font-semibold uppercase tracking-widest text-cta truncate">
+          <SectionHeader className="!text-cta truncate">
             {session.dayLabelSnapshot}
-          </p>
+          </SectionHeader>
           <h1 className="text-2xl font-extrabold tracking-tight font-heading truncate">
             {session.routineNameSnapshot}
           </h1>

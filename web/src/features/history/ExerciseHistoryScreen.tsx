@@ -10,6 +10,7 @@ import type { SetTag } from "@/domain/enums";
 import { ArrowLeft } from "lucide-react";
 import { buttonVariants } from "@/shared/ui/button";
 import { cn } from "@/shared/lib/utils";
+import { SectionHeader } from "@/shared/components/SectionHeader";
 
 /** Group a sorted list of logged sets into blocks by blockIndex. */
 function groupSetsByBlock(sets: LoggedSet[]): Array<{ tag: SetTag | null; sets: LoggedSet[] }> {
@@ -60,7 +61,7 @@ export default function ExerciseHistoryScreen() {
         <div className="space-y-4">
           {groups.map((group) => (
             <div key={group.session.id} className="space-y-1 border-t-2 border-border-strong pt-2">
-              <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground tabular-nums">
+              <SectionHeader className="tabular-nums">
                 {new Date(group.session.startedAt).toLocaleDateString(undefined, {
                   month: "short",
                   day: "numeric",
@@ -70,7 +71,7 @@ export default function ExerciseHistoryScreen() {
                 {group.session.dayLabelSnapshot}
                 {" — "}
                 {group.session.routineNameSnapshot}
-              </p>
+              </SectionHeader>
               {group.entries.map((entry, ei) => {
                 const entryUnits = getEffectiveUnit(entry.unitOverride, units);
                 return (
