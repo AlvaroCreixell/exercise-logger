@@ -408,6 +408,39 @@ function validateRoutine(
   if (!Array.isArray(r.notes)) {
     errors.push({ field: `${path}.notes`, message: "must be an array" });
   }
+  // [R7] cardio is `RoutineCardio | null`. Deep-validate if present.
+  if (r.cardio !== undefined && r.cardio !== null) {
+    const cardioPath = `${path}.cardio`;
+    if (typeof r.cardio !== "object") {
+      errors.push({ field: cardioPath, message: "must be an object or null" });
+    } else {
+      const c = r.cardio as Record<string, unknown>;
+      if (!isString(c.notes)) {
+        errors.push({ field: `${cardioPath}.notes`, message: "must be a string" });
+      }
+      if (!Array.isArray(c.options)) {
+        errors.push({
+          field: `${cardioPath}.options`,
+          message: "must be an array",
+        });
+      } else {
+        (c.options as unknown[]).forEach((opt, oi) => {
+          const optPath = `${cardioPath}.options[${oi}]`;
+          if (typeof opt !== "object" || opt === null) {
+            errors.push({ field: optPath, message: "must be an object" });
+            return;
+          }
+          const o = opt as Record<string, unknown>;
+          if (!isString(o.name)) {
+            errors.push({ field: `${optPath}.name`, message: "must be a string" });
+          }
+          if (!isString(o.detail)) {
+            errors.push({ field: `${optPath}.detail`, message: "must be a string" });
+          }
+        });
+      }
+    }
+  }
   if (!isString(r.importedAt)) {
     errors.push({
       field: `${path}.importedAt`,

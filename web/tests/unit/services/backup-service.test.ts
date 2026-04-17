@@ -597,6 +597,92 @@ describe("validateBackupPayload", () => {
       ])
     );
   });
+
+  // --- [R7] Routine.cardio structural validation ---
+
+  it("[R7] accepts a routine with well-formed cardio", () => {
+    const envelope = makeValidEnvelope({
+      routines: [
+        makeRoutine("r1", {
+          cardio: {
+            notes: "Walk 20min after lifting",
+            options: [
+              { name: "Treadmill", detail: "3.5 mph, 5% incline" },
+              { name: "Bike", detail: "easy pace" },
+            ],
+          },
+        }),
+      ],
+    });
+    const errors = validateBackupPayload(envelope, catalogIds);
+    expect(errors).toEqual([]);
+  });
+
+  it("[R7] rejects cardio with non-string notes", () => {
+    const envelope = makeValidEnvelope({
+      routines: [
+        makeRoutine("r1", {
+          cardio: {
+            notes: 42 as unknown as string,
+            options: [],
+          },
+        }),
+      ],
+    });
+    const errors = validateBackupPayload(envelope, catalogIds);
+    expect(errors).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          field: "data.routines[0].cardio.notes",
+          message: "must be a string",
+        }),
+      ])
+    );
+  });
+
+  it("[R7] rejects cardio.options that is not an array", () => {
+    const envelope = makeValidEnvelope({
+      routines: [
+        makeRoutine("r1", {
+          cardio: {
+            notes: "ok",
+            options: "not an array" as unknown as [],
+          },
+        }),
+      ],
+    });
+    const errors = validateBackupPayload(envelope, catalogIds);
+    expect(errors).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          field: "data.routines[0].cardio.options",
+          message: "must be an array",
+        }),
+      ])
+    );
+  });
+
+  it("[R7] rejects cardio option missing required name/detail", () => {
+    const envelope = makeValidEnvelope({
+      routines: [
+        makeRoutine("r1", {
+          cardio: {
+            notes: "ok",
+            options: [{ name: "Treadmill" } as unknown as { name: string; detail: string }],
+          },
+        }),
+      ],
+    });
+    const errors = validateBackupPayload(envelope, catalogIds);
+    expect(errors).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          field: "data.routines[0].cardio.options[0].detail",
+          message: "must be a string",
+        }),
+      ])
+    );
+  });
 });
 
 // =========================================================================
