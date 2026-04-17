@@ -6,6 +6,7 @@ import { useSettings } from "@/shared/hooks/useSettings";
 import { useRoutine } from "@/shared/hooks/useRoutine";
 import { useActiveSession } from "@/shared/hooks/useActiveSession";
 import { useLastSession } from "@/shared/hooks/useLastSession";
+import { useTrainingCadence } from "@/shared/hooks/useTrainingCadence";
 import { startSessionWithCatalog } from "@/services/session-service";
 import { db } from "@/db/database";
 import { Button } from "@/shared/ui/button";
@@ -20,6 +21,7 @@ export default function TodayScreen() {
   const routine = useRoutine(settings?.activeRoutineId);
   const activeSession = useActiveSession();
   const lastSession = useLastSession(settings?.activeRoutineId);
+  const cadence = useTrainingCadence();
   const navigate = useNavigate();
   const [selectedDayId, setSelectedDayId] = useState<string | null>(null);
   const [starting, setStarting] = useState(false);
@@ -136,7 +138,7 @@ export default function TodayScreen() {
           </div>
         )}
 
-        {lastSession && <LastSessionCard session={lastSession} />}
+        {lastSession && <LastSessionCard session={lastSession} cadence={cadence} />}
       </div>
 
       <div className="sticky bottom-0 border-t-2 border-border-strong bg-background p-5 pb-[env(safe-area-inset-bottom)]">
