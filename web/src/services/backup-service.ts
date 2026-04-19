@@ -14,7 +14,6 @@ import type {
   TargetKind,
   SetTag,
   UnitSystem,
-  ThemePreference,
 } from "@/domain/enums";
 import { DEFAULT_SETTINGS, type ExerciseLoggerDB } from "@/db/database";
 import { nowISO } from "@/domain/timestamp";
@@ -190,8 +189,6 @@ const VALID_TARGET_KINDS: TargetKind[] = ["reps", "duration", "distance"];
 const VALID_TAGS: SetTag[] = ["top", "amrap"];
 
 const VALID_UNITS: UnitSystem[] = ["kg", "lbs"];
-
-const VALID_THEMES: ThemePreference[] = ["light", "dark", "system"];
 
 function isString(v: unknown): v is string {
   return typeof v === "string";
@@ -794,12 +791,8 @@ function validateSettings(
       message: `must be one of: ${VALID_UNITS.join(", ")}`,
     });
   }
-  if (!VALID_THEMES.includes(s.theme as ThemePreference)) {
-    errors.push({
-      field: `${path}.theme`,
-      message: `must be one of: ${VALID_THEMES.join(", ")}`,
-    });
-  }
+  // Pre-v3 backups may include a `theme` field; accept but ignore it.
+  // It gets stripped in importBackup() before persisting.
 }
 
 // ---------------------------------------------------------------------------
@@ -1024,7 +1017,14 @@ export async function importBackup(
       if (sessions.length > 0) await db.sessions.bulkAdd(sessions);
       if (sessionExercises.length > 0) await db.sessionExercises.bulkAdd(sessionExercises);
       if (loggedSets.length > 0) await db.loggedSets.bulkAdd(loggedSets);
-      await db.settings.put(settings);
+      // Strip any legacy/unknown fields (e.g. `theme` from pre-v3 backups)
+      // by only persisting the current known Settings shape.
+      const cleanSettings: Settings = {
+        id: settings.id,
+        activeRoutineId: settings.activeRoutineId,
+        units: settings.units,
+      };
+      await db.settings.put(cleanSettings);
     }
   );
 
@@ -1042,7 +1042,7 @@ export async function importBackup(
  * Spec rules:
  * - Deletes routines, sessions, sessionExercises, loggedSets, settings.
  * - Does NOT delete the exercise catalog (re-seeded from CSV on app init).
- * - Recreates default settings (activeRoutineId=null, units="kg", theme="system").
+ * - Recreates default settings (activeRoutineId=null, units="kg").
  * - Blocked while an active session exists.
  *
  * @param db - Dexie database instance.

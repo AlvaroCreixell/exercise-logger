@@ -1,6 +1,6 @@
 import type { Settings } from "@/domain/types";
 import type { ExerciseLoggerDB } from "@/db/database";
-import type { UnitSystem, ThemePreference } from "@/domain/enums";
+import type { UnitSystem } from "@/domain/enums";
 
 // ---------------------------------------------------------------------------
 // Read
@@ -121,16 +121,6 @@ export async function setUnits(
   units: UnitSystem
 ): Promise<void> {
   await db.settings.update("user", { units });
-}
-
-/**
- * Update the theme preference.
- */
-export async function setTheme(
-  db: ExerciseLoggerDB,
-  theme: ThemePreference
-): Promise<void> {
-  await db.settings.update("user", { theme });
 }
 
 /**

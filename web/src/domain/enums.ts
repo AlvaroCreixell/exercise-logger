@@ -34,6 +34,3 @@ export type SetTag = "top" | "amrap";
 
 /** Display unit preference. */
 export type UnitSystem = "kg" | "lbs";
-
-/** Theme preference. */
-export type ThemePreference = "light" | "dark" | "system";

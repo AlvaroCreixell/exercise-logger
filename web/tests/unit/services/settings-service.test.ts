@@ -7,7 +7,6 @@ import {
   setActiveRoutine,
   deleteRoutine,
   setUnits,
-  setTheme,
   setUnitOverride,
 } from "@/services/settings-service";
 import type { Routine, Session, SessionExercise } from "@/domain/types";
@@ -77,7 +76,6 @@ describe("settings-service", () => {
       expect(settings.id).toBe("user");
       expect(settings.activeRoutineId).toBeNull();
       expect(settings.units).toBe("kg");
-      expect(settings.theme).toBe("system");
     });
 
     it("throws if no settings record exists", async () => {
@@ -211,29 +209,6 @@ describe("settings-service", () => {
       await setUnits(db, "kg");
       const settings = await getSettings(db);
       expect(settings.units).toBe("kg");
-    });
-  });
-
-  // --- setTheme ---
-
-  describe("setTheme", () => {
-    it("updates theme to dark", async () => {
-      await setTheme(db, "dark");
-      const settings = await getSettings(db);
-      expect(settings.theme).toBe("dark");
-    });
-
-    it("updates theme to light", async () => {
-      await setTheme(db, "light");
-      const settings = await getSettings(db);
-      expect(settings.theme).toBe("light");
-    });
-
-    it("updates theme to system", async () => {
-      await setTheme(db, "dark");
-      await setTheme(db, "system");
-      const settings = await getSettings(db);
-      expect(settings.theme).toBe("system");
     });
   });
 

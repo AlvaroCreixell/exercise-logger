@@ -57,7 +57,6 @@ export const DEFAULT_SETTINGS: Settings = {
   id: "user",
   activeRoutineId: null,
   units: "kg",
-  theme: "system",
 };
 
 /**

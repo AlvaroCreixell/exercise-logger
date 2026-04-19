@@ -372,7 +372,6 @@ describe("initializeSettings", () => {
       id: "user",
       activeRoutineId: "r1",
       units: "lbs",
-      theme: "dark",
     };
     await db.settings.add(customSettings);
     await initializeSettings(db);
@@ -384,6 +383,5 @@ describe("initializeSettings", () => {
     expect(DEFAULT_SETTINGS.id).toBe("user");
     expect(DEFAULT_SETTINGS.activeRoutineId).toBeNull();
     expect(DEFAULT_SETTINGS.units).toBe("kg");
-    expect(DEFAULT_SETTINGS.theme).toBe("system");
   });
 });

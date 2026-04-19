@@ -11,11 +11,11 @@ Where this spec conflicts with current code, the code is authoritative. Known dr
 
 - **§4 Tech Stack — Zustand:** removed. The rest-timer was dropped (see ui-rewrite-spec.md §1 non-goals), and no other UI state uses Zustand. React state + `useLiveQuery` are sufficient.
 - **§7 Data Model — `sessions.status` enum:** `"discarded"` is a dead value. The app hard-deletes on discard (see `codebase-review-2026-04-16.md` §1.2 R9).
-- **§7 Data Model — `settings.theme`:** light-only. Dark mode and system-follow were dropped per Appendix B of the review.
+- **§7 Data Model — `settings.theme`:** removed. The field, `ThemePreference` enum, `setTheme` service function, and backup `theme` validation have all been dropped. Backup imports tolerate the field on legacy payloads but strip it before persisting.
 - **§7/§8 Catalog path:** the embedded CSV lives at `web/src/data/catalog.csv`, not `docs/exercises/gym_exercises_catalog.csv`.
 - **§8 Alias handling:** the reference to `docs/exercises/workout-routine.jsx` is obsolete; no alias map exists in v2.
 - **§12 Rest Timer:** the entire section is voided by `ui-rewrite-spec.md` §1. No timer UI, no `restDefaultSecSnapshot`/`restSupersetSecSnapshot` consumption — those fields are still snapshotted but unused.
-- **§13 Settings — Theme preference:** segmented control is light-only now; no dark/system toggle.
+- **§13 Settings — Theme preference:** removed entirely. No toggle, no persisted field.
 
 Current progress tracker: `docs/codebase-review-2026-04-16.md`. Current UI contract: `docs/ui-rewrite-spec.md`.
 

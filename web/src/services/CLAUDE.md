@@ -34,7 +34,7 @@ Pure business logic functions. Every function takes `db: ExerciseLoggerDB` as it
 
 ### `settings-service.ts` — Settings and guards
 
-- `getSettings(db)`, `setUnits(db, units)`, `setTheme(db, theme)` — CRUD.
+- `getSettings(db)`, `setUnits(db, units)` — CRUD.
 - `hasActiveSession(db)` — Boolean check.
 - `setActiveRoutine(db, routineId)` — Blocked during active session (invariant 10, inside transaction).
 - `deleteRoutine(db, routineId)` — Blocked during active session. Auto-activates earliest remaining routine by `importedAt` ASC. All checks inside transaction to prevent TOCTOU races.

@@ -34,7 +34,7 @@ Adds `unitOverride: UnitSystem | null` to `sessionExercises`. No index change �
 
 - `ExerciseLoggerDB` — Dexie subclass with typed tables
 - `db` — Singleton instance
-- `DEFAULT_SETTINGS` — `{ id: "user", activeRoutineId: null, units: "kg", theme: "system" }`
+- `DEFAULT_SETTINGS` — `{ id: "user", activeRoutineId: null, units: "kg" }`
 - `initializeSettings(db)` — Idempotent: creates default settings if none exist
 
 ### Critical: compound indexes and null

@@ -7,7 +7,6 @@ import type {
   TargetKind,
   SetTag,
   UnitSystem,
-  ThemePreference,
 } from "./enums";
 
 // ---------------------------------------------------------------------------
@@ -259,6 +258,4 @@ export interface Settings {
   activeRoutineId: string | null;
   /** Display unit preference. */
   units: UnitSystem;
-  /** Theme preference. */
-  theme: ThemePreference;
 }
