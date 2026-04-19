@@ -26,6 +26,7 @@
     --color-sage-soft: var(--sage-soft);
     --color-warm: var(--warm);
     --color-danger: var(--danger);
+    --color-cta: var(--cta);
     --font-heading: 'Urbanist Variable', sans-serif;
     --font-sans: 'DM Sans', sans-serif;
     --color-border-strong: var(--border-strong);
@@ -106,6 +107,11 @@
     /* Semantic */
     --warm: oklch(55% 0.09 55);
     --danger: oklch(55% 0.15 25);
+
+    /* Transition alias: keeps pre-Sprint-6 `bg-cta` / `border-cta` /
+       `ring-cta/30` utilities resolving during the per-screen migration.
+       Remove in Task 17 once all direct cta classnames are gone. */
+    --cta: var(--sage);
 
     --background: var(--paper);
     --foreground: var(--ink);
