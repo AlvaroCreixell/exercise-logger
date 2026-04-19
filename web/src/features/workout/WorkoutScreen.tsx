@@ -208,6 +208,7 @@ export default function WorkoutScreen() {
         onAddExercise={() => setPickerOpen(true)}
         onFinish={() => setFinishOpen(true)}
         onDiscard={() => setDiscardOpen(true)}
+        allLogged={totalPrescribed > 0 && unloggedCount === 0}
       />
 
       {/* Set Log Sheet */}
