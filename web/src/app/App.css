@@ -27,8 +27,8 @@
     --color-warm: var(--warm);
     --color-danger: var(--danger);
     --color-cta: var(--cta);
-    --font-heading: 'Urbanist Variable', sans-serif;
-    --font-sans: 'DM Sans', sans-serif;
+    --font-heading: 'Instrument Serif', ui-serif, Georgia, serif;
+    --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
     --color-border-strong: var(--border-strong);
     --color-sidebar-ring: var(--sidebar-ring);
     --color-sidebar-border: var(--sidebar-border);
@@ -176,39 +176,72 @@
 }
 
 @layer utilities {
-  .text-hero {
+  .text-hero-serif {
     font-family: var(--font-heading);
-    font-weight: 700;
-    font-size: 2.25rem;  /* text-4xl */
-    line-height: 1;
-    letter-spacing: -0.025em;
-    font-variant-numeric: tabular-nums;
+    font-weight: 400;
+    font-size: 2rem;          /* 32px */
+    line-height: 1.1;
+    letter-spacing: -0.005em;
   }
 
-  .text-value {
+  .text-title-serif {
     font-family: var(--font-heading);
+    font-weight: 400;
+    font-size: 1.375rem;      /* 22px */
+    line-height: 1.15;
+    letter-spacing: -0.005em;
+  }
+
+  .text-eyebrow {
+    font-family: var(--font-sans);
+    font-weight: 600;
+    font-size: 0.6875rem;     /* 11px */
+    line-height: 1;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .text-body {
+    font-family: var(--font-sans);
+    font-weight: 400;
+    font-size: 0.875rem;      /* 14px */
+    line-height: 1.45;
+  }
+
+  .text-meta {
+    font-family: var(--font-sans);
+    font-weight: 500;
+    font-size: 0.75rem;       /* 12px */
+    line-height: 1.3;
+    color: var(--ink-3);
+  }
+
+  /* Preserved from pre-Sprint-6 — tabular numerals family for stat tiles + set rows */
+  .text-value {
+    font-family: var(--font-sans);
     font-weight: 700;
-    font-size: 1.125rem; /* text-lg */
+    font-size: 1.125rem;
     line-height: 1.2;
     letter-spacing: -0.01em;
     font-variant-numeric: tabular-nums;
   }
 
   .text-value-sm {
-    font-family: var(--font-heading);
+    font-family: var(--font-sans);
     font-weight: 600;
-    font-size: 0.875rem; /* text-sm */
+    font-size: 0.875rem;
     line-height: 1.2;
     font-variant-numeric: tabular-nums;
   }
 
-  .text-eyebrow {
-    font-family: var(--font-sans);
-    font-weight: 600;
-    font-size: 0.6875rem; /* ~11px */
+  /* Back-compat alias — pre-Sprint-6 screens still reference .text-hero;
+     now renders as serif hero. Delete in Sprint 7 once Today migrates. */
+  .text-hero {
+    font-family: var(--font-heading);
+    font-weight: 400;
+    font-size: 2.25rem;
     line-height: 1;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
+    letter-spacing: -0.005em;
   }
 }
 
@@ -220,6 +253,45 @@
   --dur-base: 180ms;
   --dur-slow: 600ms;
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.04), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+}
+
+/* Sprint 6 motion + radius */
+:root {
+  --dur-fadeIn: 300ms;
+  --dur-fadeInUp: 300ms;
+  --dur-slideUp: 250ms;
+  --dur-popIn: 250ms;
+  --ease-handoff: ease;
+
+  --radius-card: 18px;
+  --radius-sheet-top: 24px;
+  --radius-set-logged: 12px;
+  --radius-set-empty: 10px;
+  --radius-pill: 999px;
+  --radius-button: 12px;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+@keyframes popIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  @keyframes fadeInUp { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes slideUp  { from, to { transform: none; } }
+  @keyframes popIn    { from { opacity: 0; } to { opacity: 1; } }
 }
 
 @keyframes flash-logged {
