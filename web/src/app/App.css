@@ -13,6 +13,19 @@
 @import "@fontsource/instrument-serif/400-italic.css";
 
 @theme inline {
+    /* Sprint 6: warm-paper palette */
+    --color-paper: var(--paper);
+    --color-card-paper: var(--card-paper);
+    --color-ink: var(--ink);
+    --color-ink-2: var(--ink-2);
+    --color-ink-3: var(--ink-3);
+    --color-line: var(--line);
+    --color-line-soft: var(--line-soft);
+    --color-sage: var(--sage);
+    --color-sage-deep: var(--sage-deep);
+    --color-sage-soft: var(--sage-soft);
+    --color-warm: var(--warm);
+    --color-danger: var(--danger);
     --font-heading: 'Urbanist Variable', sans-serif;
     --font-sans: 'DM Sans', sans-serif;
     --color-border-strong: var(--border-strong);
@@ -72,6 +85,29 @@
 }
 
 :root {
+    /* ─── Sprint 6: warm-paper palette (oklch) ─── */
+    /* Surface */
+    --paper: oklch(98.8% 0.008 80);
+    --card-paper: oklch(96.8% 0.01 80);
+
+    /* Ink */
+    --ink: oklch(22% 0.012 55);
+    --ink-2: oklch(38% 0.012 55);
+    --ink-3: oklch(58% 0.01 60);
+
+    /* Hairlines */
+    --line: oklch(88% 0.012 75);
+    --line-soft: oklch(93% 0.01 75);
+
+    /* Accent — sage */
+    --sage: oklch(55% 0.055 160);
+    --sage-deep: oklch(40% 0.06 160);
+    --sage-soft: oklch(93% 0.03 160);
+
+    /* Semantic */
+    --warm: oklch(55% 0.09 55);
+    --danger: oklch(55% 0.15 25);
+
     --background: oklch(1 0 0);
     --foreground: oklch(0 0 0);
     --card: oklch(1 0 0);
