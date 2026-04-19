@@ -1,0 +1,546 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Exercise Logger — Prototype</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --paper: oklch(98.8% 0.008 80);
+      --card: oklch(96.8% 0.01 80);
+      --ink: oklch(22% 0.012 55);
+      --ink-2: oklch(38% 0.012 55);
+      --ink-3: oklch(58% 0.01 60);
+      --line: oklch(88% 0.012 75);
+      --line-soft: oklch(93% 0.01 75);
+      --sage: oklch(55% 0.055 160);
+      --sage-deep: oklch(40% 0.06 160);
+      --sage-soft: oklch(93% 0.03 160);
+      --warm: oklch(55% 0.09 55);
+      --danger: oklch(55% 0.15 25);
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; padding: 0; height: 100%;
+      background: oklch(96% 0.008 70);
+      font-family: 'Inter', system-ui, sans-serif;
+      color: var(--ink);
+      -webkit-font-smoothing: antialiased;
+    }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+    @keyframes popIn { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
+    @keyframes fadeInUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    .screen-enter { opacity: 1; }
+    .screen-enter[data-entering="true"] { animation: fadeInUp .3s ease forwards; }
+    button:active { opacity: 0.85; }
+    button:focus-visible { outline: 2px solid var(--sage); outline-offset: 2px; }
+    input:focus { outline: none; border-color: var(--ink) !important; }
+
+    /* Phone stage */
+    .stage {
+      min-height: 100vh;
+      display: flex; align-items: center; justify-content: center;
+      padding: 24px;
+      background:
+        radial-gradient(ellipse at 50% 0%, oklch(94% 0.012 70), oklch(96% 0.008 70) 60%);
+    }
+    .phone {
+      width: 390px; height: 812px;
+      border-radius: 44px;
+      background: #1a1613;
+      padding: 10px;
+      box-shadow:
+        0 30px 80px rgba(30, 25, 18, 0.22),
+        0 4px 16px rgba(30, 25, 18, 0.08),
+        inset 0 0 0 1.5px rgba(255,255,255,0.06);
+      position: relative;
+    }
+    .phone-inner {
+      width: 100%; height: 100%;
+      border-radius: 36px;
+      overflow: hidden;
+      position: relative;
+      background: var(--paper);
+    }
+    .notch {
+      position: absolute; top: 18px; left: 50%; transform: translateX(-50%);
+      width: 110px; height: 30px;
+      background: #0a0807;
+      border-radius: 18px;
+      z-index: 100;
+    }
+
+    /* Tweaks panel */
+    .tweaks {
+      position: fixed; bottom: 20px; right: 20px;
+      width: 280px;
+      background: var(--paper);
+      border-radius: 18px;
+      border: 1px solid var(--line);
+      box-shadow: 0 20px 40px rgba(30,25,18,0.15);
+      padding: 16px 18px;
+      font-size: 13px;
+      display: none;
+      z-index: 200;
+    }
+    .tweaks.active { display: block; }
+    .tweaks h3 {
+      font-family: 'Instrument Serif', serif;
+      font-size: 20px; margin: 0 0 12px;
+      letter-spacing: -0.01em;
+    }
+    .tweak-row { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; gap: 10px; }
+    .tweak-row label { color: var(--ink-2); font-size: 12.5px; }
+    .tweak-toggle {
+      display: flex; gap: 2px; padding: 2px;
+      border-radius: 999px; background: var(--card);
+      border: 1px solid var(--line);
+    }
+    .tweak-toggle button {
+      padding: 4px 10px; border-radius: 999px; border: none; cursor: pointer;
+      background: transparent; color: var(--ink-2); font-family: inherit;
+      font-size: 10.5px; font-weight: 600; letter-spacing: 0.2px; text-transform: uppercase;
+    }
+    .tweak-toggle button.on { background: var(--ink); color: var(--paper); }
+
+    /* Scrollbar hidden in phone */
+    .phone-inner *::-webkit-scrollbar { display: none; }
+    .phone-inner * { scrollbar-width: none; }
+  </style>
+
+  <script>
+    const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+      "accent": "sage",
+      "density": "medium",
+      "numeralStyle": "sans",
+      "autoAdvance": true
+    }/*EDITMODE-END*/;
+  </script>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+  <div class="stage">
+    <div class="phone">
+      <div class="notch"></div>
+      <div class="phone-inner" id="root"></div>
+    </div>
+  </div>
+
+  <div class="tweaks" id="tweaksPanel">
+    <h3>Tweaks</h3>
+    <div class="tweak-row">
+      <label>Accent color</label>
+      <div class="tweak-toggle" data-tweak="accent">
+        <button data-v="sage">Sage</button>
+        <button data-v="clay">Clay</button>
+        <button data-v="ink">Ink</button>
+      </div>
+    </div>
+    <div class="tweak-row">
+      <label>Numeral style</label>
+      <div class="tweak-toggle" data-tweak="numeralStyle">
+        <button data-v="serif">Serif</button>
+        <button data-v="sans">Sans</button>
+      </div>
+    </div>
+    <div class="tweak-row">
+      <label>Density</label>
+      <div class="tweak-toggle" data-tweak="density">
+        <button data-v="cozy">Cozy</button>
+        <button data-v="medium">Medium</button>
+        <button data-v="compact">Compact</button>
+      </div>
+    </div>
+    <div class="tweak-row">
+      <label>Auto-advance sets</label>
+      <div class="tweak-toggle" data-tweak="autoAdvance">
+        <button data-v="true">On</button>
+        <button data-v="false">Off</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="text/babel" src="components/data.jsx"></script>
+  <script type="text/babel" src="components/screens.jsx"></script>
+
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    function App() {
+      const [tab, setTab] = useState('today');
+      const [tweaks, setTweaks] = useState(TWEAK_DEFAULTS);
+
+      const [selectedDayId, setSelectedDayId] = useState(ROUTINE.nextDayId);
+      const [activeSession, setActiveSession] = useState(null);
+      const [exercises, setExercises] = useState(ACTIVE_EXERCISES);
+      const [pickerOpen, setPickerOpen] = useState(false);
+      const [sheetTarget, setSheetTarget] = useState(null);
+      const [finishConfirm, setFinishConfirm] = useState(false);
+      const [discardConfirm, setDiscardConfirm] = useState(false);
+      const [celebrate, setCelebrate] = useState(false);
+      const [openSession, setOpenSession] = useState(null);
+      const [settings, setSettings] = useState({ unit: 'kg', theme: 'light' });
+      const [importOpen, setImportOpen] = useState(false);
+
+      // ── Tweaks: listener first, then announce ───────────────
+      useEffect(() => {
+        const handler = (e) => {
+          if (e.data?.type === '__activate_edit_mode') {
+            document.getElementById('tweaksPanel').classList.add('active');
+          }
+          if (e.data?.type === '__deactivate_edit_mode') {
+            document.getElementById('tweaksPanel').classList.remove('active');
+          }
+        };
+        window.addEventListener('message', handler);
+        window.parent.postMessage({ type: '__edit_mode_available' }, '*');
+        return () => window.removeEventListener('message', handler);
+      }, []);
+
+      // Tweak buttons
+      useEffect(() => {
+        const panel = document.getElementById('tweaksPanel');
+        const buttons = panel.querySelectorAll('.tweak-toggle button');
+        buttons.forEach(b => {
+          const key = b.parentElement.dataset.tweak;
+          const v = b.dataset.v;
+          const curV = String(tweaks[key]);
+          b.classList.toggle('on', curV === v);
+          b.onclick = () => {
+            const next = v === 'true' ? true : v === 'false' ? false : v;
+            setTweaks(t => {
+              const nt = { ...t, [key]: next };
+              window.parent.postMessage({ type: '__edit_mode_set_keys', edits: { [key]: next } }, '*');
+              return nt;
+            });
+          };
+        });
+      }, [tweaks]);
+
+      // Apply accent tweak via CSS vars
+      useEffect(() => {
+        const root = document.documentElement;
+        if (tweaks.accent === 'clay') {
+          root.style.setProperty('--sage', 'oklch(55% 0.09 45)');
+          root.style.setProperty('--sage-deep', 'oklch(40% 0.09 40)');
+          root.style.setProperty('--sage-soft', 'oklch(93% 0.04 50)');
+        } else if (tweaks.accent === 'ink') {
+          root.style.setProperty('--sage', 'oklch(30% 0.015 55)');
+          root.style.setProperty('--sage-deep', 'oklch(22% 0.012 55)');
+          root.style.setProperty('--sage-soft', 'oklch(93% 0.008 70)');
+        } else {
+          root.style.setProperty('--sage', 'oklch(55% 0.055 160)');
+          root.style.setProperty('--sage-deep', 'oklch(40% 0.06 160)');
+          root.style.setProperty('--sage-soft', 'oklch(93% 0.03 160)');
+        }
+      }, [tweaks.accent]);
+
+      // Apply numeral tweak to all Instrument Serif numerals
+      useEffect(() => {
+        const style = document.getElementById('numeralOverride') || document.createElement('style');
+        style.id = 'numeralOverride';
+        style.textContent = tweaks.numeralStyle === 'sans'
+          ? `.phone-inner [style*="Instrument Serif"] { font-family: Inter, sans-serif !important; font-weight: 600 !important; }`
+          : '';
+        if (!style.parentNode) document.head.appendChild(style);
+      }, [tweaks.numeralStyle]);
+
+      // Apply density tweak — scales set row + exercise card padding + gaps
+      useEffect(() => {
+        const style = document.getElementById('densityOverride') || document.createElement('style');
+        style.id = 'densityOverride';
+        const d = tweaks.density;
+        if (d === 'cozy') {
+          style.textContent = `
+            .phone-inner [data-density="row"] { padding-top: 14px !important; padding-bottom: 14px !important; }
+            .phone-inner [data-density="card"] { padding: 20px 20px !important; margin-bottom: 16px !important; }
+            .phone-inner [data-density="sets"] { gap: 9px !important; margin-top: 16px !important; }
+            .phone-inner [data-density="list"] { gap: 14px !important; }
+            .phone-inner [data-density="screen"] { padding-top: 20px !important; padding-bottom: 32px !important; }
+          `;
+        } else if (d === 'compact') {
+          style.textContent = `
+            .phone-inner [data-density="row"] { padding-top: 6px !important; padding-bottom: 6px !important; }
+            .phone-inner [data-density="card"] { padding: 11px 14px !important; margin-bottom: 8px !important; }
+            .phone-inner [data-density="sets"] { gap: 3px !important; margin-top: 8px !important; }
+            .phone-inner [data-density="list"] { gap: 6px !important; }
+            .phone-inner [data-density="screen"] { padding-top: 10px !important; padding-bottom: 18px !important; }
+          `;
+        } else {
+          style.textContent = '';
+        }
+        if (!style.parentNode) document.head.appendChild(style);
+      }, [tweaks.density]);
+
+      // ── Workout logic ─────────────────────────────────
+      const flatSets = () => {
+        let total = 0, done = 0;
+        exercises.forEach(ex => {
+          const items = ex.kind === 'superset' ? ex.items : [ex];
+          items.forEach(it => {
+            it.sets.forEach(s => {
+              total++;
+              if (s.weight != null || s.reps != null || s.done) done++;
+            });
+          });
+        });
+        return { total, done };
+      };
+
+      const startSession = () => {
+        const day = ROUTINE.days[selectedDayId];
+        setActiveSession({
+          dayId: selectedDayId,
+          day: day.label,
+          total: day.totalSets,
+          logged: 0,
+        });
+        setTab('workout');
+      };
+
+      const resumeSession = () => setTab('workout');
+
+      const onSetTap = (exId, blockOffset, setIndex) => {
+        const ex = findExercise(exId, blockOffset);
+        if (!ex) return;
+        const set = ex.sets[setIndex];
+        const totalSets = ex.sets.length;
+        const blockLabel = ex.target ? ex.target : `Block ${blockOffset + 1}`;
+        setSheetTarget({
+          exId, blockOffset, setIndex,
+          name: ex.name,
+          totalSets,
+          setIndex,
+          weight: set.weight,
+          reps: set.reps,
+          lastTime: set.prev,
+          blockLabel: ex.target || 'Working sets',
+          unit: ex.unit || 'kg',
+          suggestion: !set.weight && set.prev ? { weight: parseFloat(set.prev) + 2.5 } : null,
+        });
+      };
+
+      const findExercise = (exId, blockOffset = 0) => {
+        const container = exercises.find(e => e.id === exId);
+        if (!container) return null;
+        if (container.kind === 'superset') return container.items[blockOffset];
+        return container;
+      };
+
+      const saveSet = ({ weight, reps }) => {
+        const { exId, blockOffset, setIndex } = sheetTarget;
+        setExercises(prev => prev.map(ex => {
+          if (ex.id !== exId) return ex;
+          if (ex.kind === 'superset') {
+            const items = ex.items.map((it, i) => {
+              if (i !== blockOffset) return it;
+              const sets = it.sets.map((s, si) => si === setIndex ? { ...s, weight, reps } : s);
+              return { ...it, sets, done: sets.filter(s => s.weight != null).length };
+            });
+            return { ...ex, items };
+          }
+          const sets = ex.sets.map((s, si) => si === setIndex ? { ...s, weight, reps } : s);
+          return { ...ex, sets, done: sets.filter(s => s.weight != null).length };
+        }));
+
+        if (tweaks.autoAdvance) {
+          setTimeout(() => {
+            const ex = findExercise(exId, blockOffset);
+            const next = ex.sets.findIndex((s, i) => i > setIndex && s.weight == null);
+            if (next >= 0) {
+              onSetTap(exId, blockOffset, next);
+            } else {
+              setSheetTarget(null);
+            }
+          }, 80);
+        } else {
+          setSheetTarget(null);
+        }
+
+        const { done, total } = flatSets();
+        setActiveSession(a => a ? { ...a, logged: done + 1, total } : a);
+      };
+
+      const handleFinish = () => {
+        setFinishConfirm(false);
+        setCelebrate(true);
+        setTimeout(() => {
+          setCelebrate(false);
+          setActiveSession(null);
+          setTab('history');
+        }, 1800);
+      };
+
+      const handleDiscard = () => {
+        setDiscardConfirm(false);
+        setActiveSession(null);
+        setTab('today');
+      };
+
+      // Compute live session progress
+      const { total, done } = flatSets();
+      const liveSession = activeSession ? { ...activeSession, total, logged: done } : null;
+
+      const todayState = {
+        routine: ROUTINE,
+        selectedDayId,
+        activeSession: liveSession,
+        sessionsThisWeek: 3,
+        lastSession: LAST_SESSION,
+      };
+
+      const workoutState = {
+        activeSession: liveSession || { dayId: selectedDayId, day: ROUTINE.days[selectedDayId].label, total, logged: done },
+        exercises,
+      };
+
+      const historyState = { history: HISTORY };
+      const settingsState = { settings, routine: ROUTINE };
+
+      return (
+        <>
+          <AppShell tab={tab} onTab={(t) => { setOpenSession(null); setImportOpen(false); setTab(t); }}>
+            <div className="screen-enter" key={tab + (openSession ? '-det' : '')} style={{ height: '100%' }}>
+              {tab === 'today' && (
+                <TodayScreen
+                  state={todayState}
+                  onStart={startSession}
+                  onResume={resumeSession}
+                  onSelectDay={setSelectedDayId}
+                />
+              )}
+              {tab === 'workout' && (
+                liveSession ? (
+                  <WorkoutScreen
+                    state={workoutState}
+                    onSetTap={onSetTap}
+                    onOpenPicker={() => setPickerOpen(true)}
+                    onFinish={() => setFinishConfirm(true)}
+                    onDiscard={() => setDiscardConfirm(true)}
+                  />
+                ) : (
+                  <EmptyWorkout onGo={() => setTab('today')} />
+                )
+              )}
+              {tab === 'history' && (
+                openSession
+                  ? <SessionDetailScreen session={openSession} onBack={() => setOpenSession(null)} />
+                  : <HistoryScreen state={historyState} onOpenSession={setOpenSession} />
+              )}
+              {tab === 'settings' && (
+                importOpen ? (
+                  <ImportRoutineScreen onBack={() => setImportOpen(false)} />
+                ) : (
+                  <SettingsScreen
+                    state={settingsState}
+                    onToggleUnit={(v) => setSettings(s => ({ ...s, unit: v }))}
+                    onToggleTheme={(v) => setSettings(s => ({ ...s, theme: v }))}
+                    onOpenImport={() => setImportOpen(true)}
+                  />
+                )
+              )}
+            </div>
+          </AppShell>
+
+          <SetLogSheet
+            open={!!sheetTarget}
+            target={sheetTarget}
+            lastTime={sheetTarget?.lastTime}
+            suggestion={sheetTarget?.suggestion}
+            onClose={() => setSheetTarget(null)}
+            onSave={saveSet}
+            onToggleUnit={() => {
+              if (!sheetTarget) return;
+              const { exId, blockOffset } = sheetTarget;
+              const nextUnit = sheetTarget.unit === 'kg' ? 'lb' : 'kg';
+              setExercises(prev => prev.map(ex => {
+                if (ex.id !== exId) return ex;
+                if (ex.kind === 'superset') {
+                  return { ...ex, items: ex.items.map((it, i) => i === blockOffset ? { ...it, unit: nextUnit } : it) };
+                }
+                return { ...ex, unit: nextUnit };
+              }));
+              setSheetTarget(t => ({ ...t, unit: nextUnit }));
+            }}
+          />
+
+          <ExercisePicker
+            open={pickerOpen}
+            onClose={() => setPickerOpen(false)}
+            onPick={(ex) => {
+              setPickerOpen(false);
+              setExercises(prev => [...prev, {
+                id: 'extra-' + ex.id,
+                kind: 'exercise',
+                name: ex.name,
+                target: 'Extra · free-form',
+                unit: 'kg',
+                done: 0,
+                sets: [{ weight: null, reps: null }, { weight: null, reps: null }, { weight: null, reps: null }],
+              }]);
+            }}
+            catalog={CATALOG}
+          />
+
+          <ConfirmDialog
+            open={finishConfirm}
+            title="Finish workout?"
+            desc={(total - done) > 0 ? `${total - done} sets not logged — they'll stay empty.` : 'All sets logged. Ready to wrap up?'}
+            confirmLabel="Finish"
+            onConfirm={handleFinish}
+            onClose={() => setFinishConfirm(false)}
+          />
+
+          <ConfirmDialog
+            open={discardConfirm}
+            title="Discard workout?"
+            desc="This permanently deletes this workout and everything you've logged."
+            confirmLabel="Discard"
+            variant="danger"
+            onConfirm={handleDiscard}
+            onClose={() => setDiscardConfirm(false)}
+          />
+
+          <FinishCelebration
+            open={celebrate}
+            stats={[
+              { v: done, l: 'sets' },
+              { v: '38m', l: 'time' },
+              { v: '4.2k', l: 'kg' },
+            ]}
+          />
+        </>
+      );
+    }
+
+    function EmptyWorkout({ onGo }) {
+      return (
+        <div style={{
+          height: '100%', display: 'flex', flexDirection: 'column',
+          alignItems: 'center', justifyContent: 'center', padding: 40, textAlign: 'center',
+        }}>
+          <div style={{ color: 'var(--ink-3)', marginBottom: 14 }}>{Icon.dumb}</div>
+          <div style={{ fontFamily: 'Instrument Serif, serif', fontSize: 26, lineHeight: 1.1 }}>No active workout</div>
+          <div style={{ fontSize: 13, color: 'var(--ink-3)', marginTop: 8, lineHeight: 1.5 }}>
+            Start one from Today to begin logging.
+          </div>
+          <button onClick={onGo} style={{
+            marginTop: 18, padding: '12px 20px', borderRadius: 12,
+            background: 'var(--ink)', color: 'var(--paper)', border: 'none',
+            cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 600,
+          }}>Go to Today</button>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
