@@ -71,21 +71,21 @@ async function seedExercises() {
       name: "Barbell Bench Press",
       type: "weight",
       equipment: "barbell",
-      muscleGroups: ["chest"],
+      muscleGroups: ["Chest"],
     },
     {
       id: "dumbbell-curl",
       name: "Dumbbell Curl",
       type: "weight",
       equipment: "dumbbell",
-      muscleGroups: ["biceps"],
+      muscleGroups: ["Arms"],
     },
     {
       id: "lat-pulldown",
       name: "Lat Pulldown",
       type: "weight",
       equipment: "machine",
-      muscleGroups: ["back"],
+      muscleGroups: ["Back"],
     },
   ]);
 }
@@ -132,6 +132,11 @@ describe("TodayScreen", () => {
       expect(screen.getByRole("heading", { name: /Push/i })).toBeVisible();
     });
     expect(screen.getByRole("button", { name: /Start Workout/i })).toBeVisible();
+    // Hero card shows the muscle-group summary (1 Chest · 1 Arms) —
+    // Day A has Bench (Chest) + Curl (Arms).
+    await waitFor(() => {
+      expect(screen.getByText(/1 Chest.*1 Arms/)).toBeVisible();
+    });
     expect(screen.getByRole("button", { name: /Day A/i })).toBeVisible();
     expect(screen.getByRole("button", { name: /Day B/i })).toBeVisible();
   });

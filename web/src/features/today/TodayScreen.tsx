@@ -16,6 +16,7 @@ import { SectionHeader } from "@/shared/components/SectionHeader";
 import { DaySelector } from "./DaySelector";
 import { DayPreview } from "./DayPreview";
 import { LastSessionCard } from "./LastSessionCard";
+import { summarizeMuscleGroups } from "./muscle-summary";
 import type { RoutineDay } from "@/domain/types";
 
 function estimateDayDurationMin(day: RoutineDay): number {
@@ -121,14 +122,12 @@ export default function TodayScreen() {
   }
 
   const dayDisplayName = day?.label ?? dayId;
-  const flatEntries = day
-    ? day.entries.flatMap((e) => (e.kind === "exercise" ? [e] : e.items))
-    : [];
-  const firstTwoNames = flatEntries
-    .slice(0, 2)
-    .map((e) => exerciseNames.get(e.exerciseId) ?? e.exerciseId.replace(/-/g, " "));
+  const exercisesById = new Map((exercises ?? []).map((ex) => [ex.id, ex]));
+  const muscleSummary = day ? summarizeMuscleGroups(day.entries, exercisesById) : [];
+  const summaryLine = muscleSummary
+    .map((g) => `${g.count} ${g.group}`)
+    .join(" · ");
   const estMin = day ? estimateDayDurationMin(day) : 0;
-  const remainingCount = flatEntries.length - firstTwoNames.length;
 
   return (
     <div className="flex flex-col h-full">
@@ -152,17 +151,10 @@ export default function TodayScreen() {
           <h1 className="text-3xl font-heading font-bold tracking-tight">
             {dayDisplayName}
           </h1>
-          {firstTwoNames.length > 0 && (
-            <div className="space-y-0.5 text-sm">
-              {firstTwoNames.map((name) => (
-                <p key={name} className="font-medium truncate">{name}</p>
-              ))}
-              {remainingCount > 0 && (
-                <p className="text-primary-foreground/70 text-xs">
-                  + {remainingCount} more
-                </p>
-              )}
-            </div>
+          {summaryLine && (
+            <p className="text-sm font-medium text-primary-foreground/90">
+              {summaryLine}
+            </p>
           )}
           <Button
             variant="cta"
