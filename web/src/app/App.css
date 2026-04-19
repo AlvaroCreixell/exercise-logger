@@ -27,6 +27,11 @@
     --color-warm: var(--warm);
     --color-danger: var(--danger);
     --color-cta: var(--cta);
+    /* Heading face is now Instrument Serif. Several screens
+       (HistoryScreen, SessionDetailScreen, ExerciseHistoryScreen,
+       SettingsScreen) still pair font-heading with font-extrabold /
+       font-bold — those will render faux-bold until per-screen
+       reskin sprints remove the weight class or swap to .text-hero-serif. */
     --font-heading: 'Instrument Serif', ui-serif, Georgia, serif;
     --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
     --color-border-strong: var(--border-strong);
@@ -192,6 +197,7 @@
     letter-spacing: -0.005em;
   }
 
+  /* Tracking reduced from pre-Sprint-6 0.12em to handoff-spec 0.08em. */
   .text-eyebrow {
     font-family: var(--font-sans);
     font-weight: 600;
@@ -208,6 +214,8 @@
     line-height: 1.45;
   }
 
+  /* Color is part of the role per the handoff spec (meta always ink-3),
+     which is why this utility bundles color where .text-value does not. */
   .text-meta {
     font-family: var(--font-sans);
     font-weight: 500;
