@@ -13,7 +13,7 @@ The single source of truth for the data model. 6 Dexie table types + supporting 
 - **Session** — One per workout attempt. Snapshots routine name, day label, day order, rest timers.
 - **SessionExercise** — Per-exercise snapshot within a session. Snapshots set blocks, effective type/equipment, notes.
 - **LoggedSet** — One per logged set slot. Denormalizes exerciseId, instanceLabel, blockSignature for query performance.
-- **Settings** — Single record (id="user"). Holds activeRoutineId, units, theme.
+- **Settings** — Single record (id="user"). Holds activeRoutineId, units.
 
 Key supporting types:
 - **SetBlock** — Prescription: `targetKind` (reps/duration/distance) + value range or exact + count + tag
