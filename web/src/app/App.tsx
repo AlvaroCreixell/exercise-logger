@@ -10,7 +10,8 @@ import {
   useLocation,
 } from "react-router";
 import { Toaster } from "sonner";
-import { CalendarDays, Dumbbell, History, Settings } from "lucide-react";
+import { Settings } from "lucide-react";
+import { Grid, Dumbbell, Graph } from "@/shared/icons";
 import { useAppInit } from "@/shared/hooks/useAppInit";
 import { SWUpdatePrompt } from "./SWUpdatePrompt";
 
@@ -26,9 +27,9 @@ const ExerciseHistoryScreen = lazy(
 const SettingsScreen = lazy(() => import("@/features/settings/SettingsScreen"));
 
 const tabs = [
-  { to: "/", label: "Today", icon: CalendarDays },
+  { to: "/", label: "Today", icon: Grid },
   { to: "/workout", label: "Workout", icon: Dumbbell },
-  { to: "/history", label: "History", icon: History },
+  { to: "/history", label: "History", icon: Graph },
   { to: "/settings", label: "Settings", icon: Settings },
 ] as const;
 
@@ -64,7 +65,7 @@ function Shell() {
         </FadeRoute>
       </main>
       <nav
-        className="border-t-2 border-border-strong bg-background pb-[env(safe-area-inset-bottom)]"
+        className="border-t border-line bg-background pb-[env(safe-area-inset-bottom)]"
         role="navigation"
         aria-label="Main navigation"
       >
@@ -75,10 +76,10 @@ function Shell() {
               to={to}
               end={to === "/"}
               className={({ isActive }) =>
-                `relative flex flex-col items-center gap-0.5 px-3 py-2 text-xs transition-all duration-[var(--dur-base)] focus-visible:ring-2 focus-visible:ring-cta/30 outline-none active:scale-95 ${
+                `relative flex flex-col items-center gap-0.5 px-3 py-2 text-xs transition-all duration-[var(--dur-base)] focus-visible:ring-2 focus-visible:ring-sage/40 outline-none active:scale-95 rounded-[var(--radius-pill)] ${
                   isActive
-                    ? "text-primary-foreground font-semibold"
-                    : "text-muted-foreground hover:text-foreground"
+                    ? "text-sage-deep font-semibold"
+                    : "text-ink-3 hover:text-foreground"
                 }`
               }
               aria-label={label}
@@ -87,12 +88,12 @@ function Shell() {
                 <>
                   {isActive && (
                     <span
-                      className="absolute inset-0 bg-primary -z-0"
+                      className="absolute inset-x-1 inset-y-0.5 -z-0 rounded-[var(--radius-pill)] bg-sage-soft"
                       aria-hidden="true"
                     />
                   )}
                   <Icon
-                    className="h-5 w-5 relative z-10"
+                    className="relative z-10 h-5 w-5"
                     strokeWidth={isActive ? 2.5 : 2}
                   />
                   <span className="relative z-10">{label}</span>
