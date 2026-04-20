@@ -135,6 +135,48 @@ describe("ExerciseCard — header", () => {
     await user.click(screen.getByRole("button", { name: /kg/i }));
     expect(spy).toHaveBeenCalledWith("lbs");
   });
+
+  it("does not render the N/M chip for extra exercises (no prescribed blocks)", () => {
+    const extraSe = makeSessionExercise({
+      id: "se-extra",
+      origin: "extra",
+      setBlocksSnapshot: [],
+    });
+    const extraLogged = makeLoggedSet({
+      id: "ls-extra-1",
+      sessionExerciseId: "se-extra",
+      origin: "extra",
+      blockIndex: 0,
+      setIndex: 0,
+    });
+    render(
+      <ExerciseCard
+        sessionExercise={extraSe}
+        loggedSets={[extraLogged]}
+        units="kg"
+        historyData={undefined}
+        extraHistory={undefined}
+        onSetTap={() => {}}
+      />,
+    );
+    expect(screen.queryByLabelText(/of \d+ sets logged/i)).toBeNull();
+    expect(screen.queryByText("0/0")).toBeNull();
+    expect(screen.queryByText("1/0")).toBeNull();
+  });
+
+  it("still renders the chip for routine exercises with prescribed blocks", () => {
+    render(
+      <ExerciseCard
+        sessionExercise={makeSessionExercise()}
+        loggedSets={[]}
+        units="kg"
+        historyData={undefined}
+        extraHistory={undefined}
+        onSetTap={() => {}}
+      />,
+    );
+    expect(screen.getByText("0/3")).toBeVisible();
+  });
 });
 
 describe("ExerciseCard — set rows", () => {

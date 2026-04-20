@@ -91,12 +91,14 @@ export function ExerciseCard({
               </p>
             )}
           </div>
-          <span
-            aria-label={`${totalLogged} of ${totalPrescribed} sets logged`}
-            className="shrink-0 text-xs font-semibold text-ink-3 tabular-nums"
-          >
-            {totalLogged}/{totalPrescribed}
-          </span>
+          {totalPrescribed > 0 && (
+            <span
+              aria-label={`${totalLogged} of ${totalPrescribed} sets logged`}
+              className="shrink-0 text-xs font-semibold text-ink-3 tabular-nums"
+            >
+              {totalLogged}/{totalPrescribed}
+            </span>
+          )}
           {onUnitToggle && (
             <button
               type="button"
