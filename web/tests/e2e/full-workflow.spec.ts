@@ -66,8 +66,11 @@ test.describe("Exercise Logger E2E Smoke Test", () => {
     await expect(saveButton).toBeVisible();
     await saveButton.click();
 
-    // Sheet should close; the logged set should appear (success toast or slot update).
-    await expect(page.getByRole("button", { name: /^Set 1:/ }).first()).toBeVisible();
+    // Sheet should close and the Set 1 row should reflect the logged state (no longer "empty").
+    await expect(weightInput).toBeHidden({ timeout: 3000 });
+    await expect(
+      page.getByRole("button", { name: /^Set 1: (?!empty\b)/ }).first(),
+    ).toBeVisible();
 
     // Step 4: Finish the workout (confirm dialog is an AlertDialog primitive).
     await page.getByRole("button", { name: /^finish workout$/i }).click();
