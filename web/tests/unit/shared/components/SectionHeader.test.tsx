@@ -11,9 +11,8 @@ describe("SectionHeader", () => {
   it("applies base eyebrow styling", () => {
     render(<SectionHeader>Heading</SectionHeader>);
     const el = screen.getByText("Heading");
-    expect(el.className).toMatch(/uppercase/);
-    expect(el.className).toMatch(/tracking-widest/);
-    expect(el.className).toMatch(/text-muted-foreground/);
+    expect(el.className).toMatch(/text-eyebrow/);
+    expect(el.className).toMatch(/text-ink-3/);
   });
 
   it("honors className override (e.g., `!text-cta`)", () => {
@@ -26,5 +25,12 @@ describe("SectionHeader", () => {
     render(<SectionHeader id="my-label">Section</SectionHeader>);
     const el = screen.getByText("Section");
     expect(el.id).toBe("my-label");
+  });
+
+  it("applies serif styling when variant='serif'", () => {
+    render(<SectionHeader variant="serif">Title</SectionHeader>);
+    const el = screen.getByText("Title");
+    expect(el.className).toMatch(/text-title-serif/);
+    expect(el.className).toMatch(/text-foreground/);
   });
 });

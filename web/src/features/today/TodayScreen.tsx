@@ -165,7 +165,7 @@ export default function TodayScreen() {
             </div>
           )}
           <Button
-            variant="cta"
+            variant="default"
             className="w-full"
             size="lg"
             onClick={handleStart}

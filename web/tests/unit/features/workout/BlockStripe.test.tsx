@@ -52,7 +52,7 @@ describe("BlockStripe", () => {
       </BlockStripe>,
     );
     const stripe = container.querySelector("[data-stripe]");
-    expect(stripe!.className).toMatch(/bg-muted/);
+    expect(stripe!.className).toMatch(/bg-line/);
   });
 
   it("omits label chip when label is empty", () => {

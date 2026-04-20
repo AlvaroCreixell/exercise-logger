@@ -5,14 +5,17 @@ interface SectionHeaderProps {
   children: React.ReactNode;
   className?: string;
   id?: string;
+  variant?: "default" | "serif";
 }
 
-export function SectionHeader({ children, className, id }: SectionHeaderProps) {
+export function SectionHeader({ children, className, id, variant = "default" }: SectionHeaderProps) {
   return (
     <p
       id={id}
       className={cn(
-        "text-xs font-semibold uppercase tracking-widest text-muted-foreground",
+        variant === "serif"
+          ? "text-title-serif text-foreground"
+          : "text-eyebrow text-ink-3",
         className,
       )}
     >

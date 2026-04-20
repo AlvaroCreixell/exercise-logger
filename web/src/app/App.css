@@ -1,16 +1,37 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "./shadcn-compat.css";
-@import "@fontsource-variable/urbanist";
-@import "@fontsource/dm-sans/400.css";
-@import "@fontsource/dm-sans/500.css";
-@import "@fontsource/dm-sans/600.css";
+@import "@fontsource/inter/400.css";
+@import "@fontsource/inter/500.css";
+@import "@fontsource/inter/600.css";
+@import "@fontsource/inter/700.css";
+@import "@fontsource/instrument-serif/400.css";
+@import "@fontsource/instrument-serif/400-italic.css";
 
 @theme inline {
-    --font-heading: 'Urbanist Variable', sans-serif;
-    --font-sans: 'DM Sans', sans-serif;
-    --color-border-strong: var(--border-strong);
+    /* Sprint 6: warm-paper palette */
+    --color-paper: var(--paper);
+    --color-card-paper: var(--card-paper);
+    --color-ink: var(--ink);
+    --color-ink-2: var(--ink-2);
+    --color-ink-3: var(--ink-3);
+    --color-line: var(--line);
+    --color-line-soft: var(--line-soft);
+    --color-sage: var(--sage);
+    --color-sage-deep: var(--sage-deep);
+    --color-sage-soft: var(--sage-soft);
+    --color-warm: var(--warm);
+    --color-danger: var(--danger);
     --color-cta: var(--cta);
+    /* Body + heading both use Inter. Serif is reserved for explicit opt-in
+       via .text-hero-serif / .text-title-serif (History / Settings page labels,
+       italic name in Today greeting). This keeps every existing
+       `font-heading` / `.text-hero` call site rendering as bold sans,
+       matching the handoff screenshots — serif is not a global heading face. */
+    --font-heading: 'Inter', ui-sans-serif, system-ui, sans-serif;
+    --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+    --font-serif: 'Instrument Serif', ui-serif, Georgia, serif;
+    --color-border-strong: var(--border-strong);
     --color-sidebar-ring: var(--sidebar-ring);
     --color-sidebar-border: var(--sidebar-border);
     --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -66,38 +87,66 @@
 }
 
 :root {
-    --background: oklch(1 0 0);
-    --foreground: oklch(0 0 0);
-    --card: oklch(1 0 0);
-    --card-foreground: oklch(0 0 0);
-    --popover: oklch(1 0 0);
-    --popover-foreground: oklch(0 0 0);
-    --primary: oklch(0 0 0);
-    --primary-foreground: oklch(1 0 0);
-    --secondary: oklch(0.97 0 0);
-    --secondary-foreground: oklch(0 0 0);
-    --muted: oklch(0.97 0 0);
-    --muted-foreground: oklch(0.556 0 0);
-    --accent: oklch(0.97 0 0);
-    --accent-foreground: oklch(0 0 0);
-    --destructive: oklch(0.577 0.245 27.325);
-    --border: oklch(0.922 0 0);
-    --input: oklch(0.922 0 0);
-    --ring: oklch(0.708 0 0);
-    --success: oklch(0.60 0.20 145);
-    --success-foreground: oklch(0.98 0 0);
-    --success-soft: oklch(0.95 0.05 145);
+    /* ─── Sprint 6: warm-paper palette (oklch) ─── */
+    /* Surface */
+    --paper: oklch(98.8% 0.008 80);
+    --card-paper: oklch(96.8% 0.01 80);
+
+    /* Ink */
+    --ink: oklch(22% 0.012 55);
+    --ink-2: oklch(38% 0.012 55);
+    --ink-3: oklch(58% 0.01 60);
+
+    /* Hairlines */
+    --line: oklch(88% 0.012 75);
+    --line-soft: oklch(93% 0.01 75);
+
+    /* Accent — sage */
+    --sage: oklch(55% 0.055 160);
+    --sage-deep: oklch(40% 0.06 160);
+    --sage-soft: oklch(93% 0.03 160);
+
+    /* Semantic */
+    --warm: oklch(55% 0.09 55);
+    --danger: oklch(55% 0.15 25);
+
+    /* Transition alias: keeps pre-Sprint-6 `bg-cta` / `border-cta` /
+       `ring-cta/30` utilities resolving during the per-screen migration.
+       Remove in Task 17 once all direct cta classnames are gone. */
+    --cta: var(--sage);
+
+    --background: var(--paper);
+    --foreground: var(--ink);
+    --card: var(--card-paper);
+    --card-foreground: var(--ink);
+    --popover: var(--paper);
+    --popover-foreground: var(--ink);
+    --primary: var(--ink);
+    --primary-foreground: var(--paper);
+    --secondary: var(--card-paper);
+    --secondary-foreground: var(--ink);
+    --muted: var(--card-paper);
+    --muted-foreground: var(--ink-3);
+    --accent: var(--sage-soft);
+    --accent-foreground: var(--sage-deep);
+    --destructive: var(--danger);
+    --destructive-foreground: var(--paper);
+    --destructive-soft: color-mix(in oklch, var(--danger) 10%, var(--paper));
+    --border: var(--line);
+    --input: var(--line);
+    --ring: var(--sage);
+    --success: var(--sage);
+    --success-foreground: var(--paper);
+    --success-soft: var(--sage-soft);
     --info: oklch(0.65 0.15 195);
     --info-foreground: oklch(0.98 0 0);
     --info-soft: oklch(0.95 0.05 195);
-    --warning: oklch(0.75 0.15 85);
-    --warning-foreground: oklch(0.15 0 0);
-    --warning-soft: oklch(0.95 0.05 85);
-    --accent-warm: oklch(0.72 0.17 45);
-    --accent-warm-foreground: oklch(0.18 0 0);
-    --accent-warm-soft: oklch(0.95 0.05 45);
-    --destructive-foreground: oklch(0.98 0 0);
-    --destructive-soft: oklch(0.95 0.05 27);
+    --warning: var(--warm);
+    --warning-foreground: var(--ink);
+    --warning-soft: color-mix(in oklch, var(--warm) 12%, var(--paper));
+    --accent-warm: var(--warm);
+    --accent-warm-foreground: var(--ink);
+    --accent-warm-soft: color-mix(in oklch, var(--warm) 12%, var(--paper));
     --chart-1: oklch(0.87 0 0);
     --chart-2: oklch(0.556 0 0);
     --chart-3: oklch(0.439 0 0);
@@ -112,8 +161,7 @@
     --sidebar-accent-foreground: oklch(0.205 0 0);
     --sidebar-border: oklch(0.922 0 0);
     --sidebar-ring: oklch(0.708 0 0);
-    --border-strong: oklch(0.07 0 0);
-    --cta: oklch(0.546 0.245 262.88);
+    --border-strong: var(--ink);
 }
 
 
@@ -130,39 +178,76 @@
 }
 
 @layer utilities {
-  .text-hero {
-    font-family: var(--font-heading);
-    font-weight: 700;
-    font-size: 2.25rem;  /* text-4xl */
-    line-height: 1;
-    letter-spacing: -0.025em;
-    font-variant-numeric: tabular-nums;
+  .text-hero-serif {
+    font-family: var(--font-serif);
+    font-weight: 400;
+    font-size: 2rem;          /* 32px */
+    line-height: 1.1;
+    letter-spacing: -0.005em;
   }
 
+  .text-title-serif {
+    font-family: var(--font-serif);
+    font-weight: 400;
+    font-size: 1.375rem;      /* 22px */
+    line-height: 1.15;
+    letter-spacing: -0.005em;
+  }
+
+  /* Tracking reduced from pre-Sprint-6 0.12em to handoff-spec 0.08em. */
+  .text-eyebrow {
+    font-family: var(--font-sans);
+    font-weight: 600;
+    font-size: 0.6875rem;     /* 11px */
+    line-height: 1;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .text-body {
+    font-family: var(--font-sans);
+    font-weight: 400;
+    font-size: 0.875rem;      /* 14px */
+    line-height: 1.45;
+  }
+
+  /* Color is part of the role per the handoff spec (meta always ink-3),
+     which is why this utility bundles color where .text-value does not. */
+  .text-meta {
+    font-family: var(--font-sans);
+    font-weight: 500;
+    font-size: 0.75rem;       /* 12px */
+    line-height: 1.3;
+    color: var(--ink-3);
+  }
+
+  /* Preserved from pre-Sprint-6 — tabular numerals family for stat tiles + set rows */
   .text-value {
-    font-family: var(--font-heading);
+    font-family: var(--font-sans);
     font-weight: 700;
-    font-size: 1.125rem; /* text-lg */
+    font-size: 1.125rem;
     line-height: 1.2;
     letter-spacing: -0.01em;
     font-variant-numeric: tabular-nums;
   }
 
   .text-value-sm {
-    font-family: var(--font-heading);
+    font-family: var(--font-sans);
     font-weight: 600;
-    font-size: 0.875rem; /* text-sm */
+    font-size: 0.875rem;
     line-height: 1.2;
     font-variant-numeric: tabular-nums;
   }
 
-  .text-eyebrow {
-    font-family: var(--font-sans);
-    font-weight: 600;
-    font-size: 0.6875rem; /* ~11px */
+  /* Back-compat alias — pre-Sprint-6 screens still reference .text-hero;
+     renders as bold sans (Inter) via --font-heading. Delete in Sprint 7
+     once Today migrates. */
+  .text-hero {
+    font-family: var(--font-heading);
+    font-weight: 400;
+    font-size: 2.25rem;
     line-height: 1;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
+    letter-spacing: -0.005em;
   }
 }
 
@@ -174,6 +259,45 @@
   --dur-base: 180ms;
   --dur-slow: 600ms;
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.04), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+}
+
+/* Sprint 6 motion + radius */
+:root {
+  --dur-fadeIn: 300ms;
+  --dur-fadeInUp: 300ms;
+  --dur-slideUp: 250ms;
+  --dur-popIn: 250ms;
+  --ease-handoff: ease;
+
+  --radius-card: 18px;
+  --radius-sheet-top: 24px;
+  --radius-set-logged: 12px;
+  --radius-set-empty: 10px;
+  --radius-pill: 999px;
+  --radius-button: 12px;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+@keyframes popIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  @keyframes fadeInUp { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes slideUp  { from, to { transform: none; } }
+  @keyframes popIn    { from { opacity: 0; } to { opacity: 1; } }
 }
 
 @keyframes flash-logged {

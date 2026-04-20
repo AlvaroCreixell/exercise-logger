@@ -25,13 +25,14 @@ describe("Pill", () => {
         A
       </Pill>,
     );
-    expect(screen.getByRole("button").className).toMatch(/bg-primary/);
-    expect(screen.getByRole("button").className).toMatch(/text-primary-foreground/);
+    expect(screen.getByRole("button").className).toMatch(/bg-sage-soft/);
+    expect(screen.getByRole("button").className).toMatch(/text-sage-deep/);
   });
 
-  it("applies muted styling when selected=false", () => {
+  it("applies unselected styling when selected=false", () => {
     render(<Pill onClick={() => {}}>A</Pill>);
-    expect(screen.getByRole("button").className).toMatch(/text-muted-foreground/);
+    expect(screen.getByRole("button").className).toMatch(/border-line/);
+    expect(screen.getByRole("button").className).toMatch(/text-foreground/);
   });
 
   it("shows a suggested indicator dot when indicator=true and not selected", () => {

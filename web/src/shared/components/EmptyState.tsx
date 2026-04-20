@@ -35,7 +35,7 @@ export function EmptyState({
       <div className="flex h-16 w-16 items-center justify-center bg-muted/60 text-muted-foreground">
         <Icon className="h-8 w-8" strokeWidth={1.5} />
       </div>
-      <Heading className="text-2xl font-extrabold tracking-tight font-heading">
+      <Heading className="text-title-serif">
         {heading}
       </Heading>
       <p className="text-sm text-muted-foreground max-w-xs leading-relaxed">
