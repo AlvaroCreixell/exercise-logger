@@ -49,6 +49,7 @@ export default function WorkoutScreen() {
   );
   useEffect(() => {
     if (!startedAt) return;
+    setElapsedSec(computeElapsedSec(startedAt));
     const id = window.setInterval(() => {
       setElapsedSec(computeElapsedSec(startedAt));
     }, 1000);

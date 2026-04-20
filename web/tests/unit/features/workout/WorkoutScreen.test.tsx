@@ -159,3 +159,41 @@ describe("WorkoutScreen — integration smoke", () => {
     });
   });
 });
+
+describe("WorkoutScreen — elapsed timer sync", () => {
+  beforeEach(async () => {
+    await Promise.all([
+      db.settings.clear(),
+      db.routines.clear(),
+      db.exercises.clear(),
+      db.sessions.clear(),
+      db.sessionExercises.clear(),
+      db.loggedSets.clear(),
+    ]);
+    await initializeSettings(db);
+  });
+
+  afterEach(() => {
+    cleanup();
+  });
+
+  it("shows non-zero elapsed immediately after the active session loads", async () => {
+    const routine = await seedRoutineAndExercises();
+    await startSessionWithCatalog(db, routine, routine.nextDayId);
+    // Back-date startedAt so the elapsed value is reliably non-zero regardless of scheduler.
+    const thirtySecondsAgo = new Date(Date.now() - 30_000).toISOString();
+    const active = await db.sessions.where("status").equals("active").first();
+    if (!active) throw new Error("expected an active session to seed");
+    await db.sessions.update(active.id, { startedAt: thirtySecondsAgo });
+
+    renderWorkout();
+
+    // SessionHeader renders "MM:SS elapsed". Before the fix, this sat at "0:00 elapsed"
+    // for up to ~1s after activeSession resolved. With the fix, the first render that
+    // has a startedAt must compute elapsed immediately.
+    await waitFor(() => {
+      const elapsed = screen.getByText(/\bELAPSED\b/i);
+      expect(elapsed.textContent).not.toMatch(/\b0:0?0\b/);
+    });
+  });
+});
