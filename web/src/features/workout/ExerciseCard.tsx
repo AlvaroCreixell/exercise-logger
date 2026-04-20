@@ -26,7 +26,7 @@ function formatHintValue(
   units: UnitSystem,
 ): string | null {
   if (set.weightKg != null && set.reps != null) {
-    return `${Math.round(toDisplayWeight(set.weightKg, units))}×${set.reps}`;
+    return `${toDisplayWeight(set.weightKg, units)}×${set.reps}`;
   }
   if (set.reps != null) return `${set.reps}r`;
   if (set.durationSec != null) {

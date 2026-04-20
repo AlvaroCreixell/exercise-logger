@@ -281,6 +281,33 @@ describe("ExerciseCard — LAST strip", () => {
   });
 });
 
+describe("ExerciseCard — LAST strip / hint formatting", () => {
+  it("renders fractional LAST weight without rounding (70.5, not 71)", () => {
+    const se = makeSessionExercise();
+    const historyData = {
+      lastTime: [
+        {
+          sets: [
+            { weightKg: 70.5, reps: 5, durationSec: null, distanceM: null },
+          ],
+        },
+      ],
+    } as unknown as ExerciseHistoryData;
+    render(
+      <ExerciseCard
+        sessionExercise={se}
+        loggedSets={[]}
+        units="kg"
+        historyData={historyData}
+        extraHistory={undefined}
+        onSetTap={() => {}}
+      />,
+    );
+    expect(screen.getByText(/LAST 70\.5×5/)).toBeVisible();
+    expect(screen.queryByText(/LAST 71×5/)).toBeNull();
+  });
+});
+
 describe("ExerciseCard — extras", () => {
   it("renders an add-row for extras with no blocks", async () => {
     const spy = vi.fn();
