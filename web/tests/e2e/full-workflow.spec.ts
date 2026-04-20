@@ -50,9 +50,9 @@ test.describe("Exercise Logger E2E Smoke Test", () => {
     });
 
     // Step 3: Log a set — hard assertions, no .catch guards.
-    const setSlot = page.locator('[data-testid="set-slot"]').first();
-    await expect(setSlot).toBeVisible({ timeout: 5000 });
-    await setSlot.click();
+    const firstSetRow = page.getByRole("button", { name: /^Set 1:/ }).first();
+    await expect(firstSetRow).toBeVisible({ timeout: 5000 });
+    await firstSetRow.click();
 
     const weightInput = page.locator('input[name="weight"]').first();
     await expect(weightInput).toBeVisible({ timeout: 3000 });
@@ -67,7 +67,7 @@ test.describe("Exercise Logger E2E Smoke Test", () => {
     await saveButton.click();
 
     // Sheet should close; the logged set should appear (success toast or slot update).
-    await expect(page.locator('[data-testid="set-slot"]').first()).toBeVisible();
+    await expect(page.getByRole("button", { name: /^Set 1:/ }).first()).toBeVisible();
 
     // Step 4: Finish the workout (confirm dialog is an AlertDialog primitive).
     await page.getByRole("button", { name: /^finish workout$/i }).click();
