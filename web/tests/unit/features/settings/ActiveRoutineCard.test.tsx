@@ -1,5 +1,6 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { ActiveRoutineCard } from "@/features/settings/ActiveRoutineCard";
 import type { Routine } from "@/domain/types";
 
@@ -53,5 +54,35 @@ describe("ActiveRoutineCard", () => {
   it("renders null when routine is null (no active routine)", () => {
     const { container } = render(<ActiveRoutineCard routine={null} />);
     expect(container.firstChild).toBeNull();
+  });
+
+  it("does not render a delete button when onDelete is not provided", () => {
+    render(<ActiveRoutineCard routine={makeRoutine()} />);
+    expect(screen.queryByRole("button", { name: /delete routine/i })).toBeNull();
+  });
+
+  it("renders a delete button when onDelete is provided and calls it on click", async () => {
+    const spy = vi.fn();
+    const user = userEvent.setup();
+    render(<ActiveRoutineCard routine={makeRoutine()} onDelete={spy} />);
+    const btn = screen.getByRole("button", { name: /delete routine/i });
+    await user.click(btn);
+    expect(spy).toHaveBeenCalledOnce();
+  });
+
+  it("disables the delete button when deleteDisabled is true", async () => {
+    const spy = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <ActiveRoutineCard
+        routine={makeRoutine()}
+        onDelete={spy}
+        deleteDisabled={true}
+      />,
+    );
+    const btn = screen.getByRole("button", { name: /delete routine/i });
+    expect(btn.hasAttribute("disabled") || btn.getAttribute("aria-disabled") === "true").toBe(true);
+    await user.click(btn);
+    expect(spy).not.toHaveBeenCalled();
   });
 });

@@ -3,9 +3,17 @@ import type { Routine } from "@/domain/types";
 
 interface ActiveRoutineCardProps {
   routine: Routine | null | undefined;
+  /** When provided, renders a "Delete routine" text button below the meta line. */
+  onDelete?: () => void;
+  /** Disables the delete button when true. Only meaningful alongside `onDelete`. */
+  deleteDisabled?: boolean;
 }
 
-export function ActiveRoutineCard({ routine }: ActiveRoutineCardProps) {
+export function ActiveRoutineCard({
+  routine,
+  onDelete,
+  deleteDisabled,
+}: ActiveRoutineCardProps) {
   if (!routine) return null;
 
   const dayCount = routine.dayOrder.length;
@@ -21,6 +29,16 @@ export function ActiveRoutineCard({ routine }: ActiveRoutineCardProps) {
           {routine.name}
         </h2>
         <p className="text-meta tabular-nums">{meta}</p>
+        {onDelete && (
+          <button
+            type="button"
+            onClick={onDelete}
+            disabled={deleteDisabled}
+            className="text-xs font-medium text-destructive hover:underline disabled:opacity-50 disabled:no-underline disabled:cursor-not-allowed"
+          >
+            Delete routine
+          </button>
+        )}
       </CardContent>
     </Card>
   );

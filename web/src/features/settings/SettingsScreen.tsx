@@ -5,7 +5,7 @@ import { useAllRoutines, useRoutine } from "@/shared/hooks/useRoutine";
 import { useActiveSession } from "@/shared/hooks/useActiveSession";
 import { useInstallPrompt } from "@/shared/hooks/useInstallPrompt";
 import { db } from "@/db/database";
-import { setUnits } from "@/services/settings-service";
+import { setUnits, deleteRoutine } from "@/services/settings-service";
 import {
   exportBackup,
   downloadBackupFile,
@@ -35,6 +35,7 @@ export default function SettingsScreen() {
   const navigate = useNavigate();
   const jsonInputRef = useRef<HTMLInputElement>(null);
   const [clearOpen, setClearOpen] = useState(false);
+  const [deleteActiveOpen, setDeleteActiveOpen] = useState(false);
   const [importErrors, setImportErrors] = useState<string[]>([]);
 
   if (!settings || routines === undefined) return null;
@@ -85,6 +86,16 @@ export default function SettingsScreen() {
     navigate("/");
   }
 
+  async function handleDeleteActive() {
+    if (!settings?.activeRoutineId) return;
+    try {
+      await deleteRoutine(db, settings.activeRoutineId);
+      toast.success("Routine deleted");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Delete failed");
+    }
+  }
+
   return (
     <div className="space-y-6 p-5 pb-8">
       <div className="space-y-1">
@@ -95,7 +106,11 @@ export default function SettingsScreen() {
       {/* Routines */}
       <div className="space-y-3">
         <p className="text-eyebrow text-ink-3">Routine</p>
-        <ActiveRoutineCard routine={activeRoutine ?? null} />
+        <ActiveRoutineCard
+          routine={activeRoutine ?? null}
+          onDelete={() => setDeleteActiveOpen(true)}
+          deleteDisabled={hasActive}
+        />
         {otherRoutines.length > 0 && (
           <RoutineList
             routines={otherRoutines}
@@ -194,6 +209,19 @@ export default function SettingsScreen() {
         variant="destructive"
         doubleConfirm
         doubleConfirmText="Tap again to confirm"
+      />
+      <ConfirmDialog
+        open={deleteActiveOpen}
+        onOpenChange={setDeleteActiveOpen}
+        title="Delete routine?"
+        description={
+          routines.length > 1
+            ? "This routine will be deleted. Your next routine will be automatically activated."
+            : "This is your only routine. Deleting it will leave you with no active routine."
+        }
+        confirmText="Delete"
+        onConfirm={handleDeleteActive}
+        variant="destructive"
       />
     </div>
   );
