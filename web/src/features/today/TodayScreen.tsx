@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Link, useNavigate } from "react-router";
 import { useLiveQuery } from "dexie-react-hooks";
-import { CalendarCheck, Flame } from "lucide-react";
+import { CalendarCheck } from "lucide-react";
 import { useSettings } from "@/shared/hooks/useSettings";
 import { useRoutine } from "@/shared/hooks/useRoutine";
 import { useActiveSession } from "@/shared/hooks/useActiveSession";
@@ -9,29 +9,49 @@ import { useLastSession } from "@/shared/hooks/useLastSession";
 import { useTrainingCadence } from "@/shared/hooks/useTrainingCadence";
 import { startSessionWithCatalog } from "@/services/session-service";
 import { db } from "@/db/database";
-import { Button } from "@/shared/ui/button";
 import { Card, CardContent } from "@/shared/ui/card";
 import { EmptyState } from "@/shared/components/EmptyState";
-import { SectionHeader } from "@/shared/components/SectionHeader";
+import { StreakPill } from "./StreakPill";
+import { TodayHeroCard } from "./TodayHeroCard";
 import { DaySelector } from "./DaySelector";
-import { DayPreview } from "./DayPreview";
 import { LastSessionCard } from "./LastSessionCard";
-import type { RoutineDay } from "@/domain/types";
+import { deriveDayMuscleGroups } from "./lib/muscleGroups";
+import { formatTodayEyebrow } from "./lib/formatDate";
+import type { Exercise, RoutineDay } from "@/domain/types";
 
-function estimateDayDurationMin(day: RoutineDay): number {
-  let totalSets = 0;
+function firstExerciseFromDay(
+  day: RoutineDay,
+  exerciseNames: Map<string, string>,
+): string | null {
   for (const entry of day.entries) {
     if (entry.kind === "exercise") {
-      totalSets += entry.setBlocks.reduce((s, b) => s + b.count, 0);
-    } else if (entry.kind === "superset") {
+      return exerciseNames.get(entry.exerciseId) ?? entry.exerciseId;
+    }
+    const first = entry.items[0];
+    if (first) return exerciseNames.get(first.exerciseId) ?? first.exerciseId;
+  }
+  return null;
+}
+
+function countSets(day: RoutineDay): number {
+  let total = 0;
+  for (const entry of day.entries) {
+    if (entry.kind === "exercise") {
+      total += entry.setBlocks.reduce((s, b) => s + b.count, 0);
+    } else {
       for (const item of entry.items) {
-        totalSets += item.setBlocks.reduce((s, b) => s + b.count, 0);
+        total += item.setBlocks.reduce((s, b) => s + b.count, 0);
       }
     }
   }
-  // ~2 min per set (setup + logging + rest), rounded up to nearest 5
-  const rough = Math.ceil((totalSets * 2) / 5) * 5;
-  return Math.max(10, rough);
+  return total;
+}
+
+function countExercises(day: RoutineDay): number {
+  return day.entries.reduce(
+    (n, e) => n + (e.kind === "exercise" ? 1 : e.items.length),
+    0,
+  );
 }
 
 export default function TodayScreen() {
@@ -45,20 +65,23 @@ export default function TodayScreen() {
   const [starting, setStarting] = useState(false);
 
   const exercises = useLiveQuery(() => db.exercises.toArray());
-  const exerciseNames = new Map<string, string>();
-  if (exercises) {
-    for (const ex of exercises) {
-      exerciseNames.set(ex.id, ex.name);
-    }
-  }
+  const exercisesById = useMemo(() => {
+    const m = new Map<string, Exercise>();
+    if (exercises) for (const ex of exercises) m.set(ex.id, ex);
+    return m;
+  }, [exercises]);
+  const exerciseNames = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const [id, ex] of exercisesById) m.set(id, ex.name);
+    return m;
+  }, [exercisesById]);
 
   // Live elapsed time for active session
   const [elapsed, setElapsed] = useState(() =>
     activeSession
       ? Math.round((Date.now() - new Date(activeSession.session.startedAt).getTime()) / 60000)
-      : 0
+      : 0,
   );
-
   useEffect(() => {
     if (!activeSession) return;
     setElapsed(Math.round((Date.now() - new Date(activeSession.session.startedAt).getTime()) / 60000));
@@ -75,7 +98,7 @@ export default function TodayScreen() {
     return (
       <EmptyState
         icon={CalendarCheck}
-        heading="No Active Routine"
+        heading="No active routine"
         body="Import a routine in Settings to get started."
         action={{ label: "Go to Settings", onClick: () => navigate("/settings") }}
       />
@@ -84,20 +107,23 @@ export default function TodayScreen() {
 
   if (routine === undefined) return null;
 
-  // State C: Active session exists
+  // State C: Active session — minimal Resume card.
   if (activeSession) {
     return (
-      <div className="p-5">
+      <div className="p-5 space-y-5">
         <Link to="/workout" className="block">
-          <Card className="border border-info bg-info-soft hover:bg-info-soft/80 transition-colors">
-            <CardContent className="py-4">
-              <h2 className="text-base font-semibold">Resume Workout</h2>
-              <p className="text-sm text-muted-foreground mt-1">
-                {activeSession.session.dayLabelSnapshot} &middot;{" "}
-                {activeSession.session.routineNameSnapshot}
-              </p>
-              <p className="text-xs text-muted-foreground mt-1 tabular-nums">
-                {elapsed} min &middot; {activeSession.sessionExercises.length} exercises
+          <Card className="border border-sage bg-sage-soft/50 hover:bg-sage-soft transition-colors">
+            <CardContent className="space-y-1 p-5">
+              <p className="text-eyebrow text-sage-deep">In progress</p>
+              <h2 className="font-heading text-xl font-bold tracking-tight">
+                Resume workout
+              </h2>
+              <p className="text-meta flex items-center gap-1.5">
+                <span
+                  aria-hidden="true"
+                  className="inline-block size-1.5 rounded-full bg-sage"
+                />
+                {elapsed} min · {activeSession.session.dayLabelSnapshot}
               </p>
             </CardContent>
           </Card>
@@ -106,117 +132,62 @@ export default function TodayScreen() {
     );
   }
 
-  // State B: Routine active, no session
-  const dayId = selectedDayId ?? routine.nextDayId ?? routine.dayOrder[0]!;
-  const day = routine.days[dayId];
+  // State B: Normal — routine active, no session.
+  const todayId = routine.nextDayId ?? routine.dayOrder[0]!;
+  const selectedId = selectedDayId ?? todayId;
+  const selectedDay = routine.days[selectedId];
+  const isToday = selectedId === todayId;
 
   async function handleStart() {
     setStarting(true);
     try {
-      await startSessionWithCatalog(db, routine!, dayId);
+      await startSessionWithCatalog(db, routine!, selectedId);
       navigate("/workout");
     } finally {
       setStarting(false);
     }
   }
 
-  const dayDisplayName = day?.label ?? dayId;
-  const flatEntries = day
-    ? day.entries.flatMap((e) => (e.kind === "exercise" ? [e] : e.items))
-    : [];
-  const firstTwoNames = flatEntries
-    .slice(0, 2)
-    .map((e) => exerciseNames.get(e.exerciseId) ?? e.exerciseId.replace(/-/g, " "));
-  const estMin = day ? estimateDayDurationMin(day) : 0;
-  const remainingCount = flatEntries.length - firstTwoNames.length;
+  const muscleGroups = selectedDay ? deriveDayMuscleGroups(selectedDay, exercisesById) : [];
+  const exerciseCount = selectedDay ? countExercises(selectedDay) : 0;
+  const setCount = selectedDay ? countSets(selectedDay) : 0;
+  const firstExerciseName = selectedDay ? firstExerciseFromDay(selectedDay, exerciseNames) : null;
+  const dayTitle = selectedDay?.label ?? selectedId;
+  const eyebrow = isToday ? `TODAY · DAY ${selectedId.toUpperCase()}` : `DAY ${selectedId.toUpperCase()}`;
+  const streakCount = cadence?.sessionsLast7Days ?? 0;
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex-1 overflow-y-auto p-5 space-y-5">
-        {/* Training cadence eyebrow — uses the same `>= 3` threshold as
-            LastSessionCard ribbon for a consistent "strong week" signal.
-            Uses the Lucide Flame icon (not the `🔥` emoji) to stay consistent
-            with LastSessionCard. */}
-        {cadence && cadence.sessionsLast7Days >= 3 && (
-          <SectionHeader className="!text-accent-warm inline-flex items-center gap-1.5">
-            <Flame className="h-3 w-3" strokeWidth={2.5} />
-            {cadence.sessionsLast7Days} sessions this week
-          </SectionHeader>
-        )}
+    <div className="flex h-full flex-col">
+      <div className="flex-1 space-y-5 overflow-y-auto p-5">
+        <p className="text-eyebrow text-ink-3">{formatTodayEyebrow(new Date())}</p>
 
-        {/* Hero card */}
-        <div className="border-2 border-border-strong bg-primary text-primary-foreground p-5 space-y-3">
-          <SectionHeader className="!text-primary-foreground/70">
-            Today · Day {dayId}
-          </SectionHeader>
-          <h1 className="text-3xl font-heading font-bold tracking-tight">
-            {dayDisplayName}
-          </h1>
-          {firstTwoNames.length > 0 && (
-            <div className="space-y-0.5 text-sm">
-              {firstTwoNames.map((name) => (
-                <p key={name} className="font-medium truncate">{name}</p>
-              ))}
-              {remainingCount > 0 && (
-                <p className="text-primary-foreground/70 text-xs">
-                  + {remainingCount} more
-                </p>
-              )}
-            </div>
-          )}
-          <Button
-            variant="default"
-            className="w-full"
-            size="lg"
-            onClick={handleStart}
-            disabled={starting}
-          >
-            {starting ? "Starting..." : "▶ Start Workout"}
-          </Button>
-          <p className="text-xs text-primary-foreground/70 tabular-nums text-center">
-            ~{estMin} min
-          </p>
-        </div>
+        <h1 className="text-hero-serif italic text-foreground">Hello.</h1>
 
-        {/* Cardio */}
-        {routine.cardio && (
-          <div className="bg-muted p-3 space-y-1.5">
-            <SectionHeader>Cardio</SectionHeader>
-            {routine.cardio.notes && (
-              <p className="text-sm text-foreground">{routine.cardio.notes}</p>
-            )}
-            {routine.cardio.options.length > 0 && (
-              <ul className="space-y-1">
-                {routine.cardio.options.map((opt, i) => (
-                  <li key={i} className="text-sm">
-                    <span className="font-medium">{opt.name}</span>
-                    {opt.detail && (
-                      <span className="text-muted-foreground"> — {opt.detail}</span>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        )}
+        <StreakPill count={streakCount} />
 
-        {/* Last session */}
-        {lastSession && <LastSessionCard session={lastSession} cadence={cadence} />}
+        <TodayHeroCard
+          dayLabelEyebrow={eyebrow}
+          dayTitle={dayTitle}
+          muscleGroups={muscleGroups}
+          exerciseCount={exerciseCount}
+          setCount={setCount}
+          firstExerciseName={firstExerciseName}
+          ctaLabel="▶ Start workout"
+          onCtaClick={handleStart}
+          ctaDisabled={starting}
+          resumeMeta={null}
+        />
 
-        {/* Below-fold: switch day */}
         <div className="space-y-3 pt-2">
-          <SectionHeader>Switch day</SectionHeader>
+          <p className="text-eyebrow text-ink-3">Switch day</p>
           <DaySelector
             routine={routine}
-            selectedDayId={dayId}
+            selectedDayId={selectedId}
             onSelectDay={setSelectedDayId}
           />
-          {day && (
-            <div key={dayId} className="fade-in-soft">
-              <DayPreview day={day} exerciseNames={exerciseNames} />
-            </div>
-          )}
         </div>
+
+        {lastSession && <LastSessionCard session={lastSession} cadence={cadence} />}
       </div>
     </div>
   );
