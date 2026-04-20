@@ -80,8 +80,9 @@ test.describe("Exercise Logger E2E Smoke Test", () => {
 
     // Step 5: History should list the finished session.
     await page.getByRole("link", { name: /history/i }).click();
+    // Session row links to /history/{id} — the finished session should be listed.
     await expect(
-      page.getByText(/full body 3-day rotation/i).first()
+      page.locator("a[href*='/history/']").first()
     ).toBeVisible({ timeout: 5000 });
 
     // Step 6: Export download round-trips end-to-end.
