@@ -31,7 +31,7 @@ export function LastSessionCard({ session, cadence }: LastSessionCardProps) {
   const showRibbon = (cadence?.sessionsLast7Days ?? 0) >= 3;
 
   return (
-    <div className="border-t-2 border-border-strong pt-3 space-y-2">
+    <div className="border-t border-line pt-3 space-y-2">
       {showRibbon && cadence && (
         <div className="inline-flex items-center gap-1.5 bg-accent-warm-soft text-accent-warm px-2 py-0.5 text-[11px] font-semibold uppercase tracking-widest">
           <Flame className="h-3 w-3" strokeWidth={2.5} />

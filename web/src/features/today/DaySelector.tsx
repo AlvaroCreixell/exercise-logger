@@ -18,10 +18,10 @@ export function DaySelector({
 
   return (
     <div className="space-y-3">
-      <SectionHeader className="!text-cta">
+      <SectionHeader className="!text-sage-deep">
         Day {selectedDayId} — {selectedLabel}
       </SectionHeader>
-      <div className="border-t-2 border-border-strong" />
+      <div className="border-t border-line" />
       <div className="flex overflow-x-auto scrollbar-none -mx-5 px-5">
         {routine.dayOrder.map((dayId, i) => (
           <Pill
