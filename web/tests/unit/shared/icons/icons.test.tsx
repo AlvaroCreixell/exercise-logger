@@ -36,3 +36,19 @@ describe("IconSvg", () => {
     expect(svg?.getAttribute("aria-hidden")).toBe(null);
   });
 });
+
+import * as Icons from "@/shared/icons";
+
+describe("icon barrel", () => {
+  it("exports all 12 custom icons + IconSvg", () => {
+    const expected = [
+      "IconSvg",
+      "Check", "Close", "Chevron", "Back", "Plus", "Play",
+      "Flame", "Dumbbell", "Search", "Trash", "Grid", "Graph",
+    ];
+    for (const name of expected) {
+      expect(Icons).toHaveProperty(name);
+      expect(typeof (Icons as Record<string, unknown>)[name]).toBe("function");
+    }
+  });
+});
