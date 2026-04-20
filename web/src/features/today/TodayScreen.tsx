@@ -17,7 +17,7 @@ import { DaySelector } from "./DaySelector";
 import { LastSessionCard } from "./LastSessionCard";
 import { deriveDayMuscleGroups } from "./lib/muscleGroups";
 import { formatTodayEyebrow } from "./lib/formatDate";
-import type { RoutineDay } from "@/domain/types";
+import type { Exercise, RoutineDay } from "@/domain/types";
 
 function firstExerciseFromDay(
   day: RoutineDay,
@@ -66,7 +66,7 @@ export default function TodayScreen() {
 
   const exercises = useLiveQuery(() => db.exercises.toArray());
   const exercisesById = useMemo(() => {
-    const m = new Map<string, import("@/domain/types").Exercise>();
+    const m = new Map<string, Exercise>();
     if (exercises) for (const ex of exercises) m.set(ex.id, ex);
     return m;
   }, [exercises]);
@@ -133,9 +133,10 @@ export default function TodayScreen() {
   }
 
   // State B: Normal — routine active, no session.
-  const selectedId = selectedDayId ?? routine.nextDayId ?? routine.dayOrder[0]!;
+  const todayId = routine.nextDayId ?? routine.dayOrder[0]!;
+  const selectedId = selectedDayId ?? todayId;
   const selectedDay = routine.days[selectedId];
-  const isToday = selectedId === (routine.nextDayId ?? routine.dayOrder[0]!);
+  const isToday = selectedId === todayId;
 
   async function handleStart() {
     if (!isToday) return; // Day switcher previews only — Start targets nextDayId.
