@@ -29,7 +29,7 @@ export function WorkoutFooter({
           Add Exercise
         </Button>
         <Button
-          variant="cta"
+          variant="default"
           className={`flex-1 ${allLogged ? "!bg-success hover:!bg-success/90" : ""}`}
           onClick={onFinish}
         >

@@ -320,7 +320,7 @@ export function SetLogSheet({
 
         <div className="space-y-2 pb-2 shrink-0">
           <Button
-            variant="cta"
+            variant="default"
             className={`w-full ${savePulse ? "save-pulse" : ""}`}
             size="lg"
             onClick={handleSave}
