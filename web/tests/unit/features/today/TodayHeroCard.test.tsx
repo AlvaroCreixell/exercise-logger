@@ -13,7 +13,6 @@ const baseProps = {
   ctaLabel: "▶ Start workout",
   onCtaClick: vi.fn(),
   ctaDisabled: false,
-  resumeMeta: null,
 };
 
 describe("TodayHeroCard", () => {
@@ -33,16 +32,6 @@ describe("TodayHeroCard", () => {
     render(<TodayHeroCard {...baseProps} onCtaClick={spy} />);
     await user.click(screen.getByRole("button", { name: /Start workout/i }));
     expect(spy).toHaveBeenCalledOnce();
-  });
-
-  it("renders resume meta when resumeMeta is provided", () => {
-    render(<TodayHeroCard {...baseProps} ctaLabel="Resume workout" resumeMeta={{ elapsedMin: 34 }} />);
-    expect(screen.getByText(/34 min/)).not.toBeNull();
-  });
-
-  it("does not render resume meta when resumeMeta is null", () => {
-    render(<TodayHeroCard {...baseProps} resumeMeta={null} />);
-    expect(screen.queryByText(/min/)).toBeNull();
   });
 
   it("renders no muscle-chip row when muscleGroups is empty", () => {

@@ -175,7 +175,6 @@ export default function TodayScreen() {
           ctaLabel="▶ Start workout"
           onCtaClick={handleStart}
           ctaDisabled={starting}
-          resumeMeta={null}
         />
 
         <div className="space-y-3 pt-2">

@@ -11,7 +11,6 @@ interface TodayHeroCardProps {
   ctaLabel: string;
   onCtaClick: () => void;
   ctaDisabled: boolean;
-  resumeMeta: { elapsedMin: number } | null;
 }
 
 export function TodayHeroCard({
@@ -24,7 +23,6 @@ export function TodayHeroCard({
   ctaLabel,
   onCtaClick,
   ctaDisabled,
-  resumeMeta,
 }: TodayHeroCardProps) {
   const exerciseCopy = [
     `${exerciseCount} ${exerciseCount === 1 ? "exercise" : "exercises"}`,
@@ -67,16 +65,6 @@ export function TodayHeroCard({
         >
           {ctaLabel}
         </Button>
-
-        {resumeMeta && (
-          <p className="flex items-center justify-center gap-1.5 text-meta">
-            <span
-              aria-hidden="true"
-              className="inline-block size-1.5 rounded-full bg-sage"
-            />
-            {resumeMeta.elapsedMin} min elapsed
-          </p>
-        )}
       </CardContent>
     </Card>
   );
