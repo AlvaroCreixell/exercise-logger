@@ -1,6 +1,6 @@
 import { IconSvg, type IconSvgProps } from "./IconSvg";
 
-type Direction = "right" | "left" | "up" | "down";
+export type Direction = "right" | "left" | "up" | "down";
 
 type Props = Omit<IconSvgProps, "viewBox" | "children" | "strokeWidth"> & {
   strokeWidth?: number;

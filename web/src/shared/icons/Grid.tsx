@@ -4,6 +4,7 @@ type Props = Omit<IconSvgProps, "viewBox" | "children" | "strokeWidth"> & {
   strokeWidth?: number;
 };
 
+// Fallback shape — no `grid` key exists in handoff screens.jsx. 2×2 rounded-rect tiles.
 export function Grid({ size = 18, strokeWidth = 1.6, ...rest }: Props) {
   return (
     <IconSvg size={size} strokeWidth={strokeWidth} viewBox="0 0 24 24" {...rest}>

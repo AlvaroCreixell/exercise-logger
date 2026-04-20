@@ -2,6 +2,7 @@ export { IconSvg, type IconSvgProps } from "./IconSvg";
 export { Check } from "./Check";
 export { Close } from "./Close";
 export { Chevron } from "./Chevron";
+export type { Direction } from "./Chevron";
 export { Back } from "./Back";
 export { Plus } from "./Plus";
 export { Play } from "./Play";

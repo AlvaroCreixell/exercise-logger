@@ -1,6 +1,6 @@
 import { IconSvg, type IconSvgProps } from "./IconSvg";
 
-type Props = Omit<IconSvgProps, "viewBox" | "children">;
+type Props = Omit<IconSvgProps, "viewBox" | "children" | "strokeWidth">;
 
 export function Flame({ size = 13, ...rest }: Props) {
   return (
