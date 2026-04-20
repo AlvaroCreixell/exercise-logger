@@ -1,14 +1,10 @@
 import type { SessionExercise, LoggedSet } from "@/domain/types";
 import type { UnitSystem } from "@/domain/enums";
 import type { ExerciseHistoryData, ExtraExerciseHistory } from "@/services/progression-service";
-import { getBlockLabel } from "@/services/progression-service";
 import { toDisplayWeight } from "@/domain/unit-conversion";
-import { Badge } from "@/shared/ui/badge";
 import { Card, CardContent } from "@/shared/ui/card";
-import { SetSlot } from "./SetSlot";
-import { ArrowUp, Repeat } from "lucide-react";
-import type { SetBlock } from "@/domain/types";
-import { BlockStripe, type BlockStripeVariant } from "./BlockStripe";
+import { SetRow } from "./SetRow";
+import { formatExerciseTargetLine } from "./lib/formatSetTarget";
 
 interface ExerciseCardProps {
   sessionExercise: SessionExercise;
@@ -17,81 +13,30 @@ interface ExerciseCardProps {
   historyData: ExerciseHistoryData | undefined;
   extraHistory: ExtraExerciseHistory | null | undefined;
   onSetTap: (blockIndex: number, setIndex: number) => void;
-  /** Read-only mode for history view: show subdued unlogged slots */
-  readOnly?: boolean;
-  /** Hide the exercise name header (when rendered externally, e.g. as a link) */
-  hideHeader?: boolean;
   /** Callback when unit toggle is tapped. Undefined = no toggle shown (history view). */
   onUnitToggle?: (newUnit: UnitSystem) => void;
 }
 
-function blockStripeVariant(label: string): BlockStripeVariant {
-  if (label === "Top") return "top";
-  if (label === "AMRAP") return "amrap";
-  return "default";
-}
-
-function formatDurationShort(sec: number): string {
-  if (sec < 60) return `${sec}s`;
-  const mins = Math.floor(sec / 60);
-  const rem = sec % 60;
-  return rem === 0 ? `${mins}min` : `${mins}min ${rem}s`;
-}
-
-function formatLastTime(
-  sets: Array<{ weightKg: number | null; reps: number | null; durationSec: number | null; distanceM: number | null }>,
-  units: UnitSystem
-): string {
-  if (sets.length === 0) return "";
-  const first = sets[0]!;
-  if (first.weightKg != null) {
-    const w = toDisplayWeight(first.weightKg, units);
-    const allSameWeight = sets.every((s) => s.weightKg === first.weightKg);
-    if (allSameWeight) {
-      const reps = sets.map((s) => s.reps ?? "?").join(", ");
-      return `${w}${units} x ${reps}`;
-    }
-    return sets.map((s) => {
-      const sw = s.weightKg != null ? toDisplayWeight(s.weightKg, units) : "?";
-      return `${sw}x${s.reps ?? "?"}`;
-    }).join(", ");
+/**
+ * Format one set from BlockLastTime or ExtraExerciseHistory as "{weight}×{reps}"
+ * (no unit suffix — the LAST strip's context makes the unit clear).
+ */
+function formatHintValue(
+  set: { weightKg: number | null; reps: number | null; durationSec: number | null; distanceM: number | null },
+  units: UnitSystem,
+): string | null {
+  if (set.weightKg != null && set.reps != null) {
+    return `${Math.round(toDisplayWeight(set.weightKg, units))}×${set.reps}`;
   }
-  if (first.reps != null) return sets.map((s) => `${s.reps ?? "?"}r`).join(", ");
-  if (first.durationSec != null || first.distanceM != null) {
-    return sets.map((s) => {
-      const parts: string[] = [];
-      if (s.durationSec != null) parts.push(formatDurationShort(s.durationSec));
-      if (s.distanceM != null) parts.push(`${s.distanceM}m`);
-      return parts.length ? parts.join(" ") : "?";
-    }).join(", ");
+  if (set.reps != null) return `${set.reps}r`;
+  if (set.durationSec != null) {
+    // Inline the min/sec convention from formatSetTarget
+    return set.durationSec >= 60 && set.durationSec % 60 === 0
+      ? `${set.durationSec / 60}min`
+      : `${set.durationSec}s`;
   }
-  return "";
-}
-
-function formatDurationTarget(block: SetBlock): string {
-  if (block.exactValue != null) return formatDurationShort(block.exactValue);
-  if (block.minValue != null && block.maxValue != null) {
-    const min = block.minValue;
-    const max = block.maxValue;
-    const cleanMinutes = min >= 60 && max >= 60 && min % 60 === 0 && max % 60 === 0;
-    return cleanMinutes ? `${min / 60}-${max / 60}min` : `${min}-${max}s`;
-  }
-  return "?";
-}
-
-function formatTarget(block: SetBlock): string {
-  if (block.targetKind === "duration") {
-    return `${block.count} x ${formatDurationTarget(block)}`;
-  }
-  const value =
-    block.exactValue != null
-      ? `${block.exactValue}`
-      : block.minValue != null && block.maxValue != null
-      ? `${block.minValue}-${block.maxValue}`
-      : "?";
-  if (block.targetKind === "reps") return `${block.count} x ${value} reps`;
-  if (block.targetKind === "distance") return `${block.count} x ${value}m`;
-  return `${block.count} x ${value}`;
+  if (set.distanceM != null) return `${set.distanceM}m`;
+  return null;
 }
 
 export function ExerciseCard({
@@ -101,146 +46,138 @@ export function ExerciseCard({
   historyData,
   extraHistory,
   onSetTap,
-  readOnly = false,
-  hideHeader = false,
   onUnitToggle,
 }: ExerciseCardProps) {
   const se = sessionExercise;
   const blocks = se.setBlocksSnapshot;
   const isExtra = se.origin === "extra";
 
-  // Build set lookup: [blockIndex][setIndex] -> LoggedSet
+  // Build lookup: "{blockIndex}:{setIndex}" → LoggedSet
   const setLookup = new Map<string, LoggedSet>();
   for (const ls of loggedSets) {
     setLookup.set(`${ls.blockIndex}:${ls.setIndex}`, ls);
   }
 
+  const totalPrescribed = blocks.reduce((s, b) => s + b.count, 0);
+  const totalLogged = loggedSets.filter((ls) => ls.origin === "routine").length;
+
+  // Flatten history.lastTime across blocks for the LAST strip.
+  const lastStripSets = blocks.flatMap((_, i) => historyData?.lastTime[i]?.sets ?? []);
+  const lastStripFormatted = lastStripSets
+    .map((s) => formatHintValue(s, units))
+    .filter((v): v is string => v !== null);
+
+  // For routine exercises, the empty-state row shows a per-block "Tap to log · last {hint}"
+  // using the FIRST set of that block's lastTime as the hint.
+  function emptyHintForBlock(blockIndex: number): string | undefined {
+    const blockLast = historyData?.lastTime[blockIndex];
+    const first = blockLast?.sets[0];
+    if (!first) return undefined;
+    return formatHintValue(first, units) ?? undefined;
+  }
+
   return (
-    <Card className={readOnly ? "border-t border-border bg-transparent shadow-none rounded-none" : undefined}>
-      <CardContent className={`${readOnly ? "px-0" : ""} py-4 space-y-3`}>
+    <Card className="py-0">
+      <CardContent className="space-y-3 px-4 py-4">
         {/* Header */}
-        {!hideHeader && (
-          <div className="flex items-center gap-2">
-            <h3 className="text-lg font-heading font-bold tracking-tight truncate">
+        <div className="flex items-start gap-2">
+          <div className="min-w-0 flex-1">
+            <h3 className="font-heading text-lg font-bold tracking-tight text-foreground truncate">
               {se.exerciseNameSnapshot}
             </h3>
-            {isExtra && (
-              <Badge variant="secondary" className="shrink-0 text-[11px]">Extra</Badge>
+            {blocks.length > 0 && (
+              <p className="text-meta tabular-nums">
+                {formatExerciseTargetLine(blocks)}
+              </p>
             )}
-            {onUnitToggle && (
-              <button
-                className="ml-auto shrink-0 rounded-sm border border-border-strong px-2 py-0.5 text-[11px] font-medium tabular-nums text-muted-foreground transition-colors duration-[var(--dur-base)] hover:bg-muted/50 hover:border-cta focus-visible:border-cta focus-visible:ring-2 focus-visible:ring-cta/30"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onUnitToggle(units === "kg" ? "lbs" : "kg");
-                }}
-              >
-                {units}
-              </button>
-            )}
+          </div>
+          <span
+            aria-label={`${totalLogged} of ${totalPrescribed} sets logged`}
+            className="shrink-0 text-xs font-semibold text-ink-3 tabular-nums"
+          >
+            {totalLogged}/{totalPrescribed}
+          </span>
+          {onUnitToggle && (
+            <button
+              type="button"
+              className="shrink-0 rounded-[var(--radius-pill)] border border-line px-2 py-0.5 text-[11px] font-medium tabular-nums text-ink-3 transition-colors hover:border-sage hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage/40"
+              onClick={(e) => {
+                e.stopPropagation();
+                onUnitToggle(units === "kg" ? "lbs" : "kg");
+              }}
+            >
+              {units}
+            </button>
+          )}
+        </div>
+
+        {se.notesSnapshot && (
+          <p className="text-meta line-clamp-1">{se.notesSnapshot}</p>
+        )}
+
+        {/* Set rows — continuous numbering across blocks */}
+        {blocks.length > 0 && (
+          <div className="space-y-1.5">
+            {(() => {
+              const rows: React.ReactNode[] = [];
+              let runningIndex = 0;
+              blocks.forEach((block, bi) => {
+                for (let si = 0; si < block.count; si++) {
+                  runningIndex += 1;
+                  const setKey = `${bi}:${si}`;
+                  const logged = setLookup.get(setKey);
+                  rows.push(
+                    <SetRow
+                      key={setKey}
+                      setNumber={runningIndex}
+                      loggedSet={logged}
+                      units={units}
+                      isTopBlock={block.tag === "top"}
+                      lastHint={emptyHintForBlock(bi)}
+                      onClick={() => onSetTap(bi, si)}
+                    />,
+                  );
+                }
+              });
+              return rows;
+            })()}
           </div>
         )}
 
-        {se.notesSnapshot && (
-          <p className="text-xs text-muted-foreground line-clamp-1">
-            {se.notesSnapshot}
+        {/* LAST strip (routine exercises only, shown when there's history data) */}
+        {blocks.length > 0 && lastStripFormatted.length > 0 && (
+          <p className="text-meta tabular-nums">
+            LAST {lastStripFormatted.join(" · ")}
           </p>
         )}
 
-        {/* Blocks */}
-        {blocks.length > 0 ? (
-          blocks.map((block, blockIndex) => {
-            const label = getBlockLabel(block, blockIndex, blocks.length, blocks);
-            const lastTime = historyData?.lastTime[blockIndex];
-            const suggestion = historyData?.suggestions.find((s) => s.blockIndex === blockIndex);
-
-            const variant = blockStripeVariant(label ?? "");
-            return (
-              <BlockStripe
-                key={blockIndex}
-                label={label ?? ""}
-                variant={variant}
-              >
-                {/* Target line (quieter) */}
-                <p className="text-xs text-muted-foreground tabular-nums">
-                  {formatTarget(block)}
-                </p>
-
-                {/* Combined history + suggestion on one line */}
-                {(lastTime || suggestion) && (
-                  <p className="text-xs tabular-nums">
-                    {lastTime && lastTime.sets.length > 0 && (
-                      <span className="text-muted-foreground">
-                        Last {formatLastTime(lastTime.sets, units)}
-                      </span>
-                    )}
-                    {lastTime && lastTime.sets.length > 0 && suggestion && (
-                      <span className="text-muted-foreground"> · </span>
-                    )}
-                    {suggestion && suggestion.isProgression && (
-                      <span className="text-success font-semibold inline-flex items-center gap-1">
-                        <ArrowUp className="h-3 w-3" />
-                        {toDisplayWeight(suggestion.suggestedWeightKg, units)}{units}
-                      </span>
-                    )}
-                    {suggestion && !suggestion.isProgression && (
-                      <span className="text-info font-medium inline-flex items-center gap-1">
-                        <Repeat className="h-3 w-3" />
-                        {toDisplayWeight(suggestion.suggestedWeightKg, units)}{units}
-                      </span>
-                    )}
-                  </p>
-                )}
-
-                {/* Set slot row */}
-                <div className="flex gap-2 overflow-x-auto scrollbar-none pt-1">
-                  {Array.from({ length: block.count }, (_, setIndex) => (
-                    <SetSlot
-                      key={setIndex}
-                      setIndex={setIndex}
-                      loggedSet={setLookup.get(`${blockIndex}:${setIndex}`)}
-                      units={units}
-                      onClick={() => onSetTap(blockIndex, setIndex)}
-                      disabled={readOnly}
-                    />
-                  ))}
-                </div>
-              </BlockStripe>
-            );
-          })
-        ) : isExtra && extraHistory ? (
-          /* Extra exercise: show recent history as reference */
-          <p className="text-xs text-muted-foreground tabular-nums">
-            Recent: {formatLastTime(extraHistory.sets, units)}
-          </p>
-        ) : null}
-
-        {/* Extra exercise: single unstructured slot row.
-            Display index `i` is used only for the visible "1, 2, 3" label;
-            the stored `ls.setIndex` is what the click handler must use so
-            taps after a middle-set delete still address the right row. */}
+        {/* Extra exercise: single row list, no block structure */}
         {isExtra && (() => {
           const sorted = [...loggedSets].sort((a, b) => a.loggedAt.localeCompare(b.loggedAt));
           const nextSetIndex = loggedSets.reduce((max, ls) => Math.max(max, ls.setIndex + 1), 0);
+          const extraHint = extraHistory?.sets[0]
+            ? formatHintValue(extraHistory.sets[0], units) ?? undefined
+            : undefined;
           return (
-            <div className="flex gap-2 overflow-x-auto scrollbar-none">
+            <div className="space-y-1.5">
               {sorted.map((ls, i) => (
-                <SetSlot
+                <SetRow
                   key={ls.id}
-                  setIndex={i}
+                  setNumber={i + 1}
                   loggedSet={ls}
                   units={units}
+                  isTopBlock={false}
                   onClick={() => onSetTap(0, ls.setIndex)}
                 />
               ))}
-              {!readOnly && (
-                <SetSlot
-                  setIndex={sorted.length}
-                  loggedSet={undefined}
-                  units={units}
-                  onClick={() => onSetTap(0, nextSetIndex)}
-                />
-              )}
+              <SetRow
+                setNumber={sorted.length + 1}
+                loggedSet={undefined}
+                units={units}
+                isTopBlock={false}
+                lastHint={extraHint}
+                onClick={() => onSetTap(0, nextSetIndex)}
+              />
             </div>
           );
         })()}
