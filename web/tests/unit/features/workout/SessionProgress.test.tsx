@@ -7,7 +7,9 @@ afterEach(cleanup);
 describe("SessionProgress", () => {
   it("renders N/M counter with tabular numerals", () => {
     render(<SessionProgress totalSets={20} loggedSets={2} />);
-    expect(screen.getByText("2/20")).toBeVisible();
+    const counter = screen.getByText("2/20");
+    expect(counter).toBeVisible();
+    expect(counter).toHaveClass("tabular-nums");
   });
 
   it("announces via aria-label for screen readers", () => {
