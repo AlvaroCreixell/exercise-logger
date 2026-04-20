@@ -5,7 +5,7 @@ import { Back } from "@/shared/icons";
 import { db } from "@/db/database";
 import {
   validateAndNormalizeRoutine,
-  importRoutine,
+  importAndActivateRoutine,
   type ValidationError,
 } from "@/services/routine-service";
 import { YamlErrorList } from "./YamlErrorList";
@@ -36,8 +36,12 @@ export default function RoutineImportScreen() {
         setErrors(result.errors);
         return false;
       }
-      await importRoutine(db, result.routine);
-      toast.success(`Routine "${result.routine.name}" imported`);
+      const activation = await importAndActivateRoutine(db, result.routine);
+      if (!activation.ok) {
+        setErrors([{ path: "", message: activation.message }]);
+        return false;
+      }
+      toast.success(`Routine "${result.routine.name}" imported and activated`);
       navigate("/settings");
       return true;
     } catch (err) {

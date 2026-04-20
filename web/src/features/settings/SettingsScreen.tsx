@@ -137,8 +137,9 @@ export default function SettingsScreen() {
         <Card className="py-0 divide-y divide-line">
           <RowLink
             label="Import routine (YAML)"
-            sublabel="Load a new plan"
-            to="/settings/import"
+            sublabel={hasActive ? "Finish the current workout first" : "Load a new plan"}
+            onClick={() => navigate("/settings/import")}
+            disabled={hasActive}
           />
           <RowLink
             label="Export data"
