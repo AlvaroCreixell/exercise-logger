@@ -1,17 +1,17 @@
 import { useState } from "react";
-import { useParams, Link } from "react-router";
+import { useParams } from "react-router";
 import { useSessionDetail } from "@/shared/hooks/useSessionDetail";
 import { useSettings } from "@/shared/hooks/useSettings";
 import { useExerciseHistory } from "@/shared/hooks/useExerciseHistory";
 import { db } from "@/db/database";
 import { editSet, deleteSet } from "@/services/set-service";
-import { ExerciseCard } from "@/features/workout/ExerciseCard";
 import { SetLogSheet } from "@/features/workout/SetLogSheet";
 import { SupersetGroup } from "@/features/workout/SupersetGroup";
-import { ArrowLeft } from "lucide-react";
-import { buttonVariants } from "@/shared/ui/button";
-import { cn } from "@/shared/lib/utils";
 import { getEffectiveUnit } from "@/domain/unit-helpers";
+import { computeSessionVolumeKg } from "./lib/sessionStats";
+import { SessionDetailHeader } from "./SessionDetailHeader";
+import { SessionDetailStatsTile } from "./SessionDetailStatsTile";
+import { SessionDetailExerciseCard } from "./SessionDetailExerciseCard";
 import type { SessionExercise, LoggedSet } from "@/domain/types";
 
 export default function SessionDetailScreen() {
@@ -26,44 +26,23 @@ export default function SessionDetailScreen() {
   const [sheetExistingSet, setSheetExistingSet] = useState<LoggedSet | undefined>();
 
   if (!settings) return null;
+  if (detail === undefined) return null;
 
   if (detail === null) {
     return (
-      <div className="p-5">
-        <Link to="/history" className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}>
-          <ArrowLeft className="h-4 w-4 mr-1" />Back
-        </Link>
-        <p className="text-sm text-muted-foreground mt-4">Session not found.</p>
+      <div className="p-5 space-y-4">
+        <p className="text-sm text-muted-foreground">Session not found.</p>
       </div>
     );
   }
 
-  if (detail === undefined) return null;
-
   const { session, exercises } = detail;
   const units = settings.units;
-
-  function formatDuration(start: string, end: string | null): string {
-    if (!end) return "";
-    const ms = new Date(end).getTime() - new Date(start).getTime();
-    const min = Math.round(ms / 60000);
-    if (min < 1) return "< 1 min";
-    return `${min} min`;
-  }
-
-  function formatDate(iso: string): string {
-    return new Date(iso).toLocaleDateString(undefined, {
-      weekday: "short",
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
-  }
 
   function handleSetTap(se: SessionExercise, blockIndex: number, setIndex: number) {
     const exData = exercises.find((e) => e.sessionExercise.id === se.id);
     const existing = exData?.loggedSets.find(
-      (ls) => ls.blockIndex === blockIndex && ls.setIndex === setIndex
+      (ls) => ls.blockIndex === blockIndex && ls.setIndex === setIndex,
     );
     // Only allow editing existing logged sets on finished sessions.
     // logSet() requires active session status — cannot create new sets here.
@@ -82,7 +61,6 @@ export default function SessionDetailScreen() {
     performedDistanceM: number | null;
   }) {
     if (!sheetExercise || !sheetExistingSet) return;
-    // Only editSet is valid on finished sessions
     await editSet(db, sheetExistingSet.id, input);
   }
 
@@ -92,7 +70,7 @@ export default function SessionDetailScreen() {
     }
   }
 
-  // Build render groups
+  // Build render groups: singles or superset pairs.
   const renderGroups: Array<
     | { type: "single"; data: (typeof exercises)[0] }
     | { type: "superset"; data: [(typeof exercises)[0], (typeof exercises)[0]] }
@@ -104,13 +82,19 @@ export default function SessionDetailScreen() {
     if (processed.has(se.id)) continue;
     if (se.groupType === "superset" && se.supersetGroupId) {
       const partner = exercises.find(
-        (other) => other.sessionExercise.id !== se.id && other.sessionExercise.supersetGroupId === se.supersetGroupId
+        (other) =>
+          other.sessionExercise.id !== se.id &&
+          other.sessionExercise.supersetGroupId === se.supersetGroupId,
       );
       if (partner) {
-        const ordered = (se.supersetPosition ?? 0) < (partner.sessionExercise.supersetPosition ?? 0)
-          ? [exData, partner]
-          : [partner, exData];
-        renderGroups.push({ type: "superset", data: ordered as [(typeof exercises)[0], (typeof exercises)[0]] });
+        const ordered =
+          (se.supersetPosition ?? 0) < (partner.sessionExercise.supersetPosition ?? 0)
+            ? [exData, partner]
+            : [partner, exData];
+        renderGroups.push({
+          type: "superset",
+          data: ordered as [(typeof exercises)[0], (typeof exercises)[0]],
+        });
         processed.add(se.id);
         processed.add(partner.sessionExercise.id);
         continue;
@@ -124,45 +108,53 @@ export default function SessionDetailScreen() {
     ? exercises.find((e) => e.sessionExercise.id === sheetExercise.id)?.loggedSets ?? []
     : [];
 
-  return (
-    <div className="p-5 space-y-4 pb-8">
-      <Link to="/history" className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}>
-        <ArrowLeft className="h-4 w-4 mr-1" />Back
-      </Link>
+  // Stats tile aggregates
+  const allSets = exercises.flatMap((e) => e.loggedSets);
+  const setCount = allSets.length;
+  const volumeKg = computeSessionVolumeKg(allSets);
+  const durationMin =
+    session.finishedAt != null
+      ? Math.round(
+          (new Date(session.finishedAt).getTime() -
+            new Date(session.startedAt).getTime()) /
+            60000,
+        )
+      : null;
 
-      <div>
-        <h1 className="text-2xl font-extrabold tracking-tight font-heading">{session.dayLabelSnapshot}</h1>
-        <p className="text-sm text-muted-foreground">
-          {session.routineNameSnapshot}
-        </p>
-        <p className="text-xs text-muted-foreground tabular-nums mt-1">
-          {formatDate(session.finishedAt ?? session.startedAt)}
-          {session.finishedAt && (
-            <> &middot; {formatDuration(session.startedAt, session.finishedAt)}</>
-          )}
-        </p>
-      </div>
+  return (
+    <div className="space-y-5 p-5 pb-8">
+      <SessionDetailHeader session={session} />
+
+      <SessionDetailStatsTile
+        setCount={setCount}
+        volumeKg={volumeKg}
+        durationMin={durationMin}
+        units={units}
+      />
 
       <div className="space-y-3">
         {renderGroups.map((group, i) => {
           if (group.type === "single") {
+            const d = group.data;
             return (
-              <SessionExerciseCardWithHistory
-                key={group.data.sessionExercise.id}
-                exData={group.data}
-                units={units}
-                onSetTap={handleSetTap}
+              <SessionDetailExerciseCard
+                key={d.sessionExercise.id}
+                exerciseName={d.sessionExercise.exerciseNameSnapshot}
+                loggedSets={d.loggedSets}
+                units={getEffectiveUnit(d.sessionExercise.unitOverride, units)}
+                onSetTap={(bi, si) => handleSetTap(d.sessionExercise, bi, si)}
               />
             );
           }
           return (
             <SupersetGroup key={i}>
               {group.data.map((d) => (
-                <SessionExerciseCardWithHistory
+                <SessionDetailExerciseCard
                   key={d.sessionExercise.id}
-                  exData={d}
-                  units={units}
-                  onSetTap={handleSetTap}
+                  exerciseName={d.sessionExercise.exerciseNameSnapshot}
+                  loggedSets={d.loggedSets}
+                  units={getEffectiveUnit(d.sessionExercise.unitOverride, units)}
+                  onSetTap={(bi, si) => handleSetTap(d.sessionExercise, bi, si)}
                 />
               ))}
             </SupersetGroup>
@@ -184,44 +176,6 @@ export default function SessionDetailScreen() {
           onDelete={sheetExistingSet ? handleDeleteSet : undefined}
         />
       )}
-    </div>
-  );
-}
-
-function SessionExerciseCardWithHistory({
-  exData,
-  units: globalUnits,
-  onSetTap,
-}: {
-  exData: { sessionExercise: SessionExercise; loggedSets: LoggedSet[] };
-  units: "kg" | "lbs";
-  onSetTap: (se: SessionExercise, blockIndex: number, setIndex: number) => void;
-}) {
-  const se = exData.sessionExercise;
-  const effectiveUnits = getEffectiveUnit(se.unitOverride, globalUnits);
-  const historyData = useExerciseHistory(
-    se.origin === "routine" ? se : undefined,
-    effectiveUnits
-  );
-
-  return (
-    <div>
-      <Link
-        to={`/history/exercise/${se.exerciseId}`}
-        className="text-sm font-semibold uppercase tracking-wide hover:underline"
-      >
-        {se.exerciseNameSnapshot}
-      </Link>
-      <ExerciseCard
-        sessionExercise={se}
-        loggedSets={exData.loggedSets}
-        units={effectiveUnits}
-        historyData={historyData}
-        extraHistory={null}
-        onSetTap={(bi, si) => onSetTap(se, bi, si)}
-        readOnly
-        hideHeader
-      />
     </div>
   );
 }
@@ -257,7 +211,7 @@ function SetLogSheetWithHistoryForDetail({
   const effectiveUnits = getEffectiveUnit(sessionExercise.unitOverride, globalUnits);
   const historyData = useExerciseHistory(
     sessionExercise.origin === "routine" ? sessionExercise : undefined,
-    effectiveUnits
+    effectiveUnits,
   );
   return (
     <SetLogSheet
