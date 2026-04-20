@@ -100,6 +100,35 @@ describe("SessionDetailExerciseCard", () => {
     expect(screen.getByText(/50×10/)).toBeVisible();
   });
 
+  it("preserves fractional kg without rounding (82.5×5, not 83×5)", () => {
+    const sets = [makeSet({ performedWeightKg: 82.5, performedReps: 5 })];
+    render(
+      <SessionDetailExerciseCard
+        exerciseName="RDL"
+        loggedSets={sets}
+        units="kg"
+        onSetTap={() => {}}
+      />,
+    );
+    expect(screen.getByText("82.5×5")).toBeVisible();
+    expect(screen.queryByText("83×5")).toBeNull();
+  });
+
+  it("preserves fractional lbs conversion without rounding", () => {
+    // 82.5 kg ≈ 181.88 lbs; toDisplayWeight clips to 2 decimals
+    const sets = [makeSet({ performedWeightKg: 82.5, performedReps: 5 })];
+    render(
+      <SessionDetailExerciseCard
+        exerciseName="RDL"
+        loggedSets={sets}
+        units="lbs"
+        onSetTap={() => {}}
+      />,
+    );
+    expect(screen.getByText(/^181\.\d+×5$/)).toBeVisible();
+    expect(screen.queryByText("182×5")).toBeNull();
+  });
+
   it("renders no pills when loggedSets is empty", () => {
     render(
       <SessionDetailExerciseCard

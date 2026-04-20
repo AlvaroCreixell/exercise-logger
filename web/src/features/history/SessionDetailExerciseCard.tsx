@@ -12,8 +12,7 @@ interface SessionDetailExerciseCardProps {
 
 function formatPillContent(set: LoggedSet, units: UnitSystem): string {
   if (set.performedWeightKg == null || set.performedReps == null) return "—";
-  const weight = Math.round(toDisplayWeight(set.performedWeightKg, units));
-  return `${weight}×${set.performedReps}`;
+  return `${toDisplayWeight(set.performedWeightKg, units)}×${set.performedReps}`;
 }
 
 export function SessionDetailExerciseCard({
