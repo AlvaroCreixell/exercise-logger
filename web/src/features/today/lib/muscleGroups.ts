@@ -1,5 +1,6 @@
 import type { Exercise, RoutineDay } from "@/domain/types";
 
+/** Spec-fixed cap: hero card chip row fits at most 6 chips at 390px. */
 const MAX_CHIPS = 6;
 
 export function deriveDayMuscleGroups(

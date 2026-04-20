@@ -90,4 +90,9 @@ describe("deriveDayMuscleGroups", () => {
 
     expect(deriveDayMuscleGroups(day, exercises)).toEqual(["Legs"]);
   });
+
+  it("returns empty array for a day with no entries", () => {
+    const day = makeDay([]);
+    expect(deriveDayMuscleGroups(day, new Map())).toEqual([]);
+  });
 });
