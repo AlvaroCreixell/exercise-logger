@@ -18,6 +18,7 @@ export function formatErrorPath(path: string): string {
   const TOP_LEVEL: Record<string, string> = {
     name: "Name",
     version: "Version",
+    days: "Days",
     day_order: "Day order",
     rest_default_sec: "Rest default",
     rest_superset_sec: "Rest superset",

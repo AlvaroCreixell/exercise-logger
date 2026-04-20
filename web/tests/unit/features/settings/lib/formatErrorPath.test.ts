@@ -11,6 +11,10 @@ describe("formatErrorPath", () => {
     expect(formatErrorPath("version")).toBe("Version");
   });
 
+  it("returns 'Days' for bare 'days' top-level path", () => {
+    expect(formatErrorPath("days")).toBe("Days");
+  });
+
   it("formats a day entry path as 'Day A · Entry N · field'", () => {
     expect(formatErrorPath("days.A.entries[0].sets")).toBe("Day A · Entry 1 · sets");
   });
