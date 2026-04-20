@@ -1,9 +1,11 @@
+import { useRef, useState } from "react";
+import { useNavigate } from "react-router";
 import { useSettings } from "@/shared/hooks/useSettings";
-import { useAllRoutines } from "@/shared/hooks/useRoutine";
+import { useAllRoutines, useRoutine } from "@/shared/hooks/useRoutine";
 import { useActiveSession } from "@/shared/hooks/useActiveSession";
 import { useInstallPrompt } from "@/shared/hooks/useInstallPrompt";
 import { db } from "@/db/database";
-import { setUnits } from "@/services/settings-service";
+import { setUnits, deleteRoutine } from "@/services/settings-service";
 import {
   exportBackup,
   downloadBackupFile,
@@ -14,29 +16,32 @@ import {
   type BackupEnvelope,
 } from "@/services/backup-service";
 import type { UnitSystem } from "@/domain/enums";
-import { Button } from "@/shared/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
-import { Separator } from "@/shared/ui/separator";
 import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
+import { ActiveRoutineCard } from "./ActiveRoutineCard";
+import { AboutCard } from "./AboutCard";
 import { RoutineList } from "./RoutineList";
-import { RoutineImporter } from "./RoutineImporter";
+import { RowLink } from "./RowLink";
+import { SettingRow } from "./SettingRow";
+import { UnitsToggle } from "./UnitsToggle";
+import { Card } from "@/shared/ui/card";
 import { toast } from "sonner";
-import { useRef, useState } from "react";
-import { useNavigate } from "react-router";
 
 export default function SettingsScreen() {
   const settings = useSettings();
   const routines = useAllRoutines();
+  const activeRoutine = useRoutine(settings?.activeRoutineId);
   const activeSession = useActiveSession();
+  const { canInstall, promptInstall } = useInstallPrompt();
   const navigate = useNavigate();
   const jsonInputRef = useRef<HTMLInputElement>(null);
   const [clearOpen, setClearOpen] = useState(false);
+  const [deleteActiveOpen, setDeleteActiveOpen] = useState(false);
   const [importErrors, setImportErrors] = useState<string[]>([]);
-  const { canInstall, promptInstall } = useInstallPrompt();
 
   if (!settings || routines === undefined) return null;
 
   const hasActive = activeSession !== undefined && activeSession !== null;
+  const otherRoutines = routines.filter((r) => r.id !== settings.activeRoutineId);
 
   function handleUnits(units: UnitSystem) {
     setUnits(db, units);
@@ -61,10 +66,9 @@ export default function SettingsScreen() {
         setImportErrors(errors.map((err) => `${err.field}: ${err.message}`));
         return;
       }
-      // After validation passes, raw is a valid BackupEnvelope
       const result = await importBackup(db, raw as BackupEnvelope);
       if (result.hasActiveSession) {
-        toast.success("Data imported. Resuming active session...");
+        toast.success("Data imported. Resuming active session…");
         navigate("/workout");
       } else {
         toast.success("Data imported successfully.");
@@ -82,130 +86,118 @@ export default function SettingsScreen() {
     navigate("/");
   }
 
-  const unitOptions: UnitSystem[] = ["kg", "lbs"];
+  async function handleDeleteActive() {
+    if (!settings?.activeRoutineId) return;
+    try {
+      await deleteRoutine(db, settings.activeRoutineId);
+      toast.success("Routine deleted");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Delete failed");
+    }
+  }
 
   return (
-    <div className="p-5 space-y-8 pb-8">
-      <h1 className="text-2xl font-extrabold tracking-tight font-heading">Settings</h1>
+    <div className="space-y-6 p-5 pb-8">
+      <div className="space-y-1">
+        <p className="text-eyebrow text-ink-3">Preferences</p>
+        <h1 className="text-hero-serif italic text-foreground">Settings</h1>
+      </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-            Routines
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      {/* Routines */}
+      <div className="space-y-3">
+        <p className="text-eyebrow text-ink-3">Routine</p>
+        <ActiveRoutineCard
+          routine={activeRoutine ?? null}
+          onDelete={() => setDeleteActiveOpen(true)}
+          deleteDisabled={hasActive}
+        />
+        {otherRoutines.length > 0 && (
           <RoutineList
-            routines={routines ?? []}
+            routines={otherRoutines}
             activeRoutineId={settings.activeRoutineId}
             hasActiveSession={hasActive}
           />
-          <Separator />
-          <RoutineImporter />
-        </CardContent>
-      </Card>
+        )}
+      </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-            Preferences
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium">Units</label>
-            <div className="flex overflow-hidden">
-              {unitOptions.map((u, i) => (
-                <button
-                  key={u}
-                  onClick={() => handleUnits(u)}
-                  className={`flex-1 py-2 text-sm font-medium transition-colors border-[1.5px] border-border-strong ${
-                    i > 0 ? "-ml-[1.5px]" : ""
-                  } ${
-                    settings.units === u
-                      ? "bg-primary text-primary-foreground z-10"
-                      : "hover:bg-muted"
-                  }`}
-                >
-                  {u}
-                </button>
-              ))}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Display */}
+      <div className="space-y-3">
+        <p className="text-eyebrow text-ink-3">Display</p>
+        <Card className="py-0">
+          <SettingRow label="Units" sublabel="Weight display">
+            <UnitsToggle value={settings.units} onChange={handleUnits} />
+          </SettingRow>
+        </Card>
+      </div>
 
+      {/* App (install) */}
       {canInstall && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-              Install
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <p className="text-xs text-muted-foreground">
-              Install Exercise Logger on this device for faster access and offline use.
-            </p>
-            <Button
-              variant="default"
-              className="w-full"
+        <div className="space-y-3">
+          <p className="text-eyebrow text-ink-3">App</p>
+          <Card className="py-0">
+            <RowLink
+              label="Install app"
+              sublabel="Faster launch, works offline"
               onClick={() => {
                 void promptInstall();
               }}
-            >
-              Install App
-            </Button>
-          </CardContent>
-        </Card>
+            />
+          </Card>
+        </div>
       )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-            Data
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <Button variant="outline" className="w-full" onClick={handleExport}>
-            Export Data
-          </Button>
-          <input
-            ref={jsonInputRef}
-            type="file"
-            accept=".json"
-            onChange={handleJsonImport}
-            className="hidden"
+      {/* Data */}
+      <div className="space-y-3">
+        <p className="text-eyebrow text-ink-3">Data</p>
+        <Card className="py-0 divide-y divide-line">
+          <RowLink
+            label="Import routine (YAML)"
+            sublabel={hasActive ? "Finish the current workout first" : "Load a new plan"}
+            onClick={() => navigate("/settings/import")}
+            disabled={hasActive}
           />
-          <Button
-            variant="outline"
-            className="w-full"
-            disabled={hasActive}
+          <RowLink
+            label="Export data"
+            sublabel="Download a JSON backup"
+            onClick={handleExport}
+          />
+          <RowLink
+            label="Import data"
+            sublabel="Restore from JSON backup"
             onClick={() => jsonInputRef.current?.click()}
-          >
-            Import Data
-          </Button>
-          {hasActive && (
-            <p className="text-xs text-warning">
-              Finish or discard your current workout before importing.
-            </p>
-          )}
-          {importErrors.length > 0 && (
-            <div className="border border-warning bg-warning-soft p-3 space-y-1">
-              {importErrors.map((err, i) => (
-                <p key={i} className="text-xs text-warning-foreground">{err}</p>
-              ))}
-            </div>
-          )}
-          <Button
-            variant="outline"
-            className="w-full text-destructive border-destructive/30 hover:bg-destructive-soft"
             disabled={hasActive}
+          />
+          <RowLink
+            label="Clear all data"
+            sublabel="Delete every routine, workout, and setting"
             onClick={() => setClearOpen(true)}
-          >
-            Clear All Data
-          </Button>
-        </CardContent>
-      </Card>
+            disabled={hasActive}
+            variant="destructive"
+          />
+        </Card>
+        <input
+          ref={jsonInputRef}
+          type="file"
+          accept=".json"
+          onChange={handleJsonImport}
+          className="hidden"
+        />
+        {hasActive && (
+          <p className="text-meta">
+            Finish or discard your current workout before importing or clearing.
+          </p>
+        )}
+        {importErrors.length > 0 && (
+          <div className="rounded-[var(--radius-card)] border border-destructive/40 bg-destructive/5 px-4 py-3 space-y-1">
+            {importErrors.map((err, i) => (
+              <p key={i} className="text-sm text-foreground">{err}</p>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* About */}
+      <AboutCard />
 
       <ConfirmDialog
         open={clearOpen}
@@ -217,6 +209,19 @@ export default function SettingsScreen() {
         variant="destructive"
         doubleConfirm
         doubleConfirmText="Tap again to confirm"
+      />
+      <ConfirmDialog
+        open={deleteActiveOpen}
+        onOpenChange={setDeleteActiveOpen}
+        title="Delete routine?"
+        description={
+          routines.length > 1
+            ? "This routine will be deleted. Your next routine will be automatically activated."
+            : "This is your only routine. Deleting it will leave you with no active routine."
+        }
+        confirmText="Delete"
+        onConfirm={handleDeleteActive}
+        variant="destructive"
       />
     </div>
   );

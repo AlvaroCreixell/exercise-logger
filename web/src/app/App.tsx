@@ -25,6 +25,9 @@ const ExerciseHistoryScreen = lazy(
   () => import("@/features/history/ExerciseHistoryScreen"),
 );
 const SettingsScreen = lazy(() => import("@/features/settings/SettingsScreen"));
+const RoutineImportScreen = lazy(
+  () => import("@/features/settings/RoutineImportScreen"),
+);
 
 const tabs = [
   { to: "/", label: "Today", icon: Grid },
@@ -133,11 +136,13 @@ function AppRoutes() {
           <Route path="/workout" element={<WorkoutScreen />} />
           <Route path="/history" element={<HistoryScreen />} />
           <Route path="/history/:sessionId" element={<SessionDetailScreen />} />
+          {/* Orphaned as of Sprint 8 — no in-app link; Sprint 12 reintroduces navigation. */}
           <Route
             path="/history/exercise/:exerciseId"
             element={<ExerciseHistoryScreen />}
           />
           <Route path="/settings" element={<SettingsScreen />} />
+          <Route path="/settings/import" element={<RoutineImportScreen />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>

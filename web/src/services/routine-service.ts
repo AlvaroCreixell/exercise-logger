@@ -836,7 +836,47 @@ export async function importRoutine(
   db: ExerciseLoggerDB,
   routine: Routine
 ): Promise<void> {
-  await db.routines.add(routine);
+  await db.routines.put(routine);
+}
+
+/** Result of `importAndActivateRoutine`. */
+export type ImportAndActivateResult =
+  | { ok: true; routine: Routine }
+  | { ok: false; blocked: "active-session"; message: string };
+
+/**
+ * Atomically insert a routine and mark it as the active routine.
+ *
+ * Enforces invariant 10 (routine activation blocked during active session) inside
+ * a single Dexie transaction. When a session is active, returns `{ ok: false }`
+ * without inserting the routine — no orphan record is left behind.
+ *
+ * The caller is responsible for validating the routine prior to this call
+ * (e.g. via `validateAndNormalizeRoutine`).
+ */
+export async function importAndActivateRoutine(
+  db: ExerciseLoggerDB,
+  routine: Routine,
+): Promise<ImportAndActivateResult> {
+  return db.transaction(
+    "rw",
+    [db.routines, db.settings, db.sessions],
+    async () => {
+      const active = await db.sessions.where("status").equals("active").first();
+      if (active) {
+        return {
+          ok: false,
+          blocked: "active-session",
+          message:
+            "Cannot replace active routine while a workout session is active. Finish or discard the session first.",
+        } as const;
+      }
+
+      await db.routines.put(routine);
+      await db.settings.update("user", { activeRoutineId: routine.id });
+      return { ok: true, routine } as const;
+    },
+  );
 }
 
 // ---------------------------------------------------------------------------

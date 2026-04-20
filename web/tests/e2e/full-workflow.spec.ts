@@ -19,7 +19,7 @@ test.describe("Exercise Logger E2E Smoke Test", () => {
     page,
   }) => {
     await page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: /settings/i }).click();
-    await expect(page.getByText(/routines/i).first()).toBeVisible();
+    await expect(page.getByText(/routine/i).first()).toBeVisible();
     await expect(page.getByText(/preferences/i).first()).toBeVisible();
     await expect(page.getByText(/data/i).first()).toBeVisible();
   });
