@@ -48,7 +48,10 @@ function LoadingState({ fullscreen = false }: { fullscreen?: boolean }) {
 function FadeRoute({ children }: { children: ReactNode }) {
   const { pathname } = useLocation();
   return (
-    <div key={pathname} className="fade-in-soft h-full">
+    <div
+      key={pathname}
+      className="h-full animate-[fadeInUp_var(--dur-fadeInUp)_var(--ease-handoff)]"
+    >
       {children}
     </div>
   );
@@ -154,7 +157,7 @@ export default function App() {
         closeButton
         duration={3000}
         toastOptions={{
-          className: "!rounded !border-[1.5px] !border-border-strong !shadow-sm font-sans",
+          className: "!rounded-[var(--radius-card)] !border !border-line font-sans",
         }}
       />
       <SWUpdatePrompt />
