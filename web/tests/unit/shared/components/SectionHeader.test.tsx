@@ -26,4 +26,11 @@ describe("SectionHeader", () => {
     const el = screen.getByText("Section");
     expect(el.id).toBe("my-label");
   });
+
+  it("applies serif styling when variant='serif'", () => {
+    render(<SectionHeader variant="serif">Title</SectionHeader>);
+    const el = screen.getByText("Title");
+    expect(el.className).toMatch(/text-title-serif/);
+    expect(el.className).toMatch(/text-foreground/);
+  });
 });

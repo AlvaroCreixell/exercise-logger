@@ -39,7 +39,7 @@ export function Stat({ value, label, size = "md", className, hint }: StatProps) 
       <span className={VALUE_CLASS[size]}>{value}</span>
       {label != null && <span className={LABEL_CLASS[size]}>{label}</span>}
       {hint != null && (
-        <span className="text-meta text-ink-3 tabular-nums">{hint}</span>
+        <span className="text-meta tabular-nums">{hint}</span>
       )}
     </div>
   );
