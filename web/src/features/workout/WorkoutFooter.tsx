@@ -1,4 +1,4 @@
-import { Check } from "lucide-react";
+import { Check } from "@/shared/icons";
 import { Button } from "@/shared/ui/button";
 
 interface WorkoutFooterProps {
@@ -17,27 +17,28 @@ export function WorkoutFooter({
   allLogged = false,
 }: WorkoutFooterProps) {
   return (
-    <div className="sticky bottom-0 z-10 border-t-2 border-border-strong bg-background p-5 pb-[env(safe-area-inset-bottom)]">
+    <div className="sticky bottom-0 z-10 border-t border-line bg-background p-5 pb-[env(safe-area-inset-bottom)]">
       {allLogged && (
-        <div className="flex items-center gap-2 mb-2 px-3 py-1.5 bg-success-soft text-success text-xs font-semibold uppercase tracking-widest">
-          <Check className="h-3.5 w-3.5" strokeWidth={3} />
+        <div className="mb-2 inline-flex items-center gap-1.5 rounded-[var(--radius-pill)] bg-sage-soft px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-sage-deep">
+          <Check size={13} />
           All sets logged
         </div>
       )}
       <div className="flex gap-2">
         <Button variant="outline" className="flex-1" onClick={onAddExercise}>
-          Add Exercise
+          Add exercise
         </Button>
         <Button
           variant="default"
           className={`flex-1 ${allLogged ? "!bg-success hover:!bg-success/90" : ""}`}
           onClick={onFinish}
         >
-          {allLogged ? "Finish Workout ✓" : "Finish Workout"}
+          {allLogged ? "Finish workout ✓" : "Finish workout"}
         </Button>
       </div>
       <button
-        className="w-full mt-2 text-xs text-destructive hover:underline py-1"
+        type="button"
+        className="mt-2 w-full py-1 text-xs text-destructive hover:underline"
         onClick={onDiscard}
       >
         Discard workout
