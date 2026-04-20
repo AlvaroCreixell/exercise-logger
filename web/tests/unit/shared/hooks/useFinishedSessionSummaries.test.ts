@@ -184,4 +184,58 @@ describe("useFinishedSessionSummaries", () => {
 
     expect(result.current![0]!.displayDate).toBe("2026-03-28T14:00:00.000Z");
   });
+
+  it("computes volumeKg as sum of weight × reps across the session's logged sets", async () => {
+    const sessionId = "s-vol";
+    await db.sessions.put(
+      makeSession(sessionId, "finished", "2026-04-17T12:00:00Z", "2026-04-17T13:00:00Z")
+    );
+    await db.sessionExercises.put(makeSessionExercise("se-vol", sessionId));
+    const now = "2026-04-17T12:00:00Z";
+    await db.loggedSets.bulkPut([
+      {
+        id: "ls1",
+        sessionId,
+        sessionExerciseId: "se-vol",
+        exerciseId: "barbell-back-squat",
+        instanceLabel: "",
+        origin: "routine",
+        blockIndex: 0,
+        blockSignature: "sig",
+        setIndex: 0,
+        tag: null,
+        performedWeightKg: 100,
+        performedReps: 5,
+        performedDurationSec: null,
+        performedDistanceM: null,
+        loggedAt: now,
+        updatedAt: now,
+      },
+      {
+        id: "ls2",
+        sessionId,
+        sessionExerciseId: "se-vol",
+        exerciseId: "barbell-back-squat",
+        instanceLabel: "",
+        origin: "routine",
+        blockIndex: 0,
+        blockSignature: "sig",
+        setIndex: 1,
+        tag: null,
+        performedWeightKg: 80,
+        performedReps: 10,
+        performedDurationSec: null,
+        performedDistanceM: null,
+        loggedAt: now,
+        updatedAt: now,
+      },
+    ]);
+
+    const { result } = renderHook(() => useFinishedSessionSummaries());
+    await waitFor(() => expect(result.current).toBeDefined());
+
+    const summary = result.current!.find((s) => s.session.id === sessionId);
+    expect(summary).toBeDefined();
+    expect(summary!.volumeKg).toBe(1300);
+  });
 });
