@@ -1,7 +1,8 @@
 import type { ReactNode, SVGProps } from "react";
 
-export interface IconSvgProps extends Omit<SVGProps<SVGSVGElement>, "children"> {
+export interface IconSvgProps extends Omit<SVGProps<SVGSVGElement>, "children" | "width" | "height"> {
   size?: number;
+  /** SVG strokeWidth. No default — each concrete icon sets its own. Feather icons typically use 1.5–2. */
   strokeWidth?: number;
   viewBox: string;
   children: ReactNode;
