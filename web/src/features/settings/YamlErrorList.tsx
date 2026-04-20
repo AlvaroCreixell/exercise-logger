@@ -22,9 +22,11 @@ export function YamlErrorList({ errors }: YamlErrorListProps) {
       <ul className="space-y-2">
         {errors.map((err, i) => (
           <li key={i} className="space-y-0.5">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-3">
-              {formatErrorPath(err.path)}
-            </p>
+            {err.path && (
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-3">
+                {formatErrorPath(err.path)}
+              </p>
+            )}
             <p className="text-sm text-foreground">{err.message}</p>
           </li>
         ))}
