@@ -240,6 +240,12 @@ export interface LoggedSet {
   performedDurationSec: number | null;
   /** Performed distance in meters, or null when not applicable. */
   performedDistanceM: number | null;
+  /**
+   * Manual PR flag — set to true by the user in SetLogSheet's keypad (Sprint 11).
+   * Drives the "↑ PR" tag on `SetRow` in the active workout.
+   * Optional for back-compat: existing records predate the field and read as undefined.
+   */
+  isPersonalRecord?: boolean;
   /** ISO UTC timestamp of when this set was first logged. */
   loggedAt: string;
   /** ISO UTC timestamp of the most recent update. */

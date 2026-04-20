@@ -1,53 +1,30 @@
-import { useEffect, useState } from "react";
-import { Stat } from "@/shared/components/Stat";
-
 interface SessionProgressProps {
-  startedAt: string;
   totalSets: number;
   loggedSets: number;
-  totalExercises: number;
-}
-
-function computeElapsedMin(startedAt: string): number {
-  const ms = Date.now() - new Date(startedAt).getTime();
-  return Math.max(0, Math.round(ms / 60_000));
 }
 
 export function SessionProgress({
-  startedAt,
   totalSets,
   loggedSets,
-  totalExercises,
 }: SessionProgressProps) {
-  const [elapsedMin, setElapsedMin] = useState(() => computeElapsedMin(startedAt));
-
-  useEffect(() => {
-    const id = setInterval(() => {
-      setElapsedMin(computeElapsedMin(startedAt));
-    }, 60_000);
-    return () => clearInterval(id);
-  }, [startedAt]);
-
   const pct = totalSets > 0 ? Math.min(100, (loggedSets / totalSets) * 100) : 0;
 
   return (
-    <div>
-      <div className="flex items-baseline justify-between gap-4 px-5 py-1.5 border-b border-border">
-        <Stat
-          value={loggedSets}
-          label={`of ${totalSets} sets`}
-          size="sm"
-        />
-        <span className="text-xs text-muted-foreground tabular-nums">
-          {elapsedMin} min · {totalExercises} {totalExercises === 1 ? "exercise" : "exercises"}
+    <div className="px-5 pb-3">
+      <div className="flex items-center gap-3">
+        <div className="relative h-1 flex-1 overflow-hidden rounded-[var(--radius-pill)] bg-line-soft">
+          <div
+            data-progress-bar
+            className="absolute inset-y-0 left-0 bg-sage transition-all duration-[var(--dur-base)]"
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+        <span
+          className="shrink-0 text-xs font-semibold text-ink-3 tabular-nums"
+          aria-label={`${loggedSets} of ${totalSets} sets logged`}
+        >
+          {loggedSets}/{totalSets}
         </span>
-      </div>
-      <div className="h-0.5 bg-muted relative overflow-hidden">
-        <div
-          data-progress-bar
-          className="absolute inset-y-0 left-0 bg-cta transition-all duration-300"
-          style={{ width: `${pct}%` }}
-        />
       </div>
     </div>
   );

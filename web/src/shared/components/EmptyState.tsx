@@ -5,6 +5,8 @@ import { cn } from "@/shared/lib/utils";
 interface EmptyStateAction {
   label: string;
   onClick: () => void;
+  /** Button variant. Defaults to "outline" (hairline) for existing empty-state CTAs. Pass "default" for filled primary per screenshots/2-workout.jpg (WorkoutScreen does this). */
+  variant?: "default" | "outline";
 }
 
 interface EmptyStateProps {
@@ -42,7 +44,7 @@ export function EmptyState({
         {body}
       </p>
       {action && (
-        <Button variant="outline" className="mt-2" onClick={action.onClick}>
+        <Button variant={action.variant ?? "outline"} className="mt-2" onClick={action.onClick}>
           {action.label}
         </Button>
       )}

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { useActiveSession } from "@/shared/hooks/useActiveSession";
 import { useSettings } from "@/shared/hooks/useSettings";
@@ -10,17 +10,21 @@ import { addExtraExercise, finishSession, discardSession } from "@/services/sess
 import { setUnitOverride } from "@/services/settings-service";
 import { getEffectiveUnit } from "@/domain/unit-helpers";
 import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
-import { SectionHeader } from "@/shared/components/SectionHeader";
 import { ExerciseCard } from "./ExerciseCard";
 import { SetLogSheet } from "./SetLogSheet";
 import { SupersetGroup } from "./SupersetGroup";
 import { ExercisePicker } from "./ExercisePicker";
 import { WorkoutFooter } from "./WorkoutFooter";
+import { SessionHeader } from "./SessionHeader";
 import { SessionProgress } from "./SessionProgress";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { Dumbbell } from "lucide-react";
 import { toast } from "sonner";
 import type { SessionExercise, LoggedSet } from "@/domain/types";
+
+function computeElapsedSec(startedAt: string): number {
+  return Math.max(0, Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000));
+}
 
 export default function WorkoutScreen() {
   const activeSession = useActiveSession();
@@ -38,6 +42,20 @@ export default function WorkoutScreen() {
   const [sheetSetIndex, setSheetSetIndex] = useState(0);
   const [sheetExistingSet, setSheetExistingSet] = useState<LoggedSet | undefined>();
 
+  // Ticking elapsed seconds for the header. `tick` exists solely to drive
+  // re-renders every second; `elapsedSec` is derived from `startedAt` at render
+  // time so it's always accurate the moment the session arrives.
+  const startedAt = activeSession?.session.startedAt;
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    if (!startedAt) return;
+    const id = window.setInterval(() => {
+      setTick((t) => t + 1);
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, [startedAt]);
+  const elapsedSec = startedAt ? computeElapsedSec(startedAt) : 0;
+
   if (!settings) return null;
 
   // Empty state
@@ -45,8 +63,9 @@ export default function WorkoutScreen() {
     return (
       <EmptyState
         icon={Dumbbell}
-        heading="No Active Workout"
-        body="Start a workout from the Today tab."
+        heading="No active workout"
+        body="Start one from Today to begin logging."
+        action={{ label: "Go to Today", onClick: () => navigate("/"), variant: "default" }}
       />
     );
   }
@@ -67,7 +86,7 @@ export default function WorkoutScreen() {
   function handleSetTap(se: SessionExercise, blockIndex: number, setIndex: number) {
     const sets = setsByExercise.get(se.id) ?? [];
     const existing = sets.find(
-      (ls) => ls.blockIndex === blockIndex && ls.setIndex === setIndex
+      (ls) => ls.blockIndex === blockIndex && ls.setIndex === setIndex,
     );
     setSheetExercise(se);
     setSheetBlockIndex(blockIndex);
@@ -100,12 +119,13 @@ export default function WorkoutScreen() {
     await addExtraExercise(db, session.id, exerciseId);
   }
 
-  // Count unlogged sets
+  // Count prescribed + unlogged
   const totalPrescribed = sessionExercises.reduce(
     (sum, se) => sum + se.setBlocksSnapshot.reduce((s, b) => s + b.count, 0),
-    0
+    0,
   );
-  const unloggedCount = totalPrescribed - loggedSets.filter((ls) => ls.origin === "routine").length;
+  const loggedRoutine = loggedSets.filter((ls) => ls.origin === "routine").length;
+  const unloggedCount = totalPrescribed - loggedRoutine;
 
   async function handleFinish() {
     await finishSession(db, session.id);
@@ -131,7 +151,7 @@ export default function WorkoutScreen() {
     if (se.groupType === "superset" && se.supersetGroupId) {
       const partner = sessionExercises.find(
         (other) =>
-          other.id !== se.id && other.supersetGroupId === se.supersetGroupId
+          other.id !== se.id && other.supersetGroupId === se.supersetGroupId,
       );
       if (partner) {
         const ordered =
@@ -154,27 +174,16 @@ export default function WorkoutScreen() {
   const existingExerciseIds = new Set(sessionExercises.map((se) => se.exerciseId));
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Sticky header + progress */}
-      <div className="sticky top-0 z-10 bg-background border-b-2 border-border-strong">
-        <div className="px-5 pt-3 pb-2">
-          <SectionHeader className="!text-cta truncate">
-            {session.dayLabelSnapshot}
-          </SectionHeader>
-          <h1 className="text-2xl font-extrabold tracking-tight font-heading truncate">
-            {session.routineNameSnapshot}
-          </h1>
-        </div>
-        <SessionProgress
-          startedAt={session.startedAt}
-          totalSets={totalPrescribed}
-          loggedSets={loggedSets.filter((ls) => ls.origin === "routine").length}
-          totalExercises={sessionExercises.length}
-        />
-      </div>
+    <div className="flex h-full flex-col">
+      <SessionHeader
+        dayId={session.dayId}
+        dayLabel={session.dayLabelSnapshot}
+        elapsedSec={elapsedSec}
+        onClose={() => navigate("/")}
+      />
+      <SessionProgress totalSets={totalPrescribed} loggedSets={loggedRoutine} />
 
-      {/* Scrollable body */}
-      <div className="flex-1 overflow-y-auto p-5 space-y-4">
+      <div className="flex-1 space-y-3 overflow-y-auto p-5">
         {renderGroups.map((group, i) => {
           if (group.type === "single") {
             const se = group.exercise;
@@ -239,13 +248,13 @@ export default function WorkoutScreen() {
       <ConfirmDialog
         open={finishOpen}
         onOpenChange={setFinishOpen}
-        title="Finish Workout?"
+        title="Finish workout?"
         description={
           unloggedCount > 0
             ? `${unloggedCount} sets not logged — they will remain empty.`
             : "All sets logged. Ready to finish?"
         }
-        confirmText="Finish Workout"
+        confirmText="Finish workout"
         onConfirm={handleFinish}
       />
 
@@ -253,7 +262,7 @@ export default function WorkoutScreen() {
       <ConfirmDialog
         open={discardOpen}
         onOpenChange={setDiscardOpen}
-        title="Discard Workout?"
+        title="Discard workout?"
         description="This will permanently delete this workout and all logged sets."
         confirmText="Discard"
         onConfirm={handleDiscard}
@@ -284,10 +293,10 @@ function ExerciseCardWithHistory({
   const isRoutine = sessionExercise.origin === "routine";
   const historyData = useExerciseHistory(
     isRoutine ? sessionExercise : undefined,
-    effectiveUnits
+    effectiveUnits,
   );
   const extraHistory = useExtraHistory(
-    !isRoutine ? sessionExercise.exerciseId : undefined
+    !isRoutine ? sessionExercise.exerciseId : undefined,
   );
 
   return (
@@ -340,11 +349,11 @@ function SetLogSheetWithHistory({
   const isRoutine = sessionExercise.origin === "routine";
   const historyData = useExerciseHistory(
     isRoutine ? sessionExercise : undefined,
-    effectiveUnits
+    effectiveUnits,
   );
 
   const suggestion = historyData?.suggestions.find(
-    (s) => s.blockIndex === blockIndex
+    (s) => s.blockIndex === blockIndex,
   );
   const lastTime = historyData?.lastTime[blockIndex];
 
