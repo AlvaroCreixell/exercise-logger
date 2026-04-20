@@ -20,10 +20,10 @@ const VALUE_CLASS: Record<StatSize, string> = {
 };
 
 const LABEL_CLASS: Record<StatSize, string> = {
-  sm: "text-xs text-muted-foreground",
-  md: "text-xs text-muted-foreground uppercase tracking-widest",
-  lg: "text-sm text-muted-foreground uppercase tracking-widest",
-  hero: "text-sm text-muted-foreground uppercase tracking-widest",
+  sm: "text-eyebrow text-ink-3",
+  md: "text-eyebrow text-ink-3",
+  lg: "text-eyebrow text-ink-3",
+  hero: "text-eyebrow text-ink-3",
 };
 
 export function Stat({ value, label, size = "md", className, hint }: StatProps) {
@@ -39,7 +39,7 @@ export function Stat({ value, label, size = "md", className, hint }: StatProps) 
       <span className={VALUE_CLASS[size]}>{value}</span>
       {label != null && <span className={LABEL_CLASS[size]}>{label}</span>}
       {hint != null && (
-        <span className="text-[11px] text-muted-foreground tabular-nums">{hint}</span>
+        <span className="text-meta text-ink-3 tabular-nums">{hint}</span>
       )}
     </div>
   );

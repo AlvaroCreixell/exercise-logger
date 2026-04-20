@@ -12,13 +12,13 @@ interface BlockStripeProps {
 const STRIPE_COLOR: Record<BlockStripeVariant, string> = {
   top: "bg-warning",
   amrap: "bg-info",
-  default: "bg-muted-foreground/30",
+  default: "bg-line",
 };
 
 const CHIP_COLOR: Record<BlockStripeVariant, string> = {
   top: "bg-warning-soft text-warning",
   amrap: "bg-info-soft text-info",
-  default: "bg-muted text-muted-foreground",
+  default: "bg-card text-ink-3",
 };
 
 export function BlockStripe({ label, variant, children }: BlockStripeProps) {
