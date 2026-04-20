@@ -5,6 +5,8 @@ import { cn } from "@/shared/lib/utils";
 interface EmptyStateAction {
   label: string;
   onClick: () => void;
+  /** Button variant. Defaults to "default" (filled primary) — matches the warm-paper empty-state CTA direction per screenshots/2-workout.jpg. */
+  variant?: "default" | "outline";
 }
 
 interface EmptyStateProps {
@@ -42,7 +44,7 @@ export function EmptyState({
         {body}
       </p>
       {action && (
-        <Button variant="outline" className="mt-2" onClick={action.onClick}>
+        <Button variant={action.variant ?? "default"} className="mt-2" onClick={action.onClick}>
           {action.label}
         </Button>
       )}

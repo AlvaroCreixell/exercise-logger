@@ -83,7 +83,7 @@ describe("WorkoutScreen — integration smoke", () => {
   it("renders EmptyState when no active session exists", async () => {
     renderWorkout();
     await waitFor(() => {
-      expect(screen.getByRole("heading", { name: /No Active Workout/i })).toBeVisible();
+      expect(screen.getByRole("heading", { name: /No active workout/i })).toBeVisible();
     });
   });
 
@@ -94,23 +94,26 @@ describe("WorkoutScreen — integration smoke", () => {
     renderWorkout();
 
     await waitFor(() => {
-      expect(screen.getByText(/Smoke Routine/)).toBeVisible();
+      expect(screen.getByRole("heading", { name: /Push/i })).toBeVisible();
     });
     expect(screen.getByText(/Barbell Bench Press/i)).toBeVisible();
 
     // 2 set slots should render (count from the setBlock).
-    const slots = await screen.findAllByTestId("set-slot");
-    expect(slots.length).toBe(2);
+    const rows = await screen.findAllByRole("button", { name: /^Set \d+:/ });
+    expect(rows.length).toBe(2);
   });
 
-  it("SessionProgress shows 0 of 2 sets before logging", async () => {
+  it("SessionProgress shows 0/2 counter + labelled aria text before logging", async () => {
     const routine = await seedRoutineAndExercises();
     await startSessionWithCatalog(db, routine, "A");
 
     renderWorkout();
 
     await waitFor(() => {
-      expect(screen.getByText(/of 2 sets/i)).toBeVisible();
+      // Both SessionProgress (header) and ExerciseCard render the 0/2
+      // counter with the same accessible label — verify at least one exists.
+      expect(screen.getAllByText("0/2").length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByLabelText(/0 of 2 sets logged/i).length).toBeGreaterThanOrEqual(1);
     });
   });
 
@@ -121,8 +124,8 @@ describe("WorkoutScreen — integration smoke", () => {
 
     renderWorkout();
 
-    const slots = await screen.findAllByTestId("set-slot");
-    await user.click(slots[0]!);
+    const rows = await screen.findAllByRole("button", { name: /^Set \d+:/ });
+    await user.click(rows[0]!);
 
     // Sheet title reuses the exercise name.
     await waitFor(() => {
@@ -140,13 +143,13 @@ describe("WorkoutScreen — integration smoke", () => {
     renderWorkout();
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: /Finish Workout/i })).toBeVisible();
+      expect(screen.getByRole("button", { name: /Finish workout/i })).toBeVisible();
     });
 
-    await user.click(screen.getByRole("button", { name: /Finish Workout/i }));
+    await user.click(screen.getByRole("button", { name: /Finish workout/i }));
 
-    // Confirmation dialog shows a second "Finish Workout" button.
-    const confirmBtn = await screen.findByRole("button", { name: /^Finish Workout$/i });
+    // Confirmation dialog shows a second "Finish workout" button.
+    const confirmBtn = await screen.findByRole("button", { name: /^Finish workout$/i });
     await user.click(confirmBtn);
 
     await waitFor(async () => {
