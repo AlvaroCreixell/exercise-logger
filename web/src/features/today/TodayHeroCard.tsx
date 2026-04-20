@@ -35,7 +35,7 @@ export function TodayHeroCard({
     .join(" · ");
 
   return (
-    <Card>
+    <Card className="py-0">
       <CardContent className="space-y-4 px-5 pb-5 pt-4">
         <p className="text-eyebrow text-ink-3">{dayLabelEyebrow}</p>
 
