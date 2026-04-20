@@ -16,10 +16,12 @@ describe("UnitsToggle", () => {
     expect(screen.getByRole("button", { name: /lbs/i }).getAttribute("aria-pressed")).toBe("true");
   });
 
-  it("applies sage-soft styling to the selected segment", () => {
+  it("applies primary ink styling to the selected segment and not to the unselected one", () => {
     render(<UnitsToggle value="kg" onChange={() => {}} />);
     const kg = screen.getByRole("button", { name: /kg/i });
-    expect(kg.className).toMatch(/bg-sage-soft|bg-primary/);
+    const lbs = screen.getByRole("button", { name: /lbs/i });
+    expect(kg.className).toMatch(/bg-primary/);
+    expect(lbs.className).not.toMatch(/bg-primary/);
   });
 
   it("calls onChange('lbs') when LBS is clicked", async () => {

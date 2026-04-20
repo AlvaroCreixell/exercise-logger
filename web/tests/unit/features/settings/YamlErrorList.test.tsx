@@ -41,12 +41,12 @@ describe("YamlErrorList", () => {
         ]}
       />
     );
-    expect(screen.getByText(/2 errors/i)).toBeVisible();
+    expect(screen.getByText(/^2 errors$/i)).toBeVisible();
   });
 
   it("uses singular 'error' when there's one", () => {
     render(<YamlErrorList errors={[{ path: "name", message: "required" }]} />);
-    expect(screen.getByText(/1 error/i)).toBeVisible();
+    expect(screen.getByText(/^1 error$/i)).toBeVisible();
   });
 
   it("omits the path breadcrumb when path is empty (non-YAML runtime errors)", () => {
