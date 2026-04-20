@@ -187,7 +187,7 @@ export default function TodayScreen() {
           />
         </div>
 
-        {lastSession && <LastSessionCard session={lastSession} cadence={cadence} />}
+        {lastSession && <LastSessionCard session={lastSession} />}
       </div>
     </div>
   );
