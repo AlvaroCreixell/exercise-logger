@@ -836,7 +836,7 @@ export async function importRoutine(
   db: ExerciseLoggerDB,
   routine: Routine
 ): Promise<void> {
-  await db.routines.add(routine);
+  await db.routines.put(routine);
 }
 
 /** Result of `importAndActivateRoutine`. */
@@ -872,7 +872,7 @@ export async function importAndActivateRoutine(
         } as const;
       }
 
-      await db.routines.add(routine);
+      await db.routines.put(routine);
       await db.settings.update("user", { activeRoutineId: routine.id });
       return { ok: true, routine } as const;
     },
