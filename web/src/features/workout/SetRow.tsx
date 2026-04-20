@@ -28,7 +28,7 @@ function formatLoggedValue(
 } {
   if (ls.performedWeightKg != null && ls.performedReps != null) {
     return {
-      primary: `${Math.round(toDisplayWeight(ls.performedWeightKg, units))}`,
+      primary: `${toDisplayWeight(ls.performedWeightKg, units)}`,
       unit: units,
       secondary: `${ls.performedReps}`,
     };

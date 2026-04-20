@@ -83,6 +83,35 @@ describe("SetRow — logged state", () => {
     expect(screen.queryByText(/PR/)).toBeNull();
   });
 
+  it("renders fractional kg without rounding (70.5, not 71)", () => {
+    render(
+      <SetRow
+        setNumber={1}
+        loggedSet={makeLoggedSet({ performedWeightKg: 70.5, performedReps: 5 })}
+        units="kg"
+        isTopBlock={false}
+        onClick={() => {}}
+      />,
+    );
+    expect(screen.getByText("70.5")).toBeVisible();
+    expect(screen.queryByText("71")).toBeNull();
+  });
+
+  it("renders fractional lbs conversion without rounding", () => {
+    // 45 kg = 99.2075… lbs → must not become "99"
+    render(
+      <SetRow
+        setNumber={1}
+        loggedSet={makeLoggedSet({ performedWeightKg: 45, performedReps: 5 })}
+        units="lbs"
+        isTopBlock={false}
+        onClick={() => {}}
+      />,
+    );
+    const primary = screen.getByText(/^99(\.\d+)?$/);
+    expect(primary.textContent).toContain(".");
+  });
+
   it("calls onClick when the row is clicked", async () => {
     const spy = vi.fn();
     const user = userEvent.setup();
