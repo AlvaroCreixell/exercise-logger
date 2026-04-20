@@ -8,16 +8,22 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
+        // Ink-on-paper primary.
         default:
-          "bg-primary text-primary-foreground [a]:hover:bg-primary/90 active:bg-primary/85",
+          "bg-primary text-primary-foreground hover:bg-primary/90 active:bg-primary/85",
+        // Hairline outline on paper/card.
         outline:
-          "border-[1px] border-line bg-background text-foreground hover:bg-card aria-expanded:bg-card",
+          "border-[1px] border-line bg-background text-foreground hover:bg-card active:bg-card aria-expanded:bg-card",
+        // Subtle filled chip (card tone).
         secondary:
-          "bg-secondary text-secondary-foreground hover:bg-secondary/85 aria-expanded:bg-secondary",
+          "bg-secondary text-secondary-foreground hover:bg-secondary/85 active:bg-secondary/80 aria-expanded:bg-secondary",
+        // Text-only, hover tints to card.
         ghost:
-          "text-foreground hover:bg-card aria-expanded:bg-card",
+          "text-foreground hover:bg-card active:bg-card aria-expanded:bg-card",
+        // Destructive text treatment — danger color, no fill at rest.
         destructive:
-          "text-destructive hover:bg-destructive/10 focus-visible:ring-destructive/40",
+          "text-destructive hover:bg-destructive/10 active:bg-destructive/15 focus-visible:ring-destructive/40",
+        // Inline link inside body text.
         link:
           "text-primary underline-offset-4 hover:underline",
       },
