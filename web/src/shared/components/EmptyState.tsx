@@ -32,7 +32,7 @@ export function EmptyState({
         className,
       )}
     >
-      <div className="flex h-16 w-16 items-center justify-center bg-muted/60 text-muted-foreground">
+      <div className="flex h-16 w-16 items-center justify-center rounded-[var(--radius-pill)] bg-sage-soft text-sage-deep">
         <Icon className="h-8 w-8" strokeWidth={1.5} />
       </div>
       <Heading className="text-title-serif">
