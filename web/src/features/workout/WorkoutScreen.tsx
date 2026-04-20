@@ -42,19 +42,19 @@ export default function WorkoutScreen() {
   const [sheetSetIndex, setSheetSetIndex] = useState(0);
   const [sheetExistingSet, setSheetExistingSet] = useState<LoggedSet | undefined>();
 
-  // Ticking elapsed seconds for the header.
+  // Ticking elapsed seconds for the header. `tick` exists solely to drive
+  // re-renders every second; `elapsedSec` is derived from `startedAt` at render
+  // time so it's always accurate the moment the session arrives.
   const startedAt = activeSession?.session.startedAt;
-  const [elapsedSec, setElapsedSec] = useState(() =>
-    startedAt ? computeElapsedSec(startedAt) : 0,
-  );
+  const [, setTick] = useState(0);
   useEffect(() => {
     if (!startedAt) return;
-    setElapsedSec(computeElapsedSec(startedAt));
     const id = window.setInterval(() => {
-      setElapsedSec(computeElapsedSec(startedAt));
+      setTick((t) => t + 1);
     }, 1000);
     return () => window.clearInterval(id);
   }, [startedAt]);
+  const elapsedSec = startedAt ? computeElapsedSec(startedAt) : 0;
 
   if (!settings) return null;
 
