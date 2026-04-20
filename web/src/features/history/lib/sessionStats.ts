@@ -19,11 +19,14 @@ export function formatVolume(canonicalKg: number, units: UnitSystem): string {
   return `${withCommas} ${units}`;
 }
 
-/** Short minutes string for session meta lines. E.g. "52m", "< 1m", "". */
+/** Short minutes string for session meta lines. E.g. "52m", "< 1m", "".
+ *  Uses nearest-minute rounding so row/header duration stays consistent with
+ *  SessionDetailStatsTile, which computes `Math.round(ms / 60000)`. The
+ *  sub-minute sentinel is preserved — anything < 1 minute reads "< 1m"
+ *  regardless of rounding. */
 export function formatShortDuration(startedAt: string, finishedAt: string | null): string {
   if (!finishedAt) return "";
   const ms = new Date(finishedAt).getTime() - new Date(startedAt).getTime();
-  const min = Math.floor(ms / 60000);
-  if (min < 1) return "< 1m";
-  return `${min}m`;
+  if (ms < 60_000) return "< 1m";
+  return `${Math.round(ms / 60000)}m`;
 }

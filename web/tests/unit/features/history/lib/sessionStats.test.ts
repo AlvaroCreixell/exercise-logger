@@ -102,4 +102,16 @@ describe("formatShortDuration", () => {
     const end = "2026-04-17T14:30:00Z";
     expect(formatShortDuration(start, end)).toBe("150m");
   });
+
+  it("rounds to nearest minute (52m31s → 53m, matching SessionDetailStatsTile)", () => {
+    const start = "2026-04-17T12:00:00Z";
+    const end = "2026-04-17T12:52:31Z";
+    expect(formatShortDuration(start, end)).toBe("53m");
+  });
+
+  it("rounds down for sub-30-second remainders (52m20s → 52m)", () => {
+    const start = "2026-04-17T12:00:00Z";
+    const end = "2026-04-17T12:52:20Z";
+    expect(formatShortDuration(start, end)).toBe("52m");
+  });
 });
