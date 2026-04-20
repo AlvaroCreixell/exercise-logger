@@ -139,7 +139,6 @@ export default function TodayScreen() {
   const isToday = selectedId === todayId;
 
   async function handleStart() {
-    if (!isToday) return; // Day switcher previews only — Start targets nextDayId.
     setStarting(true);
     try {
       await startSessionWithCatalog(db, routine!, selectedId);
@@ -154,7 +153,7 @@ export default function TodayScreen() {
   const setCount = selectedDay ? countSets(selectedDay) : 0;
   const firstExerciseName = selectedDay ? firstExerciseFromDay(selectedDay, exerciseNames) : null;
   const dayTitle = selectedDay?.label ?? selectedId;
-  const eyebrow = isToday ? `TODAY · DAY ${selectedId.toUpperCase()}` : `DAY ${selectedId.toUpperCase()} · PREVIEW`;
+  const eyebrow = isToday ? `TODAY · DAY ${selectedId.toUpperCase()}` : `DAY ${selectedId.toUpperCase()}`;
   const streakCount = cadence?.sessionsLast7Days ?? 0;
 
   return (
@@ -173,9 +172,9 @@ export default function TodayScreen() {
           exerciseCount={exerciseCount}
           setCount={setCount}
           firstExerciseName={firstExerciseName}
-          ctaLabel={isToday ? "▶ Start workout" : "Switch to today to start"}
+          ctaLabel="▶ Start workout"
           onCtaClick={handleStart}
-          ctaDisabled={starting || !isToday}
+          ctaDisabled={starting}
           resumeMeta={null}
         />
 
