@@ -98,7 +98,7 @@ describe("SetRow — logged state", () => {
   });
 
   it("renders fractional lbs conversion without rounding", () => {
-    // 45 kg = 99.2075… lbs → must not become "99"
+    // 45 kg ≈ 99.208 lbs; toDisplayWeight clips to 2 decimals → "99.21", not "99"
     render(
       <SetRow
         setNumber={1}
@@ -108,8 +108,8 @@ describe("SetRow — logged state", () => {
         onClick={() => {}}
       />,
     );
-    const primary = screen.getByText(/^99(\.\d+)?$/);
-    expect(primary.textContent).toContain(".");
+    expect(screen.getByText(/^99\.\d+$/)).toBeVisible();
+    expect(screen.queryByText("99")).toBeNull();
   });
 
   it("calls onClick when the row is clicked", async () => {
