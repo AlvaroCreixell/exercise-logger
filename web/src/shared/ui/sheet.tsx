@@ -68,7 +68,8 @@ function SheetContent({
               />
             }
           >
-            <Close size={18} aria-label="Close" />
+            <Close size={18} />
+            <span className="sr-only">Close</span>
           </SheetPrimitive.Close>
         )}
       </SheetPrimitive.Popup>
