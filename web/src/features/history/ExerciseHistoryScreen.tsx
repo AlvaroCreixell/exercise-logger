@@ -49,7 +49,7 @@ export default function ExerciseHistoryScreen() {
         onClick={() => navigate(-1)}
         className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}
       >
-        <Back className="h-4 w-4 mr-1" size={16} />Back
+        <Back size={16} className="mr-1" />Back
       </button>
 
       <h1 className="text-2xl font-extrabold tracking-tight font-heading">{name}</h1>
