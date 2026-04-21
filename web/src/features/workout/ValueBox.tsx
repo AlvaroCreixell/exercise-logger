@@ -32,27 +32,29 @@ export function ValueBox({
 }: ValueBoxProps) {
   return (
     <div className="flex items-stretch gap-2">
-      <button
-        type="button"
-        aria-label={`${label} value`}
-        aria-pressed={isActive}
-        data-active={isActive ? "true" : "false"}
-        onClick={onFocus}
-        className="flex-1 rounded-[var(--radius-card)] border px-4 py-3 text-left transition-colors data-[active=true]:border-sage-deep data-[active=true]:bg-sage-soft/30 data-[active=false]:border-line data-[active=false]:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage/40"
-      >
-        <div className="flex items-start justify-between gap-2">
-          <span className="text-[11px] font-semibold uppercase tracking-widest text-ink-3">
+      <div className="relative flex-1">
+        {unitToggle && (
+          <div className="absolute right-3 top-3 z-10">{unitToggle}</div>
+        )}
+        <button
+          type="button"
+          aria-label={`${label} value`}
+          aria-pressed={isActive}
+          data-active={isActive ? "true" : "false"}
+          onClick={onFocus}
+          className="w-full rounded-[var(--radius-card)] border px-4 py-3 text-left transition-colors data-[active=true]:border-sage-deep data-[active=true]:bg-sage-soft/30 data-[active=false]:border-line data-[active=false]:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage/40"
+        >
+          <span className="block text-[11px] font-semibold uppercase tracking-widest text-ink-3">
             {label}
           </span>
-          {unitToggle}
-        </div>
-        <div className="mt-0.5 flex items-baseline gap-1 tabular-nums">
-          <span className="text-3xl font-semibold text-foreground">
-            {value === "" ? "—" : value}
-          </span>
-          {unit && <span className="text-sm text-ink-3">{unit}</span>}
-        </div>
-      </button>
+          <div className="mt-0.5 flex items-baseline gap-1 tabular-nums">
+            <span className="text-3xl font-semibold text-foreground">
+              {value === "" ? "—" : value}
+            </span>
+            {unit && <span className="text-sm text-ink-3">{unit}</span>}
+          </div>
+        </button>
+      </div>
       <div className="flex flex-col gap-1">
         <button
           type="button"

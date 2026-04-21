@@ -104,4 +104,43 @@ describe("ValueBox", () => {
     );
     expect(screen.getByRole("button", { name: "lbs" })).toBeVisible();
   });
+
+  it("renders unitToggle outside the tile button (no nested interactive)", () => {
+    render(
+      <ValueBox
+        label="Weight"
+        value="80"
+        unit="kg"
+        isActive
+        onFocus={() => {}}
+        onNudgeDown={() => {}}
+        onNudgeUp={() => {}}
+        unitToggle={<button type="button" aria-label="Toggle unit">kg/lb</button>}
+      />,
+    );
+    const toggle = screen.getByRole("button", { name: /toggle unit/i });
+    const tile = screen.getByRole("button", { name: /weight value/i });
+    expect(tile.contains(toggle)).toBe(false);
+  });
+
+  it("firing the unitToggle does not also trigger the tile onFocus", async () => {
+    const onFocus = vi.fn();
+    const onToggle = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <ValueBox
+        label="Weight"
+        value="80"
+        unit="kg"
+        isActive={false}
+        onFocus={onFocus}
+        onNudgeDown={() => {}}
+        onNudgeUp={() => {}}
+        unitToggle={<button type="button" aria-label="Toggle unit" onClick={onToggle}>kg/lb</button>}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: /toggle unit/i }));
+    expect(onToggle).toHaveBeenCalledTimes(1);
+    expect(onFocus).not.toHaveBeenCalled();
+  });
 });
