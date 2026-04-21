@@ -325,6 +325,29 @@ describe("SetLogSheet — inline context", () => {
     expect(screen.getByText(/105kg/i)).toBeVisible();
     expect(screen.getByText(/suggested/i)).toBeVisible();
   });
+
+  it("'Use last' chip prefills weight and reps from lastTime[setIndex] when tapped", async () => {
+    const user = userEvent.setup();
+    renderSheet({
+      lastTime: {
+        blockIndex: 0,
+        blockLabel: "Set block 1",
+        tag: null,
+        sets: [
+          { weightKg: 100, reps: 8, durationSec: null, distanceM: null },
+          { weightKg: 95, reps: 7, durationSec: null, distanceM: null },
+        ],
+      },
+      setIndex: 1,
+    });
+    // Pre-state: the existing prefill path already fills weight=95 (from lastTime[1])
+    // and reps=8 (block.minValue). Empty the weight via backspace twice, then tap Use last.
+    await user.click(screen.getByRole("button", { name: /backspace/i }));
+    await user.click(screen.getByRole("button", { name: /backspace/i }));
+    await user.click(screen.getByRole("button", { name: /use last/i }));
+    expect(weightValueText()).toBe("95");
+    expect(repsValueText()).toBe("7");
+  });
 });
 
 describe("SetLogSheet — open-edge prefill", () => {

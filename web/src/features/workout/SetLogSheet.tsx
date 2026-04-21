@@ -301,6 +301,22 @@ export function SetLogSheet({
                       return "—";
                     })()}
                   </span>
+                  {(() => {
+                    const s = lastTime.sets[setIndex] ?? lastTime.sets[0];
+                    if (!s) return null;
+                    return (
+                      <button
+                        type="button"
+                        className="ml-3 inline-flex items-center rounded-[var(--radius-pill)] border border-line px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wider text-ink-3 transition-colors hover:border-sage hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage/40"
+                        onClick={() => {
+                          if (s.weightKg != null) setWeight(String(toDisplayWeight(s.weightKg, units)));
+                          if (s.reps != null) setReps(String(s.reps));
+                        }}
+                      >
+                        Use last
+                      </button>
+                    );
+                  })()}
                 </p>
               )}
               {suggestion && (
