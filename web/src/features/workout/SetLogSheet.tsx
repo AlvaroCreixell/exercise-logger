@@ -170,6 +170,9 @@ export function SetLogSheet({
     if (activeField === "weight") {
       setWeight((w) => applyKeypadKey(w, key));
     } else if (activeField === "reps") {
+      // Reps are integer-only. Reject the decimal key so users can't type
+      // "10.5" and have parseInt silently truncate it to 10 on save.
+      if (key === ".") return;
       setReps((r) => applyKeypadKey(r, key));
     }
     // duration/distance keep native inputs; keypad is hidden for those.

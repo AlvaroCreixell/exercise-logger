@@ -590,6 +590,21 @@ describe("SetLogSheet — keypad input (weight + reps)", () => {
     }
     expect(repsValueText()).toBe("0");
   });
+
+  it("ignores the decimal key when reps is the active field", async () => {
+    const user = userEvent.setup();
+    renderSheet();
+    // Activate reps tile
+    await user.click(screen.getByRole("button", { name: /reps value/i }));
+    // Clear prefill (reps starts at minValue=8 — one backspace clears it)
+    await user.click(screen.getByRole("button", { name: /backspace/i }));
+    await user.click(screen.getByRole("button", { name: /backspace/i }));
+    // Type "1" + "." + "5" — "." must be ignored, result should be "15"
+    await user.click(screen.getByRole("button", { name: /^1$/ }));
+    await user.click(screen.getByRole("button", { name: /\./ }));
+    await user.click(screen.getByRole("button", { name: /^5$/ }));
+    expect(repsValueText()).toBe("15");
+  });
 });
 
 describe("SetLogSheet — physical keyboard", () => {
