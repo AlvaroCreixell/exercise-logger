@@ -12,6 +12,7 @@ import {
 import { Toaster } from "sonner";
 import { Grid, Dumbbell, Graph, Settings } from "@/shared/icons";
 import { useAppInit } from "@/shared/hooks/useAppInit";
+import { useRoutineLaunchQueue } from "@/shared/hooks/useRoutineLaunchQueue";
 import { SWUpdatePrompt } from "./SWUpdatePrompt";
 
 const TodayScreen = lazy(() => import("@/features/today/TodayScreen"));
@@ -114,6 +115,7 @@ function Shell() {
 
 function AppRoutes() {
   const { ready, error } = useAppInit();
+  useRoutineLaunchQueue();
 
   if (error) {
     return (

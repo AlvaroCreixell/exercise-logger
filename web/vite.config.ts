@@ -81,6 +81,17 @@ export default defineConfig({
             purpose: "maskable",
           },
         ],
+        file_handlers: [
+          {
+            action: "/exercise-logger/settings/import",
+            accept: {
+              "text/yaml": [".yaml", ".yml"],
+              "text/x-yaml": [".yaml", ".yml"],
+              "application/x-yaml": [".yaml", ".yml"],
+              "text/plain": [".yaml", ".yml"],
+            },
+          },
+        ],
       },
       workbox: {
         globPatterns: ["**/*.{js,css,html,png,svg,woff2,ico}"],
