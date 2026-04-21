@@ -743,13 +743,19 @@ describe("SetLogSheet — physical keyboard", () => {
     expect(weightValueText()).toBe("8");
   });
 
-  it("Tab moves active field from weight to reps", async () => {
-    const user = userEvent.setup();
+  it("Tab moves active field from weight to reps", () => {
     renderSheet();
-    await user.keyboard("{Tab}");
-    // Reps prefilled to minValue=8; clear then type.
-    await user.keyboard("{Backspace}");
-    await user.keyboard("12");
+    // The sheet auto-focuses the weight tile (a BUTTON). The Tab handler
+    // now bails out on BUTTON focus (11.6 Task 1), so to exercise the
+    // inner Tab branch (which flips activeField for non-button focus) we
+    // dispatch the keydown directly on document.body.
+    fireEvent.keyDown(document.body, { key: "Tab" });
+    // After the flip, reps is active. Reps prefilled to minValue=8; clear
+    // then type via direct keydowns so we don't depend on user-event's
+    // focus-aware dispatch either.
+    fireEvent.keyDown(document.body, { key: "Backspace" });
+    fireEvent.keyDown(document.body, { key: "1" });
+    fireEvent.keyDown(document.body, { key: "2" });
     expect(repsValueText()).toBe("12");
   });
 
@@ -770,10 +776,9 @@ describe("SetLogSheet — physical keyboard", () => {
         onSave={save}
       />,
     );
-    // Ensure no button is focused so the global Enter handler fires save.
-    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
-    const user = userEvent.setup();
-    await user.keyboard("{Enter}");
+    // Fire Enter directly at document.body so the BUTTON bailout doesn't
+    // apply; the sheet-level keydown listener should catch it and save.
+    fireEvent.keyDown(document.body, { key: "Enter" });
     await waitFor(() => expect(save).toHaveBeenCalledWith(
       expect.objectContaining({
         performedWeightKg: 85,
