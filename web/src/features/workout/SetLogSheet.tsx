@@ -16,10 +16,10 @@ import { toDisplayWeight, toCanonicalKg } from "@/domain/unit-conversion";
 import { toast } from "sonner";
 import { isSetInputEmpty } from "./set-log-validation";
 import { SetDots } from "./SetDots";
-import { Keypad } from "./Keypad";
-import { ValueBox } from "./ValueBox";
-import { PrToggle } from "./PrToggle";
-import { applyKeypadKey, type KeypadKey } from "./lib/keypad-reducer";
+import { Keypad } from "@/features/workout/Keypad";
+import { ValueBox } from "@/features/workout/ValueBox";
+import { PrToggle } from "@/features/workout/PrToggle";
+import { applyKeypadKey, type KeypadKey } from "@/features/workout/lib/keypad-reducer";
 import type { TargetKind } from "@/domain/enums";
 
 function deriveActiveField(

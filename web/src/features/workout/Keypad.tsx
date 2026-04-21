@@ -1,4 +1,4 @@
-import type { KeypadKey } from "./lib/keypad-reducer";
+import type { KeypadKey } from "@/features/workout/lib/keypad-reducer";
 import { Delete as BackspaceIcon } from "lucide-react";
 
 interface KeypadProps {
