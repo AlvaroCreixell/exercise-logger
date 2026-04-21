@@ -198,6 +198,8 @@ export function SetLogSheet({
     setReps(String(Math.max(0, n + delta)));
   }
 
+  const handleSaveRef = useRef<() => Promise<void>>(() => Promise.resolve());
+
   async function handleSave() {
     const w = weight.trim() ? parseFloat(weight) : null;
     const input = {
@@ -226,12 +228,21 @@ export function SetLogSheet({
     }
   }
 
+  handleSaveRef.current = handleSave;
+
   useEffect(() => {
     if (!open) return;
     function onKeyDown(e: KeyboardEvent) {
       const target = e.target as HTMLElement | null;
-      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA")) {
-        return;
+      if (target) {
+        const tag = target.tagName;
+        if (tag === "INPUT" || tag === "TEXTAREA") return;
+        // Don't hijack Enter on focused interactive controls — Mark PR,
+        // Use last, Delete set, close-button all expect Enter to activate
+        // them, not to trigger the sheet-level save.
+        if (e.key === "Enter" && (tag === "BUTTON" || target.getAttribute("role") === "button")) {
+          return;
+        }
       }
       if (e.key >= "0" && e.key <= "9") {
         e.preventDefault();
@@ -259,7 +270,7 @@ export function SetLogSheet({
       }
       if (e.key === "Enter") {
         e.preventDefault();
-        void handleSave();
+        void handleSaveRef.current();
         return;
       }
     }

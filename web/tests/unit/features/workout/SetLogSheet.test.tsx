@@ -1,7 +1,7 @@
 // web/tests/unit/features/workout/SetLogSheet.test.tsx
 import { describe, it, expect, vi } from "vitest";
 import React, { useState } from "react";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, within, waitFor, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { SetLogSheet } from "@/features/workout/SetLogSheet";
 import type { SessionExercise, LoggedSet, SetBlock } from "@/domain/types";
@@ -62,6 +62,7 @@ interface RenderOpts {
   suggestion?: BlockSuggestion;
   lastTime?: BlockLastTime;
   blockSetsInSession?: LoggedSet[];
+  onSave?: ReturnType<typeof vi.fn>;
 }
 
 function renderSheet(opts: RenderOpts = {}) {
@@ -77,7 +78,7 @@ function renderSheet(opts: RenderOpts = {}) {
       lastTime={opts.lastTime}
       blockSetsInSession={opts.blockSetsInSession ?? []}
       units="kg"
-      onSave={vi.fn()}
+      onSave={opts.onSave ?? vi.fn()}
     />
   );
 }
@@ -515,6 +516,39 @@ describe("SetLogSheet — open-edge prefill", () => {
   });
 });
 
+describe("SetLogSheet — global Enter handler", () => {
+  it("saves the current isPR value when Enter fires after toggling PR", async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn().mockResolvedValue(undefined);
+    // Provide weight+reps prefill so save succeeds without validation error.
+    renderSheet({
+      onSave,
+      existingSet: makeLoggedSet({
+        performedWeightKg: 80,
+        performedReps: 10,
+        isPersonalRecord: false,
+      } as Partial<LoggedSet>),
+    });
+    // Toggle PR, then blur the button so the global Enter handler (not the button) fires.
+    await user.click(screen.getByRole("button", { name: /mark pr/i }));
+    document.activeElement instanceof HTMLElement && document.activeElement.blur();
+    await user.keyboard("{Enter}");
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+    expect(onSave.mock.calls[0]![0].isPersonalRecord).toBe(true);
+  });
+
+  it("lets Enter activate a focused button instead of triggering save", () => {
+    const onSave = vi.fn().mockResolvedValue(undefined);
+    renderSheet({ onSave });
+    const markPr = screen.getByRole("button", { name: /mark pr/i });
+    // Fire Enter as a bubbling keydown with the button as the target — this
+    // simulates the window handler receiving Enter while the button is focused.
+    fireEvent.keyDown(markPr, { key: "Enter", bubbles: true });
+    // The sheet-level save must NOT have been called.
+    expect(onSave).not.toHaveBeenCalled();
+  });
+});
+
 describe("SetLogSheet — keypad input (weight + reps)", () => {
   it("renders a keypad when the sheet is open with weight+reps target", () => {
     renderSheet();
@@ -643,7 +677,7 @@ describe("SetLogSheet — physical keyboard", () => {
         sessionExercise={makeSessionExercise()}
         blockIndex={0}
         setIndex={0}
-        existingSet={undefined}
+        existingSet={makeLoggedSet({ performedWeightKg: 85, performedReps: 10 })}
         suggestion={undefined}
         lastTime={undefined}
         blockSetsInSession={[]}
@@ -651,18 +685,16 @@ describe("SetLogSheet — physical keyboard", () => {
         onSave={save}
       />,
     );
+    // Ensure no button is focused so the global Enter handler fires save.
+    document.activeElement instanceof HTMLElement && document.activeElement.blur();
     const user = userEvent.setup();
-    await user.keyboard("85");
-    await user.keyboard("{Tab}");
-    await user.keyboard("{Backspace}");
-    await user.keyboard("10");
     await user.keyboard("{Enter}");
-    expect(save).toHaveBeenCalledWith(
+    await waitFor(() => expect(save).toHaveBeenCalledWith(
       expect.objectContaining({
         performedWeightKg: 85,
         performedReps: 10,
       }),
-    );
+    ));
   });
 });
 
