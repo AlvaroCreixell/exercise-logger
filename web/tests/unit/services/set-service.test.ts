@@ -1051,6 +1051,104 @@ describe("logSet input validation", () => {
   });
 });
 
+describe("set-service — isPersonalRecord persistence", () => {
+  async function setupLoggableSet(): Promise<{ db: ExerciseLoggerDB; sessionExerciseId: string }> {
+    const db = new ExerciseLoggerDB();
+    await initializeSettings(db);
+    await db.exercises.add(makeExercise("barbell-back-squat"));
+    const routine = makeRoutine([
+      {
+        kind: "exercise",
+        entryId: "A-e0",
+        exerciseId: "barbell-back-squat",
+        setBlocks: [STANDARD_BLOCK],
+      },
+    ]);
+    await db.routines.add(routine);
+    const session = await startSessionWithCatalog(db, routine, "A");
+    return { db, sessionExerciseId: session.sessionExercises[0]!.id };
+  }
+
+  it("stores isPersonalRecord=true on a newly logged set", async () => {
+    const { db, sessionExerciseId } = await setupLoggableSet();
+    try {
+      const created = await logSet(db, sessionExerciseId, 0, 0, {
+        performedWeightKg: 80,
+        performedReps: 5,
+        performedDurationSec: null,
+        performedDistanceM: null,
+        isPersonalRecord: true,
+      });
+      expect(created.isPersonalRecord).toBe(true);
+      const fetched = await db.loggedSets.get(created.id);
+      expect(fetched?.isPersonalRecord).toBe(true);
+    } finally {
+      await db.delete();
+    }
+  });
+
+  it("defaults isPersonalRecord to undefined when the field is omitted", async () => {
+    const { db, sessionExerciseId } = await setupLoggableSet();
+    try {
+      const created = await logSet(db, sessionExerciseId, 0, 0, {
+        performedWeightKg: 80,
+        performedReps: 5,
+        performedDurationSec: null,
+        performedDistanceM: null,
+      });
+      expect(created.isPersonalRecord).toBeUndefined();
+    } finally {
+      await db.delete();
+    }
+  });
+
+  it("updates isPersonalRecord on editSet", async () => {
+    const { db, sessionExerciseId } = await setupLoggableSet();
+    try {
+      const created = await logSet(db, sessionExerciseId, 0, 0, {
+        performedWeightKg: 80,
+        performedReps: 5,
+        performedDurationSec: null,
+        performedDistanceM: null,
+        isPersonalRecord: false,
+      });
+      const updated = await editSet(db, created.id, {
+        performedWeightKg: 80,
+        performedReps: 5,
+        performedDurationSec: null,
+        performedDistanceM: null,
+        isPersonalRecord: true,
+      });
+      expect(updated.isPersonalRecord).toBe(true);
+    } finally {
+      await db.delete();
+    }
+  });
+
+  it("clears isPersonalRecord on editSet when the input sets it to false", async () => {
+    const { db, sessionExerciseId } = await setupLoggableSet();
+    try {
+      const created = await logSet(db, sessionExerciseId, 0, 0, {
+        performedWeightKg: 80,
+        performedReps: 5,
+        performedDurationSec: null,
+        performedDistanceM: null,
+        isPersonalRecord: true,
+      });
+      const updated = await editSet(db, created.id, {
+        performedWeightKg: 80,
+        performedReps: 5,
+        performedDurationSec: null,
+        performedDistanceM: null,
+        isPersonalRecord: false,
+      });
+      expect(updated.isPersonalRecord).toBe(false);
+    } finally {
+      await db.delete();
+    }
+  });
+});
+
 describe("editSet input validation", () => {
   it("rejects a negative weight on edit and leaves the row unchanged", async () => {
     const db = new ExerciseLoggerDB();

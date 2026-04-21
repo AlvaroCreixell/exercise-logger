@@ -21,6 +21,11 @@ export interface SetLogInput {
   performedDurationSec: number | null;
   /** Distance in meters, or null when not applicable. */
   performedDistanceM: number | null;
+  /**
+   * Manual PR flag. Optional: omitted → undefined on create; explicit
+   * true/false on edit overwrites the stored value.
+   */
+  isPersonalRecord?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -172,6 +177,7 @@ export async function logSet(
           performedReps: input.performedReps,
           performedDurationSec: input.performedDurationSec,
           performedDistanceM: input.performedDistanceM,
+          isPersonalRecord: input.isPersonalRecord,
           updatedAt: now,
         };
         await db.loggedSets.update(existing.id, updated);
@@ -193,6 +199,7 @@ export async function logSet(
           performedReps: input.performedReps,
           performedDurationSec: input.performedDurationSec,
           performedDistanceM: input.performedDistanceM,
+          isPersonalRecord: input.isPersonalRecord,
           loggedAt: now,
           updatedAt: now,
         };
@@ -252,6 +259,7 @@ export async function editSet(
     performedReps: input.performedReps,
     performedDurationSec: input.performedDurationSec,
     performedDistanceM: input.performedDistanceM,
+    isPersonalRecord: input.isPersonalRecord,
     updatedAt: now,
   };
 
