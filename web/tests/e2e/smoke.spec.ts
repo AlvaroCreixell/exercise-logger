@@ -36,3 +36,22 @@ test("can navigate between all tabs", async ({ page }) => {
   await page.getByRole("link", { name: "Today" }).click();
   await expect(page.getByText(/start workout/i)).toBeVisible({ timeout: 10000 });
 });
+
+test("Service Worker activates and the app remains interactive after network goes offline", async ({ page, context }) => {
+  await page.goto("/");
+  // Wait for the SW to activate and claim this page.
+  await page.waitForFunction(async () => {
+    const reg = await navigator.serviceWorker.getRegistration();
+    return reg?.active?.state === "activated";
+  }, { timeout: 15_000 });
+
+  // Verify the app is fully rendered while online.
+  await expect(page.locator("main")).toBeVisible({ timeout: 10_000 });
+
+  // Drop the network connection. The already-loaded SPA (React) should
+  // remain interactive — no reload needed — because all assets are in memory.
+  await context.setOffline(true);
+  // The tab bar and Today screen should still be visible (React is running).
+  await expect(page.getByRole("navigation", { name: "Main navigation" })).toBeVisible();
+  await context.setOffline(false);
+});

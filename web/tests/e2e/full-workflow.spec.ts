@@ -91,7 +91,15 @@ test.describe("Exercise Logger E2E Smoke Test", () => {
     await expect(dialogFinish).toBeVisible({ timeout: 3000 });
     await dialogFinish.click();
 
+    // Celebration screen is visible briefly before auto-dismissing to Today.
+    await expect(page.getByText(/Well done/i)).toBeVisible({ timeout: 5000 });
+    // Auto-dismiss fires after 1800 ms → app navigates to the router root (/exercise-logger).
+    // BrowserRouter basename="/exercise-logger" so navigate("/") produces the base URL
+    // which may or may not include a trailing slash depending on the browser.
+    await expect(page).toHaveURL(/\/exercise-logger\/?$/, { timeout: 5000 });
+
     // Step 5: History should list the finished session.
+    // Navigate explicitly because we are now on Today, not /history.
     await page.getByRole("link", { name: /history/i }).click();
     // Session row links to /history/{id} — the finished session should be listed.
     await expect(
