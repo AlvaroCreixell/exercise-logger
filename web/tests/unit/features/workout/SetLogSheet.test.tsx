@@ -568,3 +568,61 @@ describe("SetLogSheet — keypad input (weight + reps)", () => {
     expect(repsValueText()).toBe("0");
   });
 });
+
+describe("SetLogSheet — physical keyboard", () => {
+  it("digit keypresses update the active field", async () => {
+    const user = userEvent.setup();
+    renderSheet();
+    await user.keyboard("85");
+    expect(weightValueText()).toBe("85");
+  });
+
+  it("backspace key removes the last character", async () => {
+    const user = userEvent.setup();
+    renderSheet();
+    await user.keyboard("85");
+    await user.keyboard("{Backspace}");
+    expect(weightValueText()).toBe("8");
+  });
+
+  it("Tab moves active field from weight to reps", async () => {
+    const user = userEvent.setup();
+    renderSheet();
+    await user.keyboard("{Tab}");
+    // Reps prefilled to minValue=8; clear then type.
+    await user.keyboard("{Backspace}");
+    await user.keyboard("12");
+    expect(repsValueText()).toBe("12");
+  });
+
+  it("Enter triggers onSave with the current values", async () => {
+    const save = vi.fn().mockResolvedValue(undefined);
+    render(
+      <SetLogSheet
+        open={true}
+        onOpenChange={vi.fn()}
+        sessionExercise={makeSessionExercise()}
+        blockIndex={0}
+        setIndex={0}
+        existingSet={undefined}
+        suggestion={undefined}
+        lastTime={undefined}
+        blockSetsInSession={[]}
+        units="kg"
+        onSave={save}
+      />,
+    );
+    const user = userEvent.setup();
+    await user.keyboard("85");
+    await user.keyboard("{Tab}");
+    await user.keyboard("{Backspace}");
+    await user.keyboard("10");
+    await user.keyboard("{Enter}");
+    expect(save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        performedWeightKg: 85,
+        performedReps: 10,
+      }),
+    );
+  });
+});

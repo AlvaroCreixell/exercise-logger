@@ -210,6 +210,48 @@ export function SetLogSheet({
     }
   }
 
+  useEffect(() => {
+    if (!open) return;
+    function onKeyDown(e: KeyboardEvent) {
+      const target = e.target as HTMLElement | null;
+      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA")) {
+        return;
+      }
+      if (e.key >= "0" && e.key <= "9") {
+        e.preventDefault();
+        dispatchKey(e.key as KeypadKey);
+        return;
+      }
+      if (e.key === ".") {
+        e.preventDefault();
+        dispatchKey(".");
+        return;
+      }
+      if (e.key === "Backspace") {
+        e.preventDefault();
+        dispatchKey("back");
+        return;
+      }
+      if (e.key === "Tab") {
+        const canReps = targetKind === "reps";
+        const canWeight = showWeight || (isBodyweight && showWeightForBodyweight);
+        if (canWeight && canReps) {
+          e.preventDefault();
+          setActiveField((cur) => (cur === "weight" ? "reps" : "weight"));
+        }
+        return;
+      }
+      if (e.key === "Enter") {
+        e.preventDefault();
+        void handleSave();
+        return;
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, activeField, weight, reps, showWeight, isBodyweight, showWeightForBodyweight, targetKind]);
+
   const totalSets = block?.count ?? "?";
 
   return (
