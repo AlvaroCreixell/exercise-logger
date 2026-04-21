@@ -1,0 +1,38 @@
+import { describe, it, expect } from "vitest";
+import { applyKeypadKey } from "@/features/workout/lib/keypad-reducer";
+
+describe("applyKeypadKey", () => {
+  it("appends digits in order", () => {
+    expect(applyKeypadKey("", "1")).toBe("1");
+    expect(applyKeypadKey("1", "2")).toBe("12");
+    expect(applyKeypadKey("12", "0")).toBe("120");
+  });
+
+  it("drops a leading zero when a real digit follows", () => {
+    // Prevents "07" when the user taps 0 then 7 while the field shows "0" by default.
+    expect(applyKeypadKey("0", "7")).toBe("7");
+  });
+
+  it("keeps a leading zero before a decimal", () => {
+    expect(applyKeypadKey("0", ".")).toBe("0.");
+    expect(applyKeypadKey("0.", "5")).toBe("0.5");
+  });
+
+  it("ignores a second decimal point", () => {
+    expect(applyKeypadKey("1.5", ".")).toBe("1.5");
+  });
+
+  it("allows a leading decimal", () => {
+    expect(applyKeypadKey("", ".")).toBe("0.");
+  });
+
+  it("backspace removes the last character", () => {
+    expect(applyKeypadKey("125", "back")).toBe("12");
+    expect(applyKeypadKey("1.", "back")).toBe("1");
+    expect(applyKeypadKey("1", "back")).toBe("");
+  });
+
+  it("backspace on empty string is a no-op", () => {
+    expect(applyKeypadKey("", "back")).toBe("");
+  });
+});

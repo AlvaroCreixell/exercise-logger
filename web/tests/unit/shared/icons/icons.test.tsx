@@ -40,10 +40,10 @@ describe("IconSvg", () => {
 import * as Icons from "@/shared/icons";
 
 describe("icon barrel", () => {
-  it("exports all 12 custom icons + IconSvg", () => {
+  it("exports all 13 custom icons + IconSvg", () => {
     const expected = [
       "IconSvg",
-      "Check", "Close", "Chevron", "Back", "Plus", "Play",
+      "Check", "Close", "Chevron", "Back", "Plus", "Minus", "Play",
       "Flame", "Dumbbell", "Search", "Trash", "Grid", "Graph",
     ];
     for (const name of expected) {
