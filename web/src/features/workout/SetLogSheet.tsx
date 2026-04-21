@@ -237,10 +237,12 @@ export function SetLogSheet({
       if (target) {
         const tag = target.tagName;
         if (tag === "INPUT" || tag === "TEXTAREA") return;
-        // Don't hijack Enter on focused interactive controls — Mark PR,
-        // Use last, Delete set, close-button all expect Enter to activate
-        // them, not to trigger the sheet-level save.
-        if (e.key === "Enter" && (tag === "BUTTON" || target.getAttribute("role") === "button")) {
+        // Don't hijack Enter or Tab on focused interactive controls — Mark PR,
+        // Use last, Delete set, close-button all expect Enter to activate them
+        // and Tab to move focus to the next control. Without this, keyboard
+        // users can't navigate between the sheet's footer buttons.
+        const isButton = tag === "BUTTON" || target.getAttribute("role") === "button";
+        if (isButton && (e.key === "Enter" || e.key === "Tab")) {
           return;
         }
       }

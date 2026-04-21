@@ -557,6 +557,24 @@ describe("SetLogSheet — global Enter handler", () => {
     // The sheet-level save must NOT have been called.
     expect(onSave).not.toHaveBeenCalled();
   });
+
+  it("lets Tab move focus away from a focused button instead of flipping activeField", async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn().mockResolvedValue(undefined);
+    renderSheet({ onSave });
+    const markPr = screen.getByRole("button", { name: /mark pr/i });
+    markPr.focus();
+    expect(document.activeElement).toBe(markPr);
+    // user.tab() dispatches a real Tab keydown and respects preventDefault
+    // from listeners. If the bug is live, the SetLogSheet effect
+    // preventDefault's and focus stays on markPr.
+    await user.tab();
+    // With the fix: focus has moved off markPr.
+    expect(document.activeElement).not.toBe(markPr);
+    // And activeField must NOT have flipped — weight tile stays active.
+    const weightBtn = screen.getByRole("button", { name: /weight value/i });
+    expect(weightBtn.getAttribute("data-active")).toBe("true");
+  });
 });
 
 describe("SetLogSheet — keypad input (weight + reps)", () => {
