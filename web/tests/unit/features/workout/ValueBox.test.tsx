@@ -143,4 +143,33 @@ describe("ValueBox", () => {
     expect(onToggle).toHaveBeenCalledTimes(1);
     expect(onFocus).not.toHaveBeenCalled();
   });
+
+  it("exposes aria-pressed on the tile matching the isActive prop", () => {
+    const { rerender } = render(
+      <ValueBox
+        label="Weight"
+        value="80"
+        unit="kg"
+        isActive={true}
+        onFocus={() => {}}
+        onNudgeDown={() => {}}
+        onNudgeUp={() => {}}
+      />,
+    );
+    let tile = screen.getByRole("button", { name: /weight value/i });
+    expect(tile.getAttribute("aria-pressed")).toBe("true");
+    rerender(
+      <ValueBox
+        label="Weight"
+        value="80"
+        unit="kg"
+        isActive={false}
+        onFocus={() => {}}
+        onNudgeDown={() => {}}
+        onNudgeUp={() => {}}
+      />,
+    );
+    tile = screen.getByRole("button", { name: /weight value/i });
+    expect(tile.getAttribute("aria-pressed")).toBe("false");
+  });
 });
