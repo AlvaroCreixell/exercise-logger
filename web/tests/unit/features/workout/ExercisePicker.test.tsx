@@ -8,9 +8,9 @@ import { db } from "@/db/database";
 beforeEach(async () => {
   await db.exercises.clear();
   await db.exercises.bulkAdd([
-    { id: "bench", name: "Bench Press", equipment: "barbell", muscleGroups: ["chest"], valueKinds: ["weight", "reps"], catalogSource: "seed", createdAt: new Date().toISOString() } as any,
-    { id: "squat", name: "Back Squat", equipment: "barbell", muscleGroups: ["legs"], valueKinds: ["weight", "reps"], catalogSource: "seed", createdAt: new Date().toISOString() } as any,
-    { id: "plank", name: "Plank", equipment: "bodyweight", muscleGroups: ["core"], valueKinds: ["duration"], catalogSource: "seed", createdAt: new Date().toISOString() } as any,
+    { id: "bench", name: "Bench Press", equipment: "barbell", muscleGroups: ["chest"], valueKinds: ["weight", "reps"], catalogSource: "seed", createdAt: new Date().toISOString() } as unknown as Parameters<typeof db.exercises.bulkAdd>[0][number],
+    { id: "squat", name: "Back Squat", equipment: "barbell", muscleGroups: ["legs"], valueKinds: ["weight", "reps"], catalogSource: "seed", createdAt: new Date().toISOString() } as unknown as Parameters<typeof db.exercises.bulkAdd>[0][number],
+    { id: "plank", name: "Plank", equipment: "bodyweight", muscleGroups: ["core"], valueKinds: ["duration"], catalogSource: "seed", createdAt: new Date().toISOString() } as unknown as Parameters<typeof db.exercises.bulkAdd>[0][number],
   ]);
 });
 
