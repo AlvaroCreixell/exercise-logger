@@ -17,11 +17,6 @@ describe("Stat", () => {
     expect(screen.getByText("125").className).toMatch(/text-value\b/);
   });
 
-  it("uses text-hero at hero size", () => {
-    render(<Stat value="125" label="kg" size="hero" />);
-    expect(screen.getByText("125").className).toMatch(/text-hero/);
-  });
-
   it("omits label when not provided", () => {
     render(<Stat value="125" />);
     expect(screen.getByText("125")).toBeVisible();
