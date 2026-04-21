@@ -2,8 +2,9 @@ import type { ComponentType } from "react";
 import { Button } from "@/shared/ui/button";
 import { cn } from "@/shared/lib/utils";
 
-/** Structural icon-component type. Works for both lucide-react icons (during
- *  the Sprint 6→12 migration) and our custom `shared/icons/*` components. */
+/** Structural icon-component type — accepts any component that renders an
+ *  `<svg>` and takes `className` and optional `strokeWidth`. Our custom
+ *  `shared/icons/*` components all satisfy this. */
 type IconComponent = ComponentType<{
   className?: string;
   strokeWidth?: number;
