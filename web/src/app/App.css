@@ -1,12 +1,17 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "./shadcn-compat.css";
-@import "@fontsource/inter/400.css";
-@import "@fontsource/inter/500.css";
-@import "@fontsource/inter/600.css";
-@import "@fontsource/inter/700.css";
-@import "@fontsource/instrument-serif/400.css";
-@import "@fontsource/instrument-serif/400-italic.css";
+/* Fonts: `latin-*` subsets (Inter 400/500/600/700 + Instrument Serif 400 +
+   400-italic). No `<link rel="preload">` in index.html because Vite emits
+   hashed WOFF2 filenames we can't author ahead of time; the CSS bundle that
+   imports these `@font-face` rules is itself preloaded by Vite, and each
+   rule uses `font-display: swap` so fallback paints immediately. */
+@import "@fontsource/inter/latin-400.css";
+@import "@fontsource/inter/latin-500.css";
+@import "@fontsource/inter/latin-600.css";
+@import "@fontsource/inter/latin-700.css";
+@import "@fontsource/instrument-serif/latin-400.css";
+@import "@fontsource/instrument-serif/latin-400-italic.css";
 
 @theme inline {
     /* Sprint 6: warm-paper palette */
