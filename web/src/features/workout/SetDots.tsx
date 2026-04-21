@@ -19,8 +19,8 @@ export function SetDots({ total, current }: SetDotsProps) {
             data-state={isActive ? "active" : "inactive"}
             className={
               isActive
-                ? "h-2.5 w-2.5 rounded-full bg-cta"
-                : "h-2 w-2 rounded-full border border-border-strong bg-background"
+                ? "h-2.5 w-2.5 rounded-full bg-sage-deep"
+                : "h-2 w-2 rounded-full border border-line bg-background"
             }
           />
         );

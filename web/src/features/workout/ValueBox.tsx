@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
-import { Minus, Plus } from "lucide-react";
+import { Minus } from "lucide-react";
+import { Plus } from "@/shared/icons";
 
 interface ValueBoxProps {
   /** "Weight", "Reps", etc. Shown as the eyebrow label above the value. */
