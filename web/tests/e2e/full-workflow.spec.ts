@@ -49,25 +49,30 @@ test.describe("Exercise Logger E2E Smoke Test", () => {
       timeout: 5000,
     });
 
-    // Step 3: Log a set — hard assertions, no .catch guards.
+    // Step 3: Log a set via the Sprint 11 keypad — weight 60, reps 10.
     const firstSetRow = page.getByRole("button", { name: /^Set 1:/ }).first();
     await expect(firstSetRow).toBeVisible({ timeout: 5000 });
     await firstSetRow.click();
 
-    const weightInput = page.locator('input[name="weight"]').first();
-    await expect(weightInput).toBeVisible({ timeout: 3000 });
-    await weightInput.fill("60");
+    // Keypad is visible, weight ValueBox is active by default.
+    const keypad = page.getByRole("group", { name: /numeric keypad/i });
+    await expect(keypad).toBeVisible({ timeout: 3000 });
 
-    const repsInput = page.locator('input[name="reps"]').first();
-    await expect(repsInput).toBeVisible();
-    await repsInput.fill("10");
+    // Type "60" for weight.
+    await keypad.getByRole("button", { name: /^6$/ }).click();
+    await keypad.getByRole("button", { name: /^0$/ }).click();
+
+    // Switch to reps and type "10".
+    await page.getByRole("button", { name: /reps value/i }).click();
+    await keypad.getByRole("button", { name: /^1$/ }).click();
+    await keypad.getByRole("button", { name: /^0$/ }).click();
 
     const saveButton = page.getByRole("button", { name: /^save$/i });
     await expect(saveButton).toBeVisible();
     await saveButton.click();
 
-    // Sheet should close and the Set 1 row should reflect the logged state (no longer "empty").
-    await expect(weightInput).toBeHidden({ timeout: 3000 });
+    // Sheet should close and the Set 1 row should reflect the logged state.
+    await expect(keypad).toBeHidden({ timeout: 3000 });
     await expect(
       page.getByRole("button", { name: /^Set 1: (?!empty\b)/ }).first(),
     ).toBeVisible();
