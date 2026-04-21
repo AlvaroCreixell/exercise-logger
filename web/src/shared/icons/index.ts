@@ -13,3 +13,8 @@ export { Search } from "./Search";
 export { Trash } from "./Trash";
 export { Grid } from "./Grid";
 export { Graph } from "./Graph";
+export { Settings } from "./Settings";
+export { Calendar } from "./Calendar";
+export { History } from "./History";
+export { Sparkle } from "./Sparkle";
+export { Backspace } from "./Backspace";

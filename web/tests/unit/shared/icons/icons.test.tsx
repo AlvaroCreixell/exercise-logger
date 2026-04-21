@@ -40,15 +40,40 @@ describe("IconSvg", () => {
 import * as Icons from "@/shared/icons";
 
 describe("icon barrel", () => {
-  it("exports all 13 custom icons + IconSvg", () => {
+  it("exports all 18 custom icons + IconSvg", () => {
     const expected = [
       "IconSvg",
       "Check", "Close", "Chevron", "Back", "Plus", "Minus", "Play",
       "Flame", "Dumbbell", "Search", "Trash", "Grid", "Graph",
+      "Settings", "Calendar", "History", "Sparkle", "Backspace",
     ];
     for (const name of expected) {
       expect(Icons).toHaveProperty(name);
       expect(typeof (Icons as Record<string, unknown>)[name]).toBe("function");
     }
+  });
+});
+
+import { Sparkle } from "@/shared/icons";
+
+describe("Sparkle icon", () => {
+  it("renders an svg with default aria-hidden", () => {
+    const { container } = render(<Sparkle />);
+    const svg = container.querySelector("svg");
+    expect(svg).not.toBeNull();
+    expect(svg?.getAttribute("aria-hidden")).toBe("true");
+  });
+  it("switches to role=img with aria-label when provided", () => {
+    const { container } = render(<Sparkle aria-label="celebration" />);
+    const svg = container.querySelector("svg");
+    expect(svg?.getAttribute("aria-label")).toBe("celebration");
+    expect(svg?.getAttribute("role")).toBe("img");
+    expect(svg?.getAttribute("aria-hidden")).toBeNull();
+  });
+  it("accepts a custom size", () => {
+    const { container } = render(<Sparkle size={48} />);
+    const svg = container.querySelector("svg");
+    expect(svg?.getAttribute("width")).toBe("48");
+    expect(svg?.getAttribute("height")).toBe("48");
   });
 });
