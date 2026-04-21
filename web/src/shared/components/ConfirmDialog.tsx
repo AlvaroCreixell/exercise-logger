@@ -66,12 +66,16 @@ export function ConfirmDialog({
 
   return (
     <AlertDialog open={open} onOpenChange={handleOpenChange}>
-      <AlertDialogContent className="max-w-sm">
-        <AlertDialogHeader>
-          <AlertDialogTitle>{title}</AlertDialogTitle>
-          <AlertDialogDescription>{description}</AlertDialogDescription>
+      <AlertDialogContent className="max-w-sm gap-3 p-5">
+        <AlertDialogHeader className="gap-2">
+          <AlertDialogTitle className="text-title-serif text-[1.35rem] leading-tight">
+            {title}
+          </AlertDialogTitle>
+          <AlertDialogDescription className="text-sm leading-relaxed text-ink-2">
+            {description}
+          </AlertDialogDescription>
         </AlertDialogHeader>
-        <AlertDialogFooter className="flex-row gap-2">
+        <AlertDialogFooter className="mx-0 mb-0 flex-row gap-2 border-none bg-transparent p-0 pt-1">
           <Button
             variant="outline"
             onClick={() => handleOpenChange(false)}
