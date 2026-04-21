@@ -1,7 +1,7 @@
 import * as React from "react";
 import { cn } from "@/shared/lib/utils";
 
-export type StatSize = "sm" | "md" | "lg" | "hero";
+export type StatSize = "sm" | "md" | "lg";
 
 interface StatProps {
   value: React.ReactNode;
@@ -16,14 +16,12 @@ const VALUE_CLASS: Record<StatSize, string> = {
   sm: "text-value-sm",
   md: "text-value",
   lg: "text-value",
-  hero: "text-hero",
 };
 
 const LABEL_CLASS: Record<StatSize, string> = {
   sm: "text-eyebrow text-ink-3",
   md: "text-eyebrow text-ink-3",
   lg: "text-eyebrow text-ink-3",
-  hero: "text-eyebrow text-ink-3",
 };
 
 export function Stat({ value, label, size = "md", className, hint }: StatProps) {

@@ -42,8 +42,8 @@ export default defineConfig({
         name: "Exercise Logger",
         short_name: "ExLog",
         description: "Local-first gym routine tracker",
-        theme_color: "#09090b",
-        background_color: "#09090b",
+        theme_color: "#FCFAF5",
+        background_color: "#FCFAF5",
         display: "standalone",
         orientation: "portrait",
         scope: "/exercise-logger/",
@@ -79,6 +79,17 @@ export default defineConfig({
             sizes: "512x512",
             type: "image/png",
             purpose: "maskable",
+          },
+        ],
+        file_handlers: [
+          {
+            action: "/exercise-logger/settings/import",
+            accept: {
+              "text/yaml": [".yaml", ".yml"],
+              "text/x-yaml": [".yaml", ".yml"],
+              "application/x-yaml": [".yaml", ".yml"],
+              "text/plain": [".yaml", ".yml"],
+            },
           },
         ],
       },

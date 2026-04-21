@@ -31,7 +31,7 @@ export function Pill({
       {indicator && !selected && (
         <span
           data-indicator="true"
-          className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-cta"
+          className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-sage"
         />
       )}
     </button>

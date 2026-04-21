@@ -39,4 +39,17 @@ describe("UnitsToggle", () => {
     await user.click(screen.getByRole("button", { name: /kg/i }));
     expect(spy).not.toHaveBeenCalled();
   });
+
+  it("exposes aria-pressed on exactly the selected pill", () => {
+    const { rerender } = render(
+      <UnitsToggle value="kg" onChange={() => {}} />,
+    );
+    const kg = screen.getByRole("button", { name: /kg/i });
+    const lbs = screen.getByRole("button", { name: /lbs/i });
+    expect(kg.getAttribute("aria-pressed")).toBe("true");
+    expect(lbs.getAttribute("aria-pressed")).toBe("false");
+    rerender(<UnitsToggle value="lbs" onChange={() => {}} />);
+    expect(screen.getByRole("button", { name: /kg/i }).getAttribute("aria-pressed")).toBe("false");
+    expect(screen.getByRole("button", { name: /lbs/i }).getAttribute("aria-pressed")).toBe("true");
+  });
 });

@@ -14,7 +14,6 @@ const twMerge = extendTailwindMerge({
         "text-value-sm",
         "text-meta",
         "text-body",
-        "text-hero",
       ],
     },
   },

@@ -57,7 +57,8 @@ Pure business logic functions. Every function takes `db: ExerciseLoggerDB` as it
 ### `routine-service.ts` — YAML validation and normalization
 
 - `validateAndNormalizeRoutine(yaml, exerciseLookup)` → `Promise<{ ok, routine } | { ok, errors }>` — async (dynamic-imports yaml to keep the ~50kB library out of the main bundle). 11 validation rules, deterministic entryId/groupId generation, all errors collected with field paths.
-- `importRoutine(db, routine)` — Simple `db.routines.put`.
+- `importRoutine(db, routine)` — Simple `db.routines.put` (low-level; no settings mutation).
+- `importAndActivateRoutine(db, routine)` → `Promise<{ ok: true } | { ok: false, message: string }>` — Transactional: blocks with a message when a session is active (invariant 10), otherwise puts the routine and sets it as the active routine in one `rw` transaction. Used by the Settings Import screen.
 
 ## Transaction patterns
 

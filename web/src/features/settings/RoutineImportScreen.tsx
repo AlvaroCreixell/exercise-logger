@@ -1,5 +1,5 @@
-import { useRef, useState } from "react";
-import { Link, useNavigate } from "react-router";
+import { useEffect, useRef, useState } from "react";
+import { Link, useNavigate, useLocation } from "react-router";
 import { Button } from "@/shared/ui/button";
 import { Back } from "@/shared/icons";
 import { db } from "@/db/database";
@@ -20,6 +20,13 @@ export default function RoutineImportScreen() {
   const [importing, setImporting] = useState(false);
   const [pastedYaml, setPastedYaml] = useState("");
   const navigate = useNavigate();
+  const location = useLocation();
+  useEffect(() => {
+    const state = location.state as { launchYaml?: string } | null;
+    if (state?.launchYaml && !pastedYaml) {
+      setPastedYaml(state.launchYaml);
+    }
+  }, [location.state, pastedYaml]);
 
   async function runImport(yamlText: string): Promise<boolean> {
     if (!yamlText.trim()) {
