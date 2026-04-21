@@ -5,6 +5,7 @@ export { Chevron } from "./Chevron";
 export type { Direction } from "./Chevron";
 export { Back } from "./Back";
 export { Plus } from "./Plus";
+export { Minus } from "./Minus";
 export { Play } from "./Play";
 export { Flame } from "./Flame";
 export { Dumbbell } from "./Dumbbell";
