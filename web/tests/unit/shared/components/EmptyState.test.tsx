@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, cleanup } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { Dumbbell } from "lucide-react";
+import { Dumbbell } from "@/shared/icons";
 import { EmptyState } from "@/shared/components/EmptyState";
 
 afterEach(cleanup);
