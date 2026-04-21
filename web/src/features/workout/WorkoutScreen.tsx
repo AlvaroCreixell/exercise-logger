@@ -100,6 +100,7 @@ export default function WorkoutScreen() {
     performedReps: number | null;
     performedDurationSec: number | null;
     performedDistanceM: number | null;
+    isPersonalRecord: boolean;
   }) {
     if (!sheetExercise) return;
     if (sheetExistingSet) {
@@ -342,6 +343,7 @@ function SetLogSheetWithHistory({
     performedReps: number | null;
     performedDurationSec: number | null;
     performedDistanceM: number | null;
+    isPersonalRecord: boolean;
   }) => Promise<void>;
   onDelete?: () => Promise<void>;
 }) {

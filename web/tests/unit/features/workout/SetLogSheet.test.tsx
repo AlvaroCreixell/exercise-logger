@@ -626,3 +626,74 @@ describe("SetLogSheet — physical keyboard", () => {
     );
   });
 });
+
+describe("SetLogSheet — PR toggle", () => {
+  it("defaults to false for a new set", () => {
+    renderSheet();
+    expect(screen.getByRole("button", { name: /mark pr/i })).toBeVisible();
+  });
+
+  it("defaults from existingSet.isPersonalRecord when editing", () => {
+    renderSheet({
+      existingSet: makeLoggedSet({ isPersonalRecord: true }),
+    });
+    expect(screen.getByRole("button", { name: /^pr/i })).toBeVisible();
+  });
+
+  it("includes isPersonalRecord=true in onSave payload when toggled on", async () => {
+    const save = vi.fn().mockResolvedValue(undefined);
+    const user = userEvent.setup();
+    render(
+      <SetLogSheet
+        open={true}
+        onOpenChange={vi.fn()}
+        sessionExercise={makeSessionExercise()}
+        blockIndex={0}
+        setIndex={0}
+        existingSet={undefined}
+        suggestion={undefined}
+        lastTime={undefined}
+        blockSetsInSession={[]}
+        units="kg"
+        onSave={save}
+      />,
+    );
+    await user.keyboard("85");
+    await user.keyboard("{Tab}");
+    await user.keyboard("{Backspace}");
+    await user.keyboard("10");
+    await user.click(screen.getByRole("button", { name: /mark pr/i }));
+    await user.click(screen.getByRole("button", { name: /^save$/i }));
+    expect(save).toHaveBeenCalledWith(
+      expect.objectContaining({ isPersonalRecord: true }),
+    );
+  });
+
+  it("passes isPersonalRecord=false in onSave when untoggled", async () => {
+    const save = vi.fn().mockResolvedValue(undefined);
+    const user = userEvent.setup();
+    render(
+      <SetLogSheet
+        open={true}
+        onOpenChange={vi.fn()}
+        sessionExercise={makeSessionExercise()}
+        blockIndex={0}
+        setIndex={0}
+        existingSet={undefined}
+        suggestion={undefined}
+        lastTime={undefined}
+        blockSetsInSession={[]}
+        units="kg"
+        onSave={save}
+      />,
+    );
+    await user.keyboard("85");
+    await user.keyboard("{Tab}");
+    await user.keyboard("{Backspace}");
+    await user.keyboard("10");
+    await user.click(screen.getByRole("button", { name: /^save$/i }));
+    expect(save).toHaveBeenCalledWith(
+      expect.objectContaining({ isPersonalRecord: false }),
+    );
+  });
+});

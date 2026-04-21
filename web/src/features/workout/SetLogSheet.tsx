@@ -18,6 +18,7 @@ import { isSetInputEmpty } from "./set-log-validation";
 import { SetDots } from "./SetDots";
 import { Keypad } from "./Keypad";
 import { ValueBox } from "./ValueBox";
+import { PrToggle } from "./PrToggle";
 import { applyKeypadKey, type KeypadKey } from "./lib/keypad-reducer";
 
 interface SetLogSheetProps {
@@ -41,6 +42,7 @@ interface SetLogSheetProps {
     performedReps: number | null;
     performedDurationSec: number | null;
     performedDistanceM: number | null;
+    isPersonalRecord: boolean;
   }) => Promise<void>;
   onDelete?: () => Promise<void>;
 }
@@ -80,6 +82,7 @@ export function SetLogSheet({
   const [reps, setReps] = useState("");
   const [duration, setDuration] = useState("");
   const [distance, setDistance] = useState("");
+  const [isPR, setIsPR] = useState(false);
   const [showWeightForBodyweight, setShowWeightForBodyweight] = useState(false);
   const [saving, setSaving] = useState(false);
   const [savePulse, setSavePulse] = useState(false);
@@ -121,6 +124,7 @@ export function SetLogSheet({
         ? String(durationInMinutes ? Math.round(existingSet.performedDurationSec / 60 * 100) / 100 : existingSet.performedDurationSec)
         : "");
       setDistance(existingSet.performedDistanceM != null ? String(existingSet.performedDistanceM) : "");
+      setIsPR(existingSet.isPersonalRecord === true);
       setActiveField(defaultActive);
       return;
     }
@@ -153,6 +157,7 @@ export function SetLogSheet({
       ? String(durationInMinutes ? Math.round(lastSet.durationSec / 60 * 100) / 100 : lastSet.durationSec)
       : "");
     setDistance(lastSet?.distanceM != null ? String(lastSet.distanceM) : "");
+    setIsPR(false);
     setActiveField(defaultActive);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
@@ -192,6 +197,7 @@ export function SetLogSheet({
         ? (durationInMinutes ? Math.round(parseFloat(duration) * 60) : parseInt(duration, 10))
         : null,
       performedDistanceM: distance.trim() ? parseFloat(distance) : null,
+      isPersonalRecord: isPR,
     };
     if (isSetInputEmpty(targetKind, input)) {
       toast.error("Enter at least " + (targetKind === "reps" ? "reps" : targetKind === "duration" ? "duration" : "distance") + " to save.");
@@ -397,6 +403,9 @@ export function SetLogSheet({
         </div>
 
         <div className="space-y-2 pb-2 shrink-0">
+          <div className="flex justify-end pb-1">
+            <PrToggle value={isPR} onChange={setIsPR} />
+          </div>
           <Button
             variant="default"
             className={`w-full ${savePulse ? "save-pulse" : ""}`}
