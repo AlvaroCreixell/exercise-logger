@@ -72,4 +72,16 @@ describe("EmptyState", () => {
       screen.getByRole("heading", { level: 2, name: "No History Yet" }),
     ).toBeVisible();
   });
+
+  it("accepts a shared/icons component as the icon prop", async () => {
+    const { Dumbbell: SharedDumbbell } = await import("@/shared/icons");
+    render(
+      <EmptyState
+        icon={SharedDumbbell}
+        heading="Heading"
+        body="Body text"
+      />
+    );
+    expect(screen.getByText("Heading")).toBeVisible();
+  });
 });
