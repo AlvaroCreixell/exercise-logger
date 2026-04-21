@@ -343,9 +343,19 @@ describe("SetLogSheet — inline context", () => {
       setIndex: 1,
     });
     // Pre-state: the existing prefill path already fills weight=95 (from lastTime[1])
-    // and reps=8 (block.minValue). Empty the weight via backspace twice, then tap Use last.
+    // and reps=7 (from lastTime[1]). Empty BOTH fields away from lastTime values,
+    // so the Use last button restore is testable (not just passing because prefill == expected).
     await user.click(screen.getByRole("button", { name: /backspace/i }));
     await user.click(screen.getByRole("button", { name: /backspace/i }));
+    expect(weightValueText()).toBe("—");
+
+    // Switch to reps, mutate away from 7.
+    await user.click(screen.getByRole("button", { name: /reps value/i }));
+    await user.click(screen.getByRole("button", { name: /backspace/i }));
+    await user.click(screen.getByRole("button", { name: /^1$/ }));
+    expect(repsValueText()).toBe("1");
+
+    // Use last restores both fields from lastTime[1].
     await user.click(screen.getByRole("button", { name: /use last/i }));
     expect(weightValueText()).toBe("95");
     expect(repsValueText()).toBe("7");
