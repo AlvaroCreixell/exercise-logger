@@ -20,6 +20,19 @@ import { Keypad } from "./Keypad";
 import { ValueBox } from "./ValueBox";
 import { PrToggle } from "./PrToggle";
 import { applyKeypadKey, type KeypadKey } from "./lib/keypad-reducer";
+import type { TargetKind } from "@/domain/enums";
+
+function deriveActiveField(
+  visWeight: boolean,
+  visBwWeight: boolean,
+  isBw: boolean,
+  kind: TargetKind,
+): ActiveField {
+  if (visWeight || (isBw && visBwWeight)) return "weight";
+  if (kind === "reps") return "reps";
+  if (kind === "duration") return "duration";
+  return "distance";
+}
 
 interface SetLogSheetProps {
   open: boolean;
@@ -87,15 +100,9 @@ export function SetLogSheet({
   const [saving, setSaving] = useState(false);
   const [savePulse, setSavePulse] = useState(false);
 
-  const defaultActive: ActiveField =
-    showWeight || (isBodyweight && showWeightForBodyweight)
-      ? "weight"
-      : targetKind === "reps"
-        ? "reps"
-        : targetKind === "duration"
-          ? "duration"
-          : "distance";
-  const [activeField, setActiveField] = useState<ActiveField>(defaultActive);
+  const [activeField, setActiveField] = useState<ActiveField>(
+    deriveActiveField(showWeight, false, isBodyweight, targetKind),
+  );
 
   // Pre-fill on open transition only. Using a ref to track the prior `open`
   // value means prefill fires once per false→true edge, not on every re-render
@@ -125,7 +132,7 @@ export function SetLogSheet({
         : "");
       setDistance(existingSet.performedDistanceM != null ? String(existingSet.performedDistanceM) : "");
       setIsPR(existingSet.isPersonalRecord === true);
-      setActiveField(defaultActive);
+      setActiveField(deriveActiveField(showWeight, false, isBodyweight, targetKind));
       return;
     }
 
@@ -158,7 +165,7 @@ export function SetLogSheet({
       : "");
     setDistance(lastSet?.distanceM != null ? String(lastSet.distanceM) : "");
     setIsPR(false);
-    setActiveField(defaultActive);
+    setActiveField(deriveActiveField(showWeight, false, isBodyweight, targetKind));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
@@ -349,7 +356,10 @@ export function SetLogSheet({
           {isBodyweight && !showWeightForBodyweight && (
             <button
               className="text-xs text-info hover:underline"
-              onClick={() => setShowWeightForBodyweight(true)}
+              onClick={() => {
+                setShowWeightForBodyweight(true);
+                setActiveField("weight");
+              }}
             >
               + Add weight (permanent for this session)
             </button>

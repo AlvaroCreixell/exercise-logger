@@ -1,5 +1,6 @@
 // web/tests/unit/features/workout/SetLogSheet.test.tsx
 import { describe, it, expect, vi } from "vitest";
+import React, { useState } from "react";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { SetLogSheet } from "@/features/workout/SetLogSheet";
@@ -662,6 +663,97 @@ describe("SetLogSheet — physical keyboard", () => {
         performedReps: 10,
       }),
     );
+  });
+});
+
+describe("SetLogSheet — bodyweight activeField", () => {
+  function makeBwSessionExercise(): SessionExercise {
+    return makeSessionExercise({
+      effectiveType: "bodyweight",
+      setBlocksSnapshot: [
+        { targetKind: "reps", minValue: 8, maxValue: 12, count: 3 } as SetBlock,
+      ],
+    });
+  }
+
+  it("makes weight the active field immediately when + Add weight is tapped", async () => {
+    const user = userEvent.setup();
+    render(
+      <SetLogSheet
+        open={true}
+        onOpenChange={vi.fn()}
+        sessionExercise={makeBwSessionExercise()}
+        blockIndex={0}
+        setIndex={0}
+        existingSet={undefined}
+        suggestion={undefined}
+        lastTime={undefined}
+        blockSetsInSession={[]}
+        units="kg"
+        onSave={vi.fn()}
+      />,
+    );
+
+    // Weight tile should not be visible yet (bodyweight, showWeightForBodyweight=false)
+    expect(screen.queryByRole("button", { name: /weight value/i })).toBeNull();
+
+    // Click "+ Add weight"
+    await user.click(screen.getByRole("button", { name: /add weight/i }));
+
+    // Weight tile is now visible and must be the active field
+    const weightTile = screen.getByRole("button", { name: /weight value/i });
+    expect(weightTile).toBeVisible();
+    expect(weightTile).toHaveAttribute("data-active", "true");
+  });
+
+  it("resets activeField to reps on bodyweight re-open after + Add weight", async () => {
+    const user = userEvent.setup();
+
+    function Harness({ initialOpen }: { initialOpen: boolean }) {
+      const [open, setOpen] = useState(initialOpen);
+      return (
+        <>
+          <button data-testid="harness-close" onClick={() => setOpen(false)}>close sheet</button>
+          <button data-testid="harness-reopen" onClick={() => setOpen(true)}>reopen sheet</button>
+          <SetLogSheet
+            open={open}
+            onOpenChange={setOpen}
+            sessionExercise={makeBwSessionExercise()}
+            blockIndex={0}
+            setIndex={0}
+            existingSet={undefined}
+            suggestion={undefined}
+            lastTime={undefined}
+            blockSetsInSession={[]}
+            units="kg"
+            onSave={vi.fn()}
+          />
+        </>
+      );
+    }
+
+    render(<Harness initialOpen={true} />);
+
+    // Click "+ Add weight" — weight tile appears and is active
+    await user.click(screen.getByRole("button", { name: /add weight/i }));
+    expect(screen.getByRole("button", { name: /weight value/i })).toHaveAttribute("data-active", "true");
+
+    // Close the sheet
+    await user.click(screen.getByTestId("harness-close"));
+
+    // Reopen the sheet
+    await user.click(screen.getByTestId("harness-reopen"));
+
+    // After re-open: showWeightForBodyweight resets to false, weight tile hidden
+    // activeField must be "reps", not "weight"
+    expect(screen.queryByRole("button", { name: /weight value/i })).toBeNull();
+    const repsTile = screen.getByRole("button", { name: /reps value/i });
+    expect(repsTile).toHaveAttribute("data-active", "true");
+
+    // Confirm keypad updates reps, not the hidden weight
+    await user.click(screen.getByRole("button", { name: /backspace/i }));
+    await user.click(screen.getByRole("button", { name: /^5$/ }));
+    expect(repsValueText()).toBe("5");
   });
 });
 
