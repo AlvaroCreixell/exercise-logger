@@ -20,7 +20,7 @@ export function Pill({
       {...rest}
       className={cn(
         "relative inline-flex items-center gap-1 shrink-0 rounded-[var(--radius-pill)] px-2.5 py-0.5 text-xs font-medium transition-colors duration-[var(--dur-base)]",
-        "outline-none focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-ink/30",
+        "outline-none focus-visible:ring-2 focus-visible:ring-sage/40",
         selected
           ? "bg-sage-soft text-sage-deep z-10"
           : "border border-line bg-background text-foreground hover:bg-sage-soft/50",

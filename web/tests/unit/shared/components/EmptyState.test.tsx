@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, cleanup } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { Dumbbell } from "lucide-react";
+import { Dumbbell } from "@/shared/icons";
 import { EmptyState } from "@/shared/components/EmptyState";
 
 afterEach(cleanup);
@@ -71,5 +71,17 @@ describe("EmptyState", () => {
     expect(
       screen.getByRole("heading", { level: 2, name: "No History Yet" }),
     ).toBeVisible();
+  });
+
+  it("accepts a shared/icons component as the icon prop", async () => {
+    const { Dumbbell: SharedDumbbell } = await import("@/shared/icons");
+    render(
+      <EmptyState
+        icon={SharedDumbbell}
+        heading="Heading"
+        body="Body text"
+      />
+    );
+    expect(screen.getByText("Heading")).toBeVisible();
   });
 });

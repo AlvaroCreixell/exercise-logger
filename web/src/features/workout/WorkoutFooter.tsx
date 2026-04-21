@@ -38,7 +38,7 @@ export function WorkoutFooter({
       </div>
       <button
         type="button"
-        className="mt-2 w-full py-1 text-xs text-destructive hover:underline"
+        className="mt-2 w-full py-1 text-xs text-destructive hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/40 rounded"
         onClick={onDiscard}
       >
         Discard workout

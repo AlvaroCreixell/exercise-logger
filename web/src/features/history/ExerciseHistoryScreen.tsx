@@ -7,7 +7,7 @@ import { toDisplayWeight } from "@/domain/unit-conversion";
 import { getEffectiveUnit } from "@/domain/unit-helpers";
 import type { LoggedSet } from "@/domain/types";
 import type { SetTag } from "@/domain/enums";
-import { ArrowLeft, Dumbbell } from "lucide-react";
+import { Back, Dumbbell } from "@/shared/icons";
 import { buttonVariants } from "@/shared/ui/button";
 import { cn } from "@/shared/lib/utils";
 import { EmptyState } from "@/shared/components/EmptyState";
@@ -49,7 +49,7 @@ export default function ExerciseHistoryScreen() {
         onClick={() => navigate(-1)}
         className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}
       >
-        <ArrowLeft className="h-4 w-4 mr-1" />Back
+        <Back size={16} className="mr-1" />Back
       </button>
 
       <h1 className="text-2xl font-extrabold tracking-tight font-heading">{name}</h1>

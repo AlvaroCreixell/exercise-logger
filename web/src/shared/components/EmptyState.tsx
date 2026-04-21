@@ -1,6 +1,14 @@
-import type { LucideIcon } from "lucide-react";
+import type { ComponentType } from "react";
 import { Button } from "@/shared/ui/button";
 import { cn } from "@/shared/lib/utils";
+
+/** Structural icon-component type — accepts any component that renders an
+ *  `<svg>` and takes `className` and optional `strokeWidth`. Our custom
+ *  `shared/icons/*` components all satisfy this. */
+type IconComponent = ComponentType<{
+  className?: string;
+  strokeWidth?: number;
+}>;
 
 interface EmptyStateAction {
   label: string;
@@ -10,7 +18,7 @@ interface EmptyStateAction {
 }
 
 interface EmptyStateProps {
-  icon: LucideIcon;
+  icon: IconComponent;
   heading: string;
   body: string;
   action?: EmptyStateAction;

@@ -1,5 +1,5 @@
 import type { KeypadKey } from "@/features/workout/lib/keypad-reducer";
-import { Delete as BackspaceIcon } from "lucide-react";
+import { Backspace as BackspaceIcon } from "@/shared/icons";
 
 interface KeypadProps {
   onKey: (key: KeypadKey) => void;

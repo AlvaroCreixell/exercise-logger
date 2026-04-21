@@ -1,4 +1,4 @@
-import { History } from "lucide-react";
+import { History } from "@/shared/icons";
 import { useFinishedSessionSummaries } from "@/shared/hooks/useFinishedSessionSummaries";
 import { useHistoryStats } from "@/shared/hooks/useHistoryStats";
 import { useSettings } from "@/shared/hooks/useSettings";

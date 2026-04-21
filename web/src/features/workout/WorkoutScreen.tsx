@@ -17,9 +17,11 @@ import { ExercisePicker } from "./ExercisePicker";
 import { WorkoutFooter } from "./WorkoutFooter";
 import { SessionHeader } from "./SessionHeader";
 import { SessionProgress } from "./SessionProgress";
+import { FinishCelebration } from "./FinishCelebration";
 import { EmptyState } from "@/shared/components/EmptyState";
-import { Dumbbell } from "lucide-react";
+import { Dumbbell } from "@/shared/icons";
 import { toast } from "sonner";
+import { computeSessionVolumeKg } from "@/features/history/lib/sessionStats";
 import type { SessionExercise, LoggedSet } from "@/domain/types";
 
 function computeElapsedSec(startedAt: string): number {
@@ -34,6 +36,15 @@ export default function WorkoutScreen() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [finishOpen, setFinishOpen] = useState(false);
   const [discardOpen, setDiscardOpen] = useState(false);
+  type CelebrationStats = {
+    sets: number;
+    volumeKg: number;
+    durationMin: number | null;
+  };
+  const [celebration, setCelebration] = useState<{
+    open: boolean;
+    stats: CelebrationStats | null;
+  }>({ open: false, stats: null });
 
   // Sheet state
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -56,7 +67,25 @@ export default function WorkoutScreen() {
   }, [startedAt]);
   const elapsedSec = startedAt ? computeElapsedSec(startedAt) : 0;
 
+  function handleCelebrationDismiss() {
+    setCelebration({ open: false, stats: null });
+    navigate("/");
+  }
+
   if (!settings) return null;
+
+  // While the celebration is open, render it in place of the workout screen
+  // (session is already finished so activeSession will be null).
+  if (celebration.open && celebration.stats) {
+    return (
+      <FinishCelebration
+        open={celebration.open}
+        stats={celebration.stats}
+        units={settings.units}
+        onDismiss={handleCelebrationDismiss}
+      />
+    );
+  }
 
   // Empty state
   if (activeSession === null) {
@@ -129,9 +158,21 @@ export default function WorkoutScreen() {
   const unloggedCount = totalPrescribed - loggedRoutine;
 
   async function handleFinish() {
+    const startedAt = session.startedAt;
+    const setsCount = loggedSets.length;
+    const volumeKg = computeSessionVolumeKg(loggedSets);
+
     await finishSession(db, session.id);
-    toast.success("Workout finished!");
-    navigate("/history");
+
+    const freshSession = await db.sessions.get(session.id);
+    const finishedAt = freshSession?.finishedAt ?? new Date().toISOString();
+    const durationMs = new Date(finishedAt).getTime() - new Date(startedAt).getTime();
+    const durationMin = durationMs >= 60_000 ? Math.round(durationMs / 60_000) : null;
+
+    setCelebration({
+      open: true,
+      stats: { sets: setsCount, volumeKg, durationMin },
+    });
   }
 
   async function handleDiscard() {
@@ -271,6 +312,7 @@ export default function WorkoutScreen() {
         doubleConfirm
         doubleConfirmText="Tap again to confirm"
       />
+
     </div>
   );
 }
