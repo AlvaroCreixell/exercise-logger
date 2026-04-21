@@ -135,7 +135,7 @@ describe("WorkoutScreen — integration smoke", () => {
     });
   });
 
-  it("finishes a session via the confirmation dialog", async () => {
+  it("finishes a session and shows the celebration overlay, then navigates to Today", async () => {
     const routine = await seedRoutineAndExercises();
     await startSessionWithCatalog(db, routine, "A");
     const user = userEvent.setup();
@@ -152,11 +152,24 @@ describe("WorkoutScreen — integration smoke", () => {
     const confirmBtn = await screen.findByRole("button", { name: /^Finish workout$/i });
     await user.click(confirmBtn);
 
+    // Session must be finished in DB.
     await waitFor(async () => {
       const sessions = await db.sessions.toArray();
       expect(sessions.length).toBe(1);
       expect(sessions[0]!.status).toBe("finished");
     });
+
+    // Celebration overlay renders — does NOT navigate immediately.
+    await screen.findByText(/Well done/i);
+
+    // Auto-dismiss fires after ~1800 ms. MemoryRouter's navigate() call changes
+    // the route; we observe that the celebration is no longer visible.
+    await waitFor(
+      () => {
+        expect(screen.queryByText(/Well done/i)).toBeNull();
+      },
+      { timeout: 4000 },
+    );
   });
 });
 
