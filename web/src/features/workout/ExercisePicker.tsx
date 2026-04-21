@@ -70,13 +70,14 @@ export function ExercisePicker({
                 <button
                   key={ex.id}
                   type="button"
+                  aria-label={ex.name}
                   onClick={() => {
                     onPick(ex.id);
                     onOpenChange(false);
                   }}
                   className="flex w-full items-center justify-between gap-3 border-b border-line-soft px-3 py-3 text-left transition-colors hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage/40"
                 >
-                  <div className="min-w-0 flex-1">
+                  <div className="min-w-0 flex-1" aria-hidden="true">
                     <p className="truncate text-sm font-medium text-foreground">{ex.name}</p>
                     <p className="mt-0.5 text-[11px] uppercase tracking-[0.04em] text-ink-3">
                       {ex.equipment} · {ex.muscleGroups.join(" · ")}

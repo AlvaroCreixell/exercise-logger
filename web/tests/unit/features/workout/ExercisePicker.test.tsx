@@ -98,4 +98,22 @@ describe("ExercisePicker", () => {
     const squatRow = screen.getByRole("button", { name: /Back Squat/ });
     expect(squatRow).not.toHaveTextContent(/In workout/i);
   });
+
+  it("uses the exercise name as the button's accessible name (meta hidden from a11y)", async () => {
+    render(
+      <ExercisePicker
+        open={true}
+        onOpenChange={() => {}}
+        existingExerciseIds={new Set()}
+        onPick={() => {}}
+      />
+    );
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /Bench Press/ })).toBeVisible()
+    );
+    const benchRow = screen.getByRole("button", { name: /Bench Press/ });
+    // Accessible name should be exactly "Bench Press" — NOT
+    // "Bench Press barbell · chest".
+    expect(benchRow).toHaveAccessibleName("Bench Press");
+  });
 });
