@@ -27,7 +27,6 @@
     --color-sage-soft: var(--sage-soft);
     --color-warm: var(--warm);
     --color-danger: var(--danger);
-    --color-cta: var(--cta);
     /* Body + heading both use Inter. Serif is reserved for explicit opt-in
        via .text-hero-serif / .text-title-serif (History / Settings page labels,
        italic name in Today greeting). This keeps every existing
@@ -114,11 +113,6 @@
     /* Semantic */
     --warm: oklch(55% 0.09 55);
     --danger: oklch(55% 0.15 25);
-
-    /* Transition alias: keeps pre-Sprint-6 `bg-cta` / `border-cta` /
-       `ring-cta/30` utilities resolving during the per-screen migration.
-       Remove in Task 17 once all direct cta classnames are gone. */
-    --cta: var(--sage);
 
     --background: var(--paper);
     --foreground: var(--ink);
