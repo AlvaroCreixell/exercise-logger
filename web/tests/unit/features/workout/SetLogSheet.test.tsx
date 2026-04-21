@@ -541,7 +541,7 @@ describe("SetLogSheet — global Enter handler", () => {
     });
     // Toggle PR, then blur the button so the global Enter handler (not the button) fires.
     await user.click(screen.getByRole("button", { name: /mark pr/i }));
-    document.activeElement instanceof HTMLElement && document.activeElement.blur();
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
     await user.keyboard("{Enter}");
     await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
     expect(onSave.mock.calls[0]![0].isPersonalRecord).toBe(true);
@@ -696,7 +696,7 @@ describe("SetLogSheet — physical keyboard", () => {
       />,
     );
     // Ensure no button is focused so the global Enter handler fires save.
-    document.activeElement instanceof HTMLElement && document.activeElement.blur();
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
     const user = userEvent.setup();
     await user.keyboard("{Enter}");
     await waitFor(() => expect(save).toHaveBeenCalledWith(
