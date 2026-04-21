@@ -845,6 +845,106 @@ describe("set-service", () => {
         })
       ).rejects.toThrow(/SessionExercise ".*" not found/);
     });
+
+    // --- PR flag guard tests ---
+
+    it("preserves existing isPersonalRecord when editSet omits the field", async () => {
+      const routine = makeRoutine([
+        {
+          kind: "exercise",
+          entryId: "A-e0",
+          exerciseId: "barbell-back-squat",
+          setBlocks: [STANDARD_BLOCK],
+        },
+      ]);
+      await db.routines.add(routine);
+      const session = await startSessionWithCatalog(db, routine, "A");
+      const seId = session.sessionExercises[0]!.id;
+
+      const created = await logSet(db, seId, 0, 0, {
+        performedWeightKg: 80,
+        performedReps: 5,
+        performedDurationSec: null,
+        performedDistanceM: null,
+        isPersonalRecord: true,
+      });
+
+      const updated = await editSet(db, created.id, {
+        performedWeightKg: 82.5,
+        performedReps: 5,
+        performedDurationSec: null,
+        performedDistanceM: null,
+        // isPersonalRecord intentionally omitted
+      });
+
+      expect(updated.isPersonalRecord).toBe(true);
+      const onDisk = await db.loggedSets.get(created.id);
+      expect(onDisk?.isPersonalRecord).toBe(true);
+    });
+
+    it("preserves existing isPersonalRecord when logSet upsert omits the field", async () => {
+      const routine = makeRoutine([
+        {
+          kind: "exercise",
+          entryId: "A-e0",
+          exerciseId: "barbell-back-squat",
+          setBlocks: [STANDARD_BLOCK],
+        },
+      ]);
+      await db.routines.add(routine);
+      const session = await startSessionWithCatalog(db, routine, "A");
+      const seId = session.sessionExercises[0]!.id;
+
+      await logSet(db, seId, 0, 0, {
+        performedWeightKg: 80,
+        performedReps: 5,
+        performedDurationSec: null,
+        performedDistanceM: null,
+        isPersonalRecord: true,
+      });
+
+      const reupserted = await logSet(db, seId, 0, 0, {
+        performedWeightKg: 82.5,
+        performedReps: 5,
+        performedDurationSec: null,
+        performedDistanceM: null,
+        // isPersonalRecord intentionally omitted
+      });
+
+      expect(reupserted.isPersonalRecord).toBe(true);
+    });
+
+    it("clears isPersonalRecord when editSet explicitly passes false", async () => {
+      const routine = makeRoutine([
+        {
+          kind: "exercise",
+          entryId: "A-e0",
+          exerciseId: "barbell-back-squat",
+          setBlocks: [STANDARD_BLOCK],
+        },
+      ]);
+      await db.routines.add(routine);
+      const session = await startSessionWithCatalog(db, routine, "A");
+      const seId = session.sessionExercises[0]!.id;
+
+      const created = await logSet(db, seId, 0, 0, {
+        performedWeightKg: 80,
+        performedReps: 5,
+        performedDurationSec: null,
+        performedDistanceM: null,
+        isPersonalRecord: true,
+      });
+
+      const updated = await editSet(db, created.id, {
+        performedWeightKg: 82.5,
+        performedReps: 5,
+        performedDurationSec: null,
+        performedDistanceM: null,
+        isPersonalRecord: false,
+      });
+
+      expect(updated.isPersonalRecord).toBe(false);
+    });
   });
 
   // =====================================================================

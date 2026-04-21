@@ -177,9 +177,11 @@ export async function logSet(
           performedReps: input.performedReps,
           performedDurationSec: input.performedDurationSec,
           performedDistanceM: input.performedDistanceM,
-          isPersonalRecord: input.isPersonalRecord,
           updatedAt: now,
         };
+        if (input.isPersonalRecord !== undefined) {
+          updated.isPersonalRecord = input.isPersonalRecord;
+        }
         await db.loggedSets.update(existing.id, updated);
         result = { ...existing, ...updated } as LoggedSet;
       } else {
@@ -248,43 +250,51 @@ export async function editSet(
 ): Promise<LoggedSet> {
   validateSetInput(input);
 
-  const existing = await db.loggedSets.get(loggedSetId);
-  if (!existing) {
-    throw new Error(`LoggedSet "${loggedSetId}" not found`);
-  }
+  return db.transaction(
+    "rw",
+    [db.loggedSets, db.sessionExercises, db.sessions],
+    async () => {
+      const existing = await db.loggedSets.get(loggedSetId);
+      if (!existing) {
+        throw new Error(`LoggedSet "${loggedSetId}" not found`);
+      }
 
-  const now = nowISO();
-  const updated: Partial<LoggedSet> = {
-    performedWeightKg: input.performedWeightKg,
-    performedReps: input.performedReps,
-    performedDurationSec: input.performedDurationSec,
-    performedDistanceM: input.performedDistanceM,
-    isPersonalRecord: input.isPersonalRecord,
-    updatedAt: now,
-  };
+      const now = nowISO();
+      const updated: Partial<LoggedSet> = {
+        performedWeightKg: input.performedWeightKg,
+        performedReps: input.performedReps,
+        performedDurationSec: input.performedDurationSec,
+        performedDistanceM: input.performedDistanceM,
+        updatedAt: now,
+      };
+      if (input.isPersonalRecord !== undefined) {
+        updated.isPersonalRecord = input.isPersonalRecord;
+      }
 
-  await db.loggedSets.update(loggedSetId, updated);
+      await db.loggedSets.update(loggedSetId, updated);
 
-  // [P4-E / R2 / R3] Weighted bodyweight promotion on edit:
-  // - Fail loudly if the sessionExercise row is gone (race with discard).
-  // - Only promote on active sessions — finished snapshots are write-once.
-  if (input.performedWeightKg !== null) {
-    const sessionExercise = await db.sessionExercises.get(existing.sessionExerciseId);
-    if (!sessionExercise) {
-      throw new Error(`SessionExercise "${existing.sessionExerciseId}" not found`);
+      // [P4-E / R2 / R3] Weighted bodyweight promotion on edit:
+      // - Fail loudly if the sessionExercise row is gone (race with discard).
+      // - Only promote on active sessions — finished snapshots are write-once.
+      if (input.performedWeightKg !== null) {
+        const sessionExercise = await db.sessionExercises.get(existing.sessionExerciseId);
+        if (!sessionExercise) {
+          throw new Error(`SessionExercise "${existing.sessionExerciseId}" not found`);
+        }
+        const session = await db.sessions.get(sessionExercise.sessionId);
+        if (
+          session?.status === "active" &&
+          sessionExercise.effectiveType === "bodyweight"
+        ) {
+          await db.sessionExercises.update(existing.sessionExerciseId, {
+            effectiveType: "weight",
+          });
+        }
+      }
+
+      return { ...existing, ...updated } as LoggedSet;
     }
-    const session = await db.sessions.get(sessionExercise.sessionId);
-    if (
-      session?.status === "active" &&
-      sessionExercise.effectiveType === "bodyweight"
-    ) {
-      await db.sessionExercises.update(existing.sessionExerciseId, {
-        effectiveType: "weight",
-      });
-    }
-  }
-
-  return { ...existing, ...updated } as LoggedSet;
+  );
 }
 
 // ---------------------------------------------------------------------------
