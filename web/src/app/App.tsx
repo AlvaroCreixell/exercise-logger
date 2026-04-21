@@ -135,7 +135,8 @@ function AppRoutes() {
           <Route path="/workout" element={<WorkoutScreen />} />
           <Route path="/history" element={<HistoryScreen />} />
           <Route path="/history/:sessionId" element={<SessionDetailScreen />} />
-          {/* Orphaned as of Sprint 8 — no in-app link; Sprint 12 reintroduces navigation. */}
+          {/* Orphan route: no in-app link drives here. Kept for the planned
+              exercise-history-navigation feature; remove if abandoned. */}
           <Route
             path="/history/exercise/:exerciseId"
             element={<ExerciseHistoryScreen />}
