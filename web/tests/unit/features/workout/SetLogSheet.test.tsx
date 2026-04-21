@@ -1,6 +1,6 @@
 // web/tests/unit/features/workout/SetLogSheet.test.tsx
 import { describe, it, expect, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { SetLogSheet } from "@/features/workout/SetLogSheet";
 import type { SessionExercise, LoggedSet, SetBlock } from "@/domain/types";
@@ -81,13 +81,25 @@ function renderSheet(opts: RenderOpts = {}) {
   );
 }
 
+/** Reads the displayed value from the Weight ValueBox tile. */
+function weightValueText(): string {
+  const tile = screen.getByRole("button", { name: /weight value/i });
+  const big = within(tile).getByText(/^(—|\d+(\.\d+)?)$/);
+  return big.textContent ?? "";
+}
+
+/** Reads the displayed value from the Reps ValueBox tile. */
+function repsValueText(): string {
+  const tile = screen.getByRole("button", { name: /reps value/i });
+  const big = within(tile).getByText(/^(—|\d+(\.\d+)?)$/);
+  return big.textContent ?? "";
+}
+
 describe("SetLogSheet prefill", () => {
   it("defaults weight to '0' and reps to block minValue when no history is available", () => {
     renderSheet({ setIndex: 0 });
-    const weight = screen.getByLabelText(/weight/i) as HTMLInputElement;
-    const reps = screen.getByLabelText(/reps/i) as HTMLInputElement;
-    expect(weight.value).toBe("0");
-    expect(reps.value).toBe("8"); // minValue of the default STANDARD_BLOCK
+    expect(weightValueText()).toBe("0");
+    expect(repsValueText()).toBe("8"); // minValue of the default STANDARD_BLOCK
   });
 
   it("prefills weight from the most recent in-session set for the same block, overriding the suggestion", () => {
@@ -114,8 +126,7 @@ describe("SetLogSheet prefill", () => {
       blockSetsInSession: [priorSet],
     });
 
-    const weight = screen.getByLabelText(/weight/i) as HTMLInputElement;
-    expect(weight.value).toBe("135");
+    expect(weightValueText()).toBe("135");
   });
 
   it("existingSet wins over carryover (edit mode)", () => {
@@ -146,8 +157,7 @@ describe("SetLogSheet prefill", () => {
       blockSetsInSession: [priorSet, existing],
     });
 
-    const weight = screen.getByLabelText(/weight/i) as HTMLInputElement;
-    expect(weight.value).toBe("140");
+    expect(weightValueText()).toBe("140");
   });
 
   it("picks the most recent carryover set by updatedAt (so in-session edits win)", () => {
@@ -175,8 +185,7 @@ describe("SetLogSheet prefill", () => {
       blockSetsInSession: [editedSet0, untouchedSet1],
     });
 
-    const weight = screen.getByLabelText(/weight/i) as HTMLInputElement;
-    expect(weight.value).toBe("140");
+    expect(weightValueText()).toBe("140");
   });
 
   it("ignores carryover sets from other session exercises even if blockIndex matches", () => {
@@ -204,8 +213,7 @@ describe("SetLogSheet prefill", () => {
       blockSetsInSession: [otherExerciseSet],
     });
 
-    const weight = screen.getByLabelText(/weight/i) as HTMLInputElement;
-    expect(weight.value).toBe("130"); // suggestion, not 999
+    expect(weightValueText()).toBe("130"); // suggestion, not 999
   });
 
   it("ignores carryover sets whose performedWeightKg is null", () => {
@@ -230,8 +238,7 @@ describe("SetLogSheet prefill", () => {
       blockSetsInSession: [nullWeightSet],
     });
 
-    const weight = screen.getByLabelText(/weight/i) as HTMLInputElement;
-    expect(weight.value).toBe("130");
+    expect(weightValueText()).toBe("130");
   });
 
   it("ignores carryover from other blocks (blockIndex mismatch)", () => {
@@ -264,8 +271,7 @@ describe("SetLogSheet prefill", () => {
       blockSetsInSession: [topSet],
     });
 
-    const weight = screen.getByLabelText(/weight/i) as HTMLInputElement;
-    expect(weight.value).toBe("100"); // suggestion for block 1, not 140 from block 0
+    expect(weightValueText()).toBe("100"); // suggestion for block 1, not 140 from block 0
   });
 
   it("falls through to suggestion when blockSetsInSession is empty", () => {
@@ -282,8 +288,7 @@ describe("SetLogSheet prefill", () => {
       blockSetsInSession: [],
     });
 
-    const weight = screen.getByLabelText(/weight/i) as HTMLInputElement;
-    expect(weight.value).toBe("125");
+    expect(weightValueText()).toBe("125");
   });
 });
 
@@ -320,14 +325,6 @@ describe("SetLogSheet — inline context", () => {
     expect(screen.getByText(/105kg/i)).toBeVisible();
     expect(screen.getByText(/suggested/i)).toBeVisible();
   });
-
-  it("renders weight and reps fields as tile-style (h-14)", () => {
-    renderSheet();
-    const weight = document.querySelector('input[name="weight"]');
-    const reps = document.querySelector('input[name="reps"]');
-    expect(weight?.className).toMatch(/h-14/);
-    expect(reps?.className).toMatch(/h-14/);
-  });
 });
 
 describe("SetLogSheet — open-edge prefill", () => {
@@ -351,12 +348,10 @@ describe("SetLogSheet — open-edge prefill", () => {
     );
 
     // Initial prefill runs — weight defaults to "0" since showWeight path hits no carryover/suggest/last.
-    const weightInput = screen.getByRole("spinbutton", { name: /weight/i }) as HTMLInputElement;
-
-    // User types 80 over the default
-    await user.clear(weightInput);
-    await user.type(weightInput, "80");
-    expect(weightInput.value).toBe("80");
+    // Tap digits on the keypad: "0" is replaced by "8", then "0" appended → "80"
+    await user.click(screen.getByRole("button", { name: /^8$/ }));
+    await user.click(screen.getByRole("button", { name: /^0$/ }));
+    expect(weightValueText()).toBe("80");
 
     // Parent re-renders with a new suggestion (simulates useLiveQuery refresh).
     rerender(
@@ -376,7 +371,7 @@ describe("SetLogSheet — open-edge prefill", () => {
     );
 
     // User's typed value should NOT be clobbered by the new suggestion's prefill.
-    expect(weightInput.value).toBe("80");
+    expect(weightValueText()).toBe("80");
   });
 
   it("does not re-prefill when blockSetsInSession identity changes while open", async () => {
@@ -398,10 +393,10 @@ describe("SetLogSheet — open-edge prefill", () => {
       />,
     );
 
-    const weightInput = screen.getByRole("spinbutton", { name: /weight/i }) as HTMLInputElement;
-    await user.clear(weightInput);
-    await user.type(weightInput, "80");
-    expect(weightInput.value).toBe("80");
+    // Tap digits: "0" is replaced by "8", then "0" appended → "80"
+    await user.click(screen.getByRole("button", { name: /^8$/ }));
+    await user.click(screen.getByRole("button", { name: /^0$/ }));
+    expect(weightValueText()).toBe("80");
 
     // Parent re-renders with a fresh blockSetsInSession (simulates a different set being logged elsewhere).
     // The carryover-candidate set carries 100kg — but the user's "80" must not be clobbered.
@@ -440,7 +435,7 @@ describe("SetLogSheet — open-edge prefill", () => {
       />,
     );
 
-    expect(weightInput.value).toBe("80");
+    expect(weightValueText()).toBe("80");
   });
 
   it("does not re-prefill when lastTime identity changes while open", async () => {
@@ -462,10 +457,10 @@ describe("SetLogSheet — open-edge prefill", () => {
       />,
     );
 
-    const weightInput = screen.getByRole("spinbutton", { name: /weight/i }) as HTMLInputElement;
-    await user.clear(weightInput);
-    await user.type(weightInput, "80");
-    expect(weightInput.value).toBe("80");
+    // Tap digits: "0" is replaced by "8", then "0" appended → "80"
+    await user.click(screen.getByRole("button", { name: /^8$/ }));
+    await user.click(screen.getByRole("button", { name: /^0$/ }));
+    expect(weightValueText()).toBe("80");
 
     // Parent re-renders with a newly-loaded lastTime (simulates useExerciseHistory resolving).
     // lastTime suggests 100kg — but the user's "80" must not be clobbered.
@@ -492,6 +487,84 @@ describe("SetLogSheet — open-edge prefill", () => {
       />,
     );
 
-    expect(weightInput.value).toBe("80");
+    expect(weightValueText()).toBe("80");
+  });
+});
+
+describe("SetLogSheet — keypad input (weight + reps)", () => {
+  it("renders a keypad when the sheet is open with weight+reps target", () => {
+    renderSheet();
+    expect(screen.getByRole("group", { name: /numeric keypad/i })).toBeVisible();
+    expect(screen.getByRole("button", { name: /^5$/ })).toBeVisible();
+  });
+
+  it("tapping a digit updates the active ValueBox (defaults to weight on open)", async () => {
+    const user = userEvent.setup();
+    renderSheet(); // default: new set, no existing, no suggestion → weight="0"
+    // Weight starts "0", tapping "8" replaces the leading zero (keypad-reducer rule), then "5" appends.
+    await user.click(screen.getByRole("button", { name: /^8$/ }));
+    await user.click(screen.getByRole("button", { name: /^5$/ }));
+    expect(weightValueText()).toBe("85");
+  });
+
+  it("switches keypad target to reps when the reps ValueBox is tapped", async () => {
+    const user = userEvent.setup();
+    renderSheet();
+    await user.click(screen.getByRole("button", { name: /reps value/i }));
+    // Reps prefill is minValue=8. Tapping "1" replaces is NOT expected because the reducer
+    // only replaces on a *standalone* "0" — for "8" it appends. So start by clearing.
+    await user.click(screen.getByRole("button", { name: /backspace/i }));
+    await user.click(screen.getByRole("button", { name: /^1$/ }));
+    await user.click(screen.getByRole("button", { name: /^2$/ }));
+    expect(repsValueText()).toBe("12");
+  });
+
+  it("backspace removes the last character of the active value", async () => {
+    const user = userEvent.setup();
+    renderSheet();
+    // Weight prefilled to "0", tap 7 (replaces 0) then 0 then backspace → "7"
+    await user.click(screen.getByRole("button", { name: /^7$/ }));
+    await user.click(screen.getByRole("button", { name: /^0$/ }));
+    await user.click(screen.getByRole("button", { name: /backspace/i }));
+    expect(weightValueText()).toBe("7");
+  });
+
+  it("weight ± nudge steps by 2.5 kg", async () => {
+    const user = userEvent.setup();
+    renderSheet(); // weight prefilled to "0"
+    await user.click(screen.getByRole("button", { name: /increase weight/i }));
+    expect(weightValueText()).toBe("2.5");
+    await user.click(screen.getByRole("button", { name: /increase weight/i }));
+    expect(weightValueText()).toBe("5");
+    await user.click(screen.getByRole("button", { name: /decrease weight/i }));
+    expect(weightValueText()).toBe("2.5");
+  });
+
+  it("reps ± nudge steps by 1", async () => {
+    const user = userEvent.setup();
+    renderSheet(); // reps prefilled to minValue=8
+    await user.click(screen.getByRole("button", { name: /reps value/i }));
+    await user.click(screen.getByRole("button", { name: /increase reps/i }));
+    expect(repsValueText()).toBe("9");
+    await user.click(screen.getByRole("button", { name: /decrease reps/i }));
+    await user.click(screen.getByRole("button", { name: /decrease reps/i }));
+    expect(repsValueText()).toBe("7");
+  });
+
+  it("weight nudge clamps at 0 (cannot go negative)", async () => {
+    const user = userEvent.setup();
+    renderSheet(); // weight="0"
+    await user.click(screen.getByRole("button", { name: /decrease weight/i }));
+    expect(weightValueText()).toBe("0");
+  });
+
+  it("reps nudge clamps at 0", async () => {
+    const user = userEvent.setup();
+    renderSheet();
+    await user.click(screen.getByRole("button", { name: /reps value/i }));
+    for (let i = 0; i < 20; i++) {
+      await user.click(screen.getByRole("button", { name: /decrease reps/i }));
+    }
+    expect(repsValueText()).toBe("0");
   });
 });

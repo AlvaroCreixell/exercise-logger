@@ -16,6 +16,9 @@ import { toDisplayWeight, toCanonicalKg } from "@/domain/unit-conversion";
 import { toast } from "sonner";
 import { isSetInputEmpty } from "./set-log-validation";
 import { SetDots } from "./SetDots";
+import { Keypad } from "./Keypad";
+import { ValueBox } from "./ValueBox";
+import { applyKeypadKey, type KeypadKey } from "./lib/keypad-reducer";
 
 interface SetLogSheetProps {
   open: boolean;
@@ -41,6 +44,8 @@ interface SetLogSheetProps {
   }) => Promise<void>;
   onDelete?: () => Promise<void>;
 }
+
+type ActiveField = "weight" | "reps" | "duration" | "distance";
 
 export function SetLogSheet({
   open,
@@ -79,6 +84,16 @@ export function SetLogSheet({
   const [saving, setSaving] = useState(false);
   const [savePulse, setSavePulse] = useState(false);
 
+  const defaultActive: ActiveField =
+    showWeight || (isBodyweight && showWeightForBodyweight)
+      ? "weight"
+      : targetKind === "reps"
+        ? "reps"
+        : targetKind === "duration"
+          ? "duration"
+          : "distance";
+  const [activeField, setActiveField] = useState<ActiveField>(defaultActive);
+
   // Pre-fill on open transition only. Using a ref to track the prior `open`
   // value means prefill fires once per false→true edge, not on every re-render
   // while the sheet is open — which closes a clobber bug where a parent
@@ -106,6 +121,7 @@ export function SetLogSheet({
         ? String(durationInMinutes ? Math.round(existingSet.performedDurationSec / 60 * 100) / 100 : existingSet.performedDurationSec)
         : "");
       setDistance(existingSet.performedDistanceM != null ? String(existingSet.performedDistanceM) : "");
+      setActiveField(defaultActive);
       return;
     }
 
@@ -137,12 +153,35 @@ export function SetLogSheet({
       ? String(durationInMinutes ? Math.round(lastSet.durationSec / 60 * 100) / 100 : lastSet.durationSec)
       : "");
     setDistance(lastSet?.distanceM != null ? String(lastSet.distanceM) : "");
+    setActiveField(defaultActive);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   const blockLabel = block
     ? getBlockLabel(block, blockIndex, blocks.length, blocks)
     : "";
+
+  function dispatchKey(key: KeypadKey) {
+    if (activeField === "weight") {
+      setWeight((w) => applyKeypadKey(w, key));
+    } else if (activeField === "reps") {
+      setReps((r) => applyKeypadKey(r, key));
+    }
+    // duration/distance keep native inputs; keypad is hidden for those.
+  }
+
+  function nudgeWeight(delta: number) {
+    const n = weight.trim() ? parseFloat(weight) : 0;
+    if (!Number.isFinite(n)) return;
+    const next = Math.max(0, n + delta);
+    setWeight(String(Number.isInteger(next) ? next : Math.round(next * 100) / 100));
+  }
+
+  function nudgeReps(delta: number) {
+    const n = reps.trim() ? parseInt(reps, 10) : 0;
+    if (!Number.isFinite(n)) return;
+    setReps(String(Math.max(0, n + delta)));
+  }
 
   async function handleSave() {
     const w = weight.trim() ? parseFloat(weight) : null;
@@ -226,21 +265,18 @@ export function SetLogSheet({
               )}
             </div>
           )}
+
           {/* Weight field */}
           {showWeight && (
-            <div className="space-y-1.5">
-              <Label htmlFor="weight">Weight ({units})</Label>
-              <Input
-                id="weight"
-                name="weight"
-                type="number"
-                inputMode="decimal"
-                className="text-value h-14 text-center"
-                value={weight}
-                onChange={(e) => setWeight(e.target.value)}
-                autoFocus
-              />
-            </div>
+            <ValueBox
+              label="Weight"
+              value={weight}
+              unit={units}
+              isActive={activeField === "weight"}
+              onFocus={() => setActiveField("weight")}
+              onNudgeDown={() => nudgeWeight(-2.5)}
+              onNudgeUp={() => nudgeWeight(2.5)}
+            />
           )}
 
           {isBodyweight && !showWeightForBodyweight && (
@@ -253,38 +289,32 @@ export function SetLogSheet({
           )}
 
           {isBodyweight && showWeightForBodyweight && (
-            <div className="space-y-1.5">
-              <Label htmlFor="weight">Weight ({units})</Label>
-              <Input
-                id="weight"
-                name="weight"
-                type="number"
-                inputMode="decimal"
-                className="text-value h-14 text-center"
+            <>
+              <ValueBox
+                label="Weight"
                 value={weight}
-                onChange={(e) => setWeight(e.target.value)}
+                unit={units}
+                isActive={activeField === "weight"}
+                onFocus={() => setActiveField("weight")}
+                onNudgeDown={() => nudgeWeight(-2.5)}
+                onNudgeUp={() => nudgeWeight(2.5)}
               />
               <p className="text-[11px] text-warning">
                 Adding weight is permanent for this session.
               </p>
-            </div>
+            </>
           )}
 
           {/* Target field */}
           {targetKind === "reps" && (
-            <div className="space-y-1.5">
-              <Label htmlFor="reps">Reps</Label>
-              <Input
-                id="reps"
-                name="reps"
-                type="number"
-                inputMode="numeric"
-                className="text-value h-14 text-center"
-                value={reps}
-                onChange={(e) => setReps(e.target.value)}
-                autoFocus={!showWeight}
-              />
-            </div>
+            <ValueBox
+              label="Reps"
+              value={reps}
+              isActive={activeField === "reps"}
+              onFocus={() => setActiveField("reps")}
+              onNudgeDown={() => nudgeReps(-1)}
+              onNudgeUp={() => nudgeReps(1)}
+            />
           )}
 
           {targetKind === "duration" && (
@@ -314,6 +344,12 @@ export function SetLogSheet({
                 value={distance}
                 onChange={(e) => setDistance(e.target.value)}
               />
+            </div>
+          )}
+
+          {(showWeight || targetKind === "reps" || (isBodyweight && showWeightForBodyweight)) && (
+            <div className="pt-1">
+              <Keypad onKey={dispatchKey} disabled={saving} />
             </div>
           )}
         </div>
