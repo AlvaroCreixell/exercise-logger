@@ -10,11 +10,7 @@ import {
 import { Input } from "@/shared/ui/input";
 import { Badge } from "@/shared/ui/badge";
 import { ScrollArea } from "@/shared/ui/scroll-area";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/shared/ui/tabs";
-
-const MUSCLE_GROUPS = [
-  "All", "Legs", "Chest", "Back", "Shoulders", "Arms", "Core", "Full Body", "Cardio",
-] as const;
+import { Plus } from "@/shared/icons";
 
 interface ExercisePickerProps {
   open: boolean;
@@ -30,86 +26,79 @@ export function ExercisePicker({
   onPick,
 }: ExercisePickerProps) {
   const [search, setSearch] = useState("");
-  const [tab, setTab] = useState("All");
   const exercises = useLiveQuery(() => db.exercises.toArray());
 
   if (!exercises) return null;
 
-  const filtered = exercises.filter((ex) => {
-    if (search && !ex.name.toLowerCase().includes(search.toLowerCase())) return false;
-    if (tab !== "All" && !ex.muscleGroups.some((mg) => mg.toLowerCase() === tab.toLowerCase())) return false;
-    return true;
-  });
+  const q = search.trim().toLowerCase();
+  const filtered = q
+    ? exercises.filter((ex) => ex.name.toLowerCase().includes(q))
+    : exercises;
 
   return (
-    <Sheet open={open} onOpenChange={(isOpen) => {
-      onOpenChange(isOpen);
-      if (!isOpen) {
-        setSearch("");
-        setTab("All");
-      }
-    }}>
-      <SheetContent side="bottom" className="h-[85dvh]" showCloseButton={false}>
-        <SheetHeader>
-          <SheetTitle>Add Exercise</SheetTitle>
+    <Sheet
+      open={open}
+      onOpenChange={(isOpen) => {
+        onOpenChange(isOpen);
+        if (!isOpen) setSearch("");
+      }}
+    >
+      <SheetContent side="bottom" className="h-[85dvh] bg-background" showCloseButton={false}>
+        {/* Grabber bar per prototype */}
+        <div className="flex justify-center pt-2.5 pb-1">
+          <div className="h-1 w-10 rounded-full bg-line" aria-hidden="true" />
+        </div>
+        <SheetHeader className="px-5 pt-1 pb-3">
+          <p className="text-eyebrow text-ink-3">Add extra</p>
+          <SheetTitle className="text-title-serif">Pick an exercise</SheetTitle>
         </SheetHeader>
 
-        <div className="py-3">
+        <div className="px-5 pb-3">
           <Input
             placeholder="Search exercises..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            aria-label="Search exercises"
           />
         </div>
 
-        <Tabs value={tab} onValueChange={setTab}>
-          <TabsList className="w-full overflow-x-auto flex-nowrap justify-start" variant="line">
-            {MUSCLE_GROUPS.map((mg) => (
-              <TabsTrigger key={mg} value={mg} className="shrink-0 text-xs">
-                {mg}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-
-          {MUSCLE_GROUPS.map((mg) => (
-            <TabsContent key={mg} value={mg} className="mt-0">
-              <ScrollArea className="h-[calc(85dvh-200px)]">
-                <div className="space-y-0.5 py-2">
-                  {filtered.map((ex) => {
-                    const inWorkout = existingExerciseIds.has(ex.id);
-                    return (
-                      <button
-                        key={ex.id}
-                        onClick={() => {
-                          onPick(ex.id);
-                          onOpenChange(false);
-                        }}
-                        className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-muted/50 border-b border-border transition-colors text-left"
-                      >
-                        <div>
-                          <span className="text-sm font-medium">{ex.name}</span>
-                          <span className="text-xs text-muted-foreground ml-2 capitalize">
-                            {ex.equipment}
-                          </span>
-                        </div>
-                        {inWorkout && (
-                          <Badge variant="secondary" className="text-[11px] shrink-0">
-                            In workout
-                          </Badge>
-                        )}
-                      </button>
-                    );
-                  })}
-                  {filtered.length === 0 && (
-                    <p className="text-sm text-muted-foreground text-center py-8">
-                      No exercises found
+        <ScrollArea className="flex-1 px-2 pb-4">
+          <div className="flex flex-col">
+            {filtered.map((ex) => {
+              const inWorkout = existingExerciseIds.has(ex.id);
+              return (
+                <button
+                  key={ex.id}
+                  type="button"
+                  onClick={() => {
+                    onPick(ex.id);
+                    onOpenChange(false);
+                  }}
+                  className="flex w-full items-center justify-between gap-3 border-b border-line-soft px-3 py-3 text-left transition-colors hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage/40"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-foreground">{ex.name}</p>
+                    <p className="mt-0.5 text-[11px] uppercase tracking-[0.04em] text-ink-3">
+                      {ex.equipment} · {ex.muscleGroups.join(" · ")}
                     </p>
+                  </div>
+                  {inWorkout ? (
+                    <Badge variant="secondary" className="shrink-0 text-[11px]">
+                      In workout
+                    </Badge>
+                  ) : (
+                    <Plus size={16} aria-hidden />
                   )}
-                </div>
-              </ScrollArea>
-            </TabsContent>
-          ))}
-        </Tabs>
+                </button>
+              );
+            })}
+            {filtered.length === 0 && (
+              <p className="py-10 text-center text-sm text-muted-foreground">
+                No exercises found
+              </p>
+            )}
+          </div>
+        </ScrollArea>
       </SheetContent>
     </Sheet>
   );
