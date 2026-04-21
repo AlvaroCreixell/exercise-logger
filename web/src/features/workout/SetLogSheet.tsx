@@ -334,6 +334,16 @@ export function SetLogSheet({
                         onClick={() => {
                           if (s.weightKg != null) setWeight(String(toDisplayWeight(s.weightKg, units)));
                           if (s.reps != null) setReps(String(s.reps));
+                          if (s.durationSec != null) {
+                            setDuration(
+                              String(
+                                durationInMinutes
+                                  ? Math.round((s.durationSec / 60) * 100) / 100
+                                  : s.durationSec,
+                              ),
+                            );
+                          }
+                          if (s.distanceM != null) setDistance(String(s.distanceM));
                         }}
                       >
                         Use last

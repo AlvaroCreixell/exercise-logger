@@ -360,6 +360,63 @@ describe("SetLogSheet — inline context", () => {
     expect(weightValueText()).toBe("95");
     expect(repsValueText()).toBe("7");
   });
+
+  it("'Use last' chip populates duration from lastTime when tapped on a duration target", async () => {
+    const user = userEvent.setup();
+    const durationSE = makeSessionExercise({
+      effectiveType: "bodyweight",
+      setBlocksSnapshot: [
+        { targetKind: "duration", minValue: 30, maxValue: 60, count: 3 } as SetBlock,
+      ],
+    });
+    renderSheet({
+      sessionExercise: durationSE,
+      setIndex: 0,
+      lastTime: {
+        blockIndex: 0,
+        blockLabel: "Set block 1",
+        tag: null,
+        sets: [{ weightKg: null, reps: null, durationSec: 180, distanceM: null }],
+      },
+    });
+    // The existing prefill path also fills duration from lastTime, so first mutate
+    // the field to a different value, then verify Use last restores it.
+    const durationInput = screen.getByLabelText(/duration/i);
+    await user.clear(durationInput);
+    await user.type(durationInput, "99");
+    expect(durationInput).toHaveValue(99);
+
+    await user.click(screen.getByRole("button", { name: /use last/i }));
+    // durationInMinutes is false here (bodyweight + block present), so 180 sec stored raw.
+    expect(durationInput).toHaveValue(180);
+  });
+
+  it("'Use last' chip populates distance from lastTime when tapped on a distance target", async () => {
+    const user = userEvent.setup();
+    const distanceSE = makeSessionExercise({
+      effectiveType: "bodyweight",
+      setBlocksSnapshot: [
+        { targetKind: "distance", minValue: 500, maxValue: 1000, count: 3 } as SetBlock,
+      ],
+    });
+    renderSheet({
+      sessionExercise: distanceSE,
+      setIndex: 0,
+      lastTime: {
+        blockIndex: 0,
+        blockLabel: "Set block 1",
+        tag: null,
+        sets: [{ weightKg: null, reps: null, durationSec: null, distanceM: 1000 }],
+      },
+    });
+    const distanceInput = screen.getByLabelText(/distance/i);
+    await user.clear(distanceInput);
+    await user.type(distanceInput, "250");
+    expect(distanceInput).toHaveValue(250);
+
+    await user.click(screen.getByRole("button", { name: /use last/i }));
+    expect(distanceInput).toHaveValue(1000);
+  });
 });
 
 describe("SetLogSheet — open-edge prefill", () => {
