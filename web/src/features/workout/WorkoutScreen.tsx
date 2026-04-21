@@ -36,12 +36,15 @@ export default function WorkoutScreen() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [finishOpen, setFinishOpen] = useState(false);
   const [discardOpen, setDiscardOpen] = useState(false);
-  const [celebrationOpen, setCelebrationOpen] = useState(false);
-  const [celebrationStats, setCelebrationStats] = useState<{
+  type CelebrationStats = {
     sets: number;
     volumeKg: number;
     durationMin: number | null;
-  } | null>(null);
+  };
+  const [celebration, setCelebration] = useState<{
+    open: boolean;
+    stats: CelebrationStats | null;
+  }>({ open: false, stats: null });
 
   // Sheet state
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -65,8 +68,7 @@ export default function WorkoutScreen() {
   const elapsedSec = startedAt ? computeElapsedSec(startedAt) : 0;
 
   function handleCelebrationDismiss() {
-    setCelebrationOpen(false);
-    setCelebrationStats(null);
+    setCelebration({ open: false, stats: null });
     navigate("/");
   }
 
@@ -74,11 +76,11 @@ export default function WorkoutScreen() {
 
   // While the celebration is open, render it in place of the workout screen
   // (session is already finished so activeSession will be null).
-  if (celebrationOpen && celebrationStats) {
+  if (celebration.open && celebration.stats) {
     return (
       <FinishCelebration
-        open={celebrationOpen}
-        stats={celebrationStats}
+        open={celebration.open}
+        stats={celebration.stats}
         units={settings.units}
         onDismiss={handleCelebrationDismiss}
       />
@@ -167,8 +169,10 @@ export default function WorkoutScreen() {
     const durationMs = new Date(finishedAt).getTime() - new Date(startedAt).getTime();
     const durationMin = durationMs >= 60_000 ? Math.round(durationMs / 60_000) : null;
 
-    setCelebrationStats({ sets: setsCount, volumeKg, durationMin });
-    setCelebrationOpen(true);
+    setCelebration({
+      open: true,
+      stats: { sets: setsCount, volumeKg, durationMin },
+    });
   }
 
   async function handleDiscard() {
