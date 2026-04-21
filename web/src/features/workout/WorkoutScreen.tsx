@@ -18,7 +18,7 @@ import { WorkoutFooter } from "./WorkoutFooter";
 import { SessionHeader } from "./SessionHeader";
 import { SessionProgress } from "./SessionProgress";
 import { EmptyState } from "@/shared/components/EmptyState";
-import { Dumbbell } from "lucide-react";
+import { Dumbbell } from "@/shared/icons";
 import { toast } from "sonner";
 import type { SessionExercise, LoggedSet } from "@/domain/types";
 

@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { Link, useNavigate } from "react-router";
 import { useLiveQuery } from "dexie-react-hooks";
-import { CalendarCheck } from "lucide-react";
+import { Calendar as CalendarCheck } from "@/shared/icons";
 import { useSettings } from "@/shared/hooks/useSettings";
 import { useRoutine } from "@/shared/hooks/useRoutine";
 import { useActiveSession } from "@/shared/hooks/useActiveSession";

@@ -10,8 +10,7 @@ import {
   useLocation,
 } from "react-router";
 import { Toaster } from "sonner";
-import { Settings } from "lucide-react";
-import { Grid, Dumbbell, Graph } from "@/shared/icons";
+import { Grid, Dumbbell, Graph, Settings } from "@/shared/icons";
 import { useAppInit } from "@/shared/hooks/useAppInit";
 import { SWUpdatePrompt } from "./SWUpdatePrompt";
 
