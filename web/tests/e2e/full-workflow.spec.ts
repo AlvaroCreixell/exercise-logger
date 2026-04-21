@@ -62,8 +62,13 @@ test.describe("Exercise Logger E2E Smoke Test", () => {
     await keypad.getByRole("button", { name: /^6$/ }).click();
     await keypad.getByRole("button", { name: /^0$/ }).click();
 
-    // Switch to reps and type "10".
+    // Switch to reps. The tile is prefilled from the block min / lastTime,
+    // so the keypad digits would append to the prefill. Clear first.
     await page.getByRole("button", { name: /reps value/i }).click();
+    const repsBackspace = keypad.getByRole("button", { name: /backspace/i });
+    // Two backspaces cover both single- and double-digit prefills.
+    await repsBackspace.click();
+    await repsBackspace.click();
     await keypad.getByRole("button", { name: /^1$/ }).click();
     await keypad.getByRole("button", { name: /^0$/ }).click();
 
