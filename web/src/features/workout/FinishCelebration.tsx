@@ -46,7 +46,7 @@ export function FinishCelebration({
       type="button"
       onClick={onDismiss}
       aria-label="Dismiss celebration"
-      className="fixed inset-0 z-[80] flex flex-col items-center justify-center gap-4 bg-sage p-8 text-background animate-[fadeIn_var(--dur-fadeIn)_var(--ease-handoff)] focus-visible:outline-none"
+      className="fixed inset-0 z-[80] flex flex-col items-center justify-center gap-4 bg-sage p-8 text-background animate-[fadeIn_var(--dur-fadeIn)_var(--ease-handoff)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-background/40"
     >
       <Sparkle size={28} aria-hidden />
       <h2 className="text-hero-serif text-center text-[2.4rem] leading-none">
