@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { WizardShell } from "@/features/onboarding/components/WizardShell";
 import {
   ChipRow,
@@ -39,11 +39,12 @@ export function GoalStep({
   const answerText =
     answer?.kind === "chip-with-other" ? (answer.otherText ?? "") : "";
 
-  const [otherActive, setOtherActive] = useState(isOther);
+  const [localOtherActive, setOtherActive] = useState(isOther);
   const [otherText, setOtherText] = useState(answerText);
-  useEffect(() => {
-    if (isOther) setOtherActive(true);
-  }, [isOther]);
+  // Derive the effective "Other is active" flag: the parent-held answer
+  // (isOther) unions with local-only state (the user tapped "Something
+  // else…" but hasn't typed yet, so no answer has been committed).
+  const otherActive = localOtherActive || isOther;
 
   const selected =
     answer?.kind === "chip-with-other"

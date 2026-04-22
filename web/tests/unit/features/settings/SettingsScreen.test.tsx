@@ -5,7 +5,6 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
 import SettingsScreen from "@/features/settings/SettingsScreen";
 import {
-  ExerciseLoggerDB,
   initializeSettings,
   DEFAULT_SETTINGS,
   db,
