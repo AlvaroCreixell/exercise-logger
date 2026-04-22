@@ -1,73 +1,42 @@
-# React + TypeScript + Vite
+# Exercise Logger — Web App
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+The React + Vite PWA. See the [root README](../README.md) for project overview, architecture, and "how this was built" context.
 
-Currently, two official plugins are available:
+## Quickstart
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
+npm run dev         # Dev server at http://localhost:5173
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Commands
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+| Command             | What it does                                         |
+|---------------------|------------------------------------------------------|
+| `npm test`          | Unit + integration tests (Vitest, 742 tests)         |
+| `npm run test:watch`| Vitest in watch mode                                 |
+| `npm run build`     | Production build + PWA service worker                |
+| `npm run preview`   | Preview the production build at http://localhost:4173 |
+| `npm run test:e2e`  | Build + Playwright E2E (Pixel 7 Chromium on port 4173) |
+| `npm run lint`      | ESLint                                               |
+| `npm run typecheck` | `tsc -b` — TypeScript project references build       |
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+## Layout
+
+| Path         | Responsibility                                  |
+|--------------|--------------------------------------------------|
+| `src/app/`   | Entry point, router, global styles               |
+| `src/domain/`| Types, enums, pure helpers (no React, no DB)     |
+| `src/db/`    | Dexie database class and schema                  |
+| `src/services/` | Business logic (session, set, progression, backup, etc.) |
+| `src/shared/`| Cross-feature hooks, UI primitives, utilities    |
+| `src/features/` | Feature modules (today, workout, history, settings) |
+| `src/data/`  | Embedded exercise catalog (CSV)                  |
+
+## Conventions
+
+See [`../CLAUDE.md`](../CLAUDE.md) for the full conventions, invariants, and gotchas list. Each layer directory also has its own `CLAUDE.md` guide.
+
+## License
+
+[MIT](../LICENSE)
