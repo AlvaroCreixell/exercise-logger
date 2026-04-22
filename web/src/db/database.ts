@@ -57,6 +57,12 @@ export const DEFAULT_SETTINGS: Settings = {
   id: "user",
   activeRoutineId: null,
   units: "kg",
+  userName: null,
+  onboardingCompletedAt: null,
+  onboardingSkippedAt: null,
+  lastGeneratedPrompt: null,
+  lastGeneratedPromptAt: null,
+  onboardingBannerDismissedAt: null,
 };
 
 /**
