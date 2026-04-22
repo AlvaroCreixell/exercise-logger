@@ -5,10 +5,20 @@ import { db } from "@/db/database";
 import { useSettings } from "@/shared/hooks/useSettings";
 import { saveGeneratedPrompt } from "@/services/onboarding-service";
 import { buildPrompt } from "@/features/onboarding/lib/prompt-builder";
-import { loadWizardState } from "@/features/onboarding/lib/session-storage";
+import {
+  clearWizardState,
+  loadWizardState,
+} from "@/features/onboarding/lib/session-storage";
 import { GPT_URL } from "@/shared/lib/gpt-url";
 import { Button } from "@/shared/ui/button";
 import { Textarea } from "@/shared/ui/textarea";
+import { nowISO } from "@/domain/timestamp";
+import {
+  validateAndNormalizeRoutine,
+  importAndActivateRoutine,
+  type ValidationError,
+} from "@/services/routine-service";
+import { YamlErrorList } from "@/features/settings/YamlErrorList";
 
 type Stage = "stage1" | "handoff-complete";
 
@@ -26,8 +36,11 @@ export default function HandoffScreen() {
   const [popupBlocked, setPopupBlocked] = useState(false);
 
   // Guard: redirect when no prompt saved AND no just-completed flag.
+  // Skip once onboarding is completed — Stage 2 nulls the prompt on success
+  // and hands off to `navigate("/")`; we must not redirect to questionnaire.
   useEffect(() => {
     if (!settings) return;
+    if (settings.onboardingCompletedAt !== null) return;
     if (
       settings.lastGeneratedPrompt === null &&
       !justCompleted &&
@@ -134,7 +147,67 @@ export default function HandoffScreen() {
     );
   }
 
-  // Stage 2 stub — Task 5 replaces with the full paste form.
+  // Stage 2 — the paste form.
+  return <Stage2 popupBlocked={popupBlocked} />;
+}
+
+function Stage2({ popupBlocked }: { popupBlocked: boolean }) {
+  const navigate = useNavigate();
+  const [yaml, setYaml] = useState("");
+  const [errors, setErrors] = useState<ValidationError[]>([]);
+  const [importing, setImporting] = useState(false);
+
+  async function handlePasteFromClipboard() {
+    try {
+      const text = await navigator.clipboard.readText();
+      setYaml(text);
+    } catch {
+      toast.error("Couldn't read clipboard. Long-press to paste manually.");
+    }
+  }
+
+  async function handleImport() {
+    if (importing) return;
+    if (yaml.trim() === "") {
+      setErrors([{ path: "", message: "YAML is empty" }]);
+      return;
+    }
+    setImporting(true);
+    setErrors([]);
+    try {
+      const exercises = await db.exercises.toArray();
+      const lookup = new Map(exercises.map((ex) => [ex.id, ex]));
+      const result = await validateAndNormalizeRoutine(yaml, lookup);
+      if (!result.ok) {
+        setErrors(result.errors);
+        return;
+      }
+      const activation = await importAndActivateRoutine(db, result.routine);
+      if (!activation.ok) {
+        toast.error(activation.message);
+        return;
+      }
+      await db.settings.update("user", {
+        onboardingCompletedAt: nowISO(),
+        lastGeneratedPrompt: null,
+        lastGeneratedPromptAt: null,
+        onboardingBannerDismissedAt: null,
+      });
+      clearWizardState();
+      toast.success("Routine imported. Time to train.");
+      navigate("/", { replace: true });
+    } catch (err) {
+      setErrors([
+        {
+          path: "",
+          message: err instanceof Error ? err.message : "Import failed",
+        },
+      ]);
+    } finally {
+      setImporting(false);
+    }
+  }
+
   return (
     <div className="flex min-h-full flex-col gap-5 px-6 py-8">
       <div className="flex flex-col gap-2">
@@ -142,7 +215,11 @@ export default function HandoffScreen() {
         <h1 className="text-hero-serif italic text-ink">
           Paste your routine when you're back.
         </h1>
+        <p className="text-sm text-ink-2 leading-relaxed">
+          When the GPT gives you YAML, copy it and paste it below.
+        </p>
       </div>
+
       {popupBlocked && (
         <a
           href={GPT_URL}
@@ -153,6 +230,28 @@ export default function HandoffScreen() {
           Open GPT
         </a>
       )}
+
+      <button
+        type="button"
+        onClick={handlePasteFromClipboard}
+        className="self-start rounded-[var(--radius-pill)] border border-[var(--line)] bg-paper px-3 py-1.5 text-sm hover:bg-sage-soft/50"
+      >
+        Paste from clipboard
+      </button>
+
+      <Textarea
+        aria-label="YAML"
+        value={yaml}
+        onChange={(e) => setYaml(e.target.value)}
+        placeholder="Paste your YAML here"
+        className="min-h-48 font-mono text-xs bg-paper"
+      />
+
+      <YamlErrorList errors={errors} />
+
+      <Button onClick={handleImport} disabled={importing}>
+        Import routine →
+      </Button>
     </div>
   );
 }
