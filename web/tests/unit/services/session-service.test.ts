@@ -619,6 +619,94 @@ describe("session-service", () => {
   });
 
   // =====================================================================
+  // deleteSession (finished-session erase-from-history)
+  // =====================================================================
+
+  describe("deleteSession", () => {
+    it("deletes a finished session and all related records", async () => {
+      const { deleteSession } = await import("@/services/session-service");
+      const routine = makeRoutine({
+        A: {
+          label: "Day A",
+          entries: [
+            makeExerciseEntry("A", 0, "barbell-back-squat", [STANDARD_BLOCK]),
+          ],
+        },
+      });
+      await db.routines.add(routine);
+      const sessionData = await startSessionWithCatalog(db, routine, "A");
+      const { logSet } = await import("@/services/set-service");
+      await logSet(db, sessionData.sessionExercises[0]!.id, 0, 0, {
+        performedWeightKg: 100,
+        performedReps: 10,
+        performedDurationSec: null,
+        performedDistanceM: null,
+      });
+      await finishSession(db, sessionData.session.id);
+
+      await deleteSession(db, sessionData.session.id);
+
+      expect(await db.sessions.count()).toBe(0);
+      expect(await db.sessionExercises.count()).toBe(0);
+      expect(await db.loggedSets.count()).toBe(0);
+    });
+
+    it("does NOT roll back rotation", async () => {
+      const { deleteSession } = await import("@/services/session-service");
+      const routine = makeRoutine({
+        A: { label: "Day A", entries: [] },
+        B: { label: "Day B", entries: [] },
+      });
+      await db.routines.add(routine);
+      const sessionData = await startSessionWithCatalog(db, routine, "A");
+      await finishSession(db, sessionData.session.id);
+      // finishSession advanced rotation to B.
+      expect((await db.routines.get("r1"))!.nextDayId).toBe("B");
+
+      await deleteSession(db, sessionData.session.id);
+
+      // Rotation stays at B — delete does not un-advance.
+      expect((await db.routines.get("r1"))!.nextDayId).toBe("B");
+    });
+
+    it("throws when the session is active", async () => {
+      const { deleteSession } = await import("@/services/session-service");
+      const routine = makeRoutine({
+        A: { label: "Day A", entries: [] },
+      });
+      await db.routines.add(routine);
+      const sessionData = await startSessionWithCatalog(db, routine, "A");
+      await expect(
+        deleteSession(db, sessionData.session.id)
+      ).rejects.toThrow(/active session/i);
+    });
+
+    it("throws when the session does not exist", async () => {
+      const { deleteSession } = await import("@/services/session-service");
+      await expect(deleteSession(db, "nonexistent")).rejects.toThrow(
+        'Session "nonexistent" not found'
+      );
+    });
+
+    it("leaves other finished sessions untouched", async () => {
+      const { deleteSession } = await import("@/services/session-service");
+      const routine = makeRoutine({
+        A: { label: "Day A", entries: [] },
+      });
+      await db.routines.add(routine);
+      const first = await startSessionWithCatalog(db, routine, "A");
+      await finishSession(db, first.session.id);
+      const second = await startSessionWithCatalog(db, routine, "A");
+      await finishSession(db, second.session.id);
+
+      await deleteSession(db, first.session.id);
+
+      expect(await db.sessions.get(first.session.id)).toBeUndefined();
+      expect(await db.sessions.get(second.session.id)).toBeDefined();
+    });
+  });
+
+  // =====================================================================
   // finishSession
   // =====================================================================
 

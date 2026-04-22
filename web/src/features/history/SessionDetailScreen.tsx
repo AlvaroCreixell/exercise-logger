@@ -1,12 +1,16 @@
 import { useState } from "react";
-import { useParams } from "react-router";
+import { useNavigate, useParams } from "react-router";
+import { toast } from "sonner";
 import { useSessionDetail } from "@/shared/hooks/useSessionDetail";
 import { useSettings } from "@/shared/hooks/useSettings";
 import { useExerciseHistory } from "@/shared/hooks/useExerciseHistory";
 import { db } from "@/db/database";
 import { editSet, deleteSet } from "@/services/set-service";
+import { deleteSession } from "@/services/session-service";
 import { SetLogSheet } from "@/features/workout/SetLogSheet";
 import { SupersetGroup } from "@/features/workout/SupersetGroup";
+import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
+import { Button } from "@/shared/ui/button";
 import { getEffectiveUnit } from "@/domain/unit-helpers";
 import { computeSessionVolumeKg } from "./lib/sessionStats";
 import { SessionDetailHeader } from "./SessionDetailHeader";
@@ -18,12 +22,14 @@ export default function SessionDetailScreen() {
   const { sessionId } = useParams<{ sessionId: string }>();
   const detail = useSessionDetail(sessionId);
   const settings = useSettings();
+  const navigate = useNavigate();
 
   const [sheetOpen, setSheetOpen] = useState(false);
   const [sheetExercise, setSheetExercise] = useState<SessionExercise | null>(null);
   const [sheetBlockIndex, setSheetBlockIndex] = useState(0);
   const [sheetSetIndex, setSheetSetIndex] = useState(0);
   const [sheetExistingSet, setSheetExistingSet] = useState<LoggedSet | undefined>();
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   if (!settings) return null;
   if (detail === undefined) return null;
@@ -67,6 +73,19 @@ export default function SessionDetailScreen() {
   async function handleDeleteSet() {
     if (sheetExistingSet) {
       await deleteSet(db, sheetExistingSet.id);
+    }
+  }
+
+  async function handleDeleteSession() {
+    if (!sessionId) return;
+    try {
+      await deleteSession(db, sessionId);
+      toast.success("Workout deleted");
+      navigate("/history", { replace: true });
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Failed to delete workout"
+      );
     }
   }
 
@@ -162,6 +181,16 @@ export default function SessionDetailScreen() {
         })}
       </div>
 
+      <div className="pt-4">
+        <Button
+          variant="outline"
+          onClick={() => setDeleteOpen(true)}
+          className="w-full text-destructive hover:bg-destructive/5 hover:text-destructive"
+        >
+          Delete workout
+        </Button>
+      </div>
+
       {sheetExercise && (
         <SetLogSheetWithHistoryForDetail
           open={sheetOpen}
@@ -176,6 +205,18 @@ export default function SessionDetailScreen() {
           onDelete={sheetExistingSet ? handleDeleteSet : undefined}
         />
       )}
+
+      <ConfirmDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        title="Delete this workout?"
+        description="All sets logged in this session will be permanently erased. History totals will update. This can't be undone."
+        confirmText="Delete"
+        onConfirm={handleDeleteSession}
+        variant="destructive"
+        doubleConfirm
+        doubleConfirmText="Tap again to confirm"
+      />
     </div>
   );
 }
