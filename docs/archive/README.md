@@ -55,7 +55,7 @@ Chronological. Each was written against a design spec and executed task-by-task.
 **Audits (late March)**
 - `2026-03-30-plan-audit-CLAUDE.md` — Claude auditing the plans.
 - `2026-03-30-plan-audit-CODEX.md` — Codex auditing the same plans.
-- `2026-03-30-plan-errata.md` — 44 errata items applied from both audits.
+- `2026-03-30-plan-errata.md` — 48 errata items applied from both audits.
 
 **UI rewrite (April)**
 - `2026-04-06-ui-deletion-restructure.md` — planned deletion of the v1 UI.
