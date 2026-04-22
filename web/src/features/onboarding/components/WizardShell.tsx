@@ -45,6 +45,7 @@ export function WizardShell({
       <div className="flex items-center gap-3">
         <div
           role="progressbar"
+          aria-label="Questionnaire progress"
           aria-valuemin={1}
           aria-valuemax={totalSteps}
           aria-valuenow={stepIndex + 1}
@@ -67,7 +68,7 @@ export function WizardShell({
 
       {/* Eyebrow + hero + subtitle */}
       <div className="flex flex-col gap-2">
-        <div className="text-eyebrow text-ink-3">
+        <div className="text-eyebrow text-ink-2">
           STEP {stepIndex + 1} OF {totalSteps} · {category.toUpperCase()}
         </div>
         <h1
