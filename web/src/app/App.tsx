@@ -28,6 +28,12 @@ const SettingsScreen = lazy(() => import("@/features/settings/SettingsScreen"));
 const RoutineImportScreen = lazy(
   () => import("@/features/settings/RoutineImportScreen"),
 );
+const OnboardingWelcomeScreen = lazy(
+  () => import("@/features/onboarding/OnboardingWelcomeScreen"),
+);
+const QuestionnaireScreen = lazy(
+  () => import("@/features/onboarding/QuestionnaireScreen"),
+);
 
 const tabs = [
   { to: "/", label: "Today", icon: Grid },
@@ -145,6 +151,11 @@ function AppRoutes() {
           />
           <Route path="/settings" element={<SettingsScreen />} />
           <Route path="/settings/import" element={<RoutineImportScreen />} />
+          <Route path="/onboarding" element={<OnboardingWelcomeScreen />} />
+          <Route
+            path="/onboarding/questionnaire"
+            element={<QuestionnaireScreen />}
+          />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>
