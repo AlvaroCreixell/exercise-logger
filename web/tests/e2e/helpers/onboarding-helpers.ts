@@ -133,6 +133,33 @@ export async function seedSkippedUser(page: Page): Promise<void> {
 }
 
 /**
+ * Post-page.goto helper for tests that want to skip past the first-run
+ * gate and land on Today. If the welcome screen is currently visible,
+ * tap "Maybe later" and wait until Today (or at least any non-welcome
+ * content) has rendered. If the welcome screen isn't visible, this is a
+ * no-op. Safe to call in every non-onboarding test's setup.
+ */
+export async function skipOnboardingIfShown(page: Page): Promise<void> {
+  const welcomeHeading = page.getByRole("heading", {
+    name: /What should we call you/i,
+  });
+  // Wait for the app shell to finish initializing — either Loading goes away
+  // and welcome appears, or Today renders directly (already skipped/completed).
+  await page
+    .getByText("Loading...")
+    .waitFor({ state: "hidden", timeout: 10_000 })
+    .catch(() => {
+      /* Loading may never have been visible */
+    });
+  if (await welcomeHeading.isVisible({ timeout: 5_000 }).catch(() => false)) {
+    await page.getByRole("button", { name: /maybe later/i }).click();
+    // Wait until the welcome screen is gone. The guard should redirect to /
+    // once the skip flag propagates through useLiveQuery.
+    await welcomeHeading.waitFor({ state: "hidden", timeout: 10_000 });
+  }
+}
+
+/**
  * Seed a completed prompt directly so Today's banner appears and
  * /onboarding/handoff lands on Stage 2 on reload.
  */
