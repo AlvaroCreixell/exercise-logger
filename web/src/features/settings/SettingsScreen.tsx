@@ -6,6 +6,8 @@ import { useActiveSession } from "@/shared/hooks/useActiveSession";
 import { useInstallPrompt } from "@/shared/hooks/useInstallPrompt";
 import { db } from "@/db/database";
 import { setUnits, deleteRoutine, setUserName } from "@/services/settings-service";
+import { clearLastPrompt } from "@/services/onboarding-service";
+import { LastPromptCard } from "@/features/onboarding/components/LastPromptCard";
 import { Input } from "@/shared/ui/input";
 import { Button } from "@/shared/ui/button";
 import { cn } from "@/shared/lib/utils";
@@ -42,6 +44,7 @@ export default function SettingsScreen() {
   const [importErrors, setImportErrors] = useState<string[]>([]);
   const [editingName, setEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState("");
+  const [newRoutineConfirmOpen, setNewRoutineConfirmOpen] = useState(false);
 
   if (!settings || routines === undefined) return null;
 
@@ -171,6 +174,22 @@ export default function SettingsScreen() {
           onDelete={() => setDeleteActiveOpen(true)}
           deleteDisabled={hasActive}
         />
+        <Card className="py-0">
+          <RowLink
+            label="✨ Create a personalized routine"
+            sublabel="Answer a short questionnaire."
+            onClick={() => {
+              if (settings.lastGeneratedPrompt !== null) {
+                setNewRoutineConfirmOpen(true);
+              } else {
+                navigate("/onboarding/questionnaire");
+              }
+            }}
+          />
+        </Card>
+        {settings.lastGeneratedPrompt !== null && (
+          <LastPromptCard settings={settings} />
+        )}
         {otherRoutines.length > 0 && (
           <RoutineList
             routines={otherRoutines}
@@ -269,6 +288,18 @@ export default function SettingsScreen() {
         variant="destructive"
         doubleConfirm
         doubleConfirmText="Tap again to confirm"
+      />
+      <ConfirmDialog
+        open={newRoutineConfirmOpen}
+        onOpenChange={setNewRoutineConfirmOpen}
+        title="Start a new routine?"
+        description="You have a saved prompt from before. Starting over will discard it. (Tap 'Paste YAML' on the saved-prompt card to continue with the previous prompt.)"
+        confirmText="Start over"
+        onConfirm={async () => {
+          await clearLastPrompt(db);
+          navigate("/onboarding/questionnaire");
+        }}
+        variant="destructive"
       />
       <ConfirmDialog
         open={deleteActiveOpen}

@@ -54,4 +54,14 @@ describe("SettingsScreen Profile section", () => {
       expect(s?.userName).toBe("Alvaro");
     });
   });
+
+  it("'Create a personalized routine' row navigates to the questionnaire", async () => {
+    await seed();
+    const user = userEvent.setup();
+    render(<WithRouter />);
+    await user.click(
+      await screen.findByRole("button", { name: /create a personalized routine/i })
+    );
+    expect(await screen.findByText("QUESTIONNAIRE")).toBeInTheDocument();
+  });
 });
