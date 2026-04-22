@@ -81,4 +81,32 @@ describe("AppRoutes first-run gate", () => {
       ).not.toBeInTheDocument();
     });
   });
+
+  it("skipped user at /onboarding redirects to /", async () => {
+    await seedSettings({ onboardingSkippedAt: new Date().toISOString() });
+    render(
+      <MemoryRouter initialEntries={["/onboarding"]}>
+        <AppRoutes />
+      </MemoryRouter>
+    );
+    await waitFor(() => {
+      expect(
+        screen.queryByRole("heading", { name: /what should we call you/i })
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  it("completed user at /onboarding redirects to /", async () => {
+    await seedSettings({ onboardingCompletedAt: new Date().toISOString() });
+    render(
+      <MemoryRouter initialEntries={["/onboarding"]}>
+        <AppRoutes />
+      </MemoryRouter>
+    );
+    await waitFor(() => {
+      expect(
+        screen.queryByRole("heading", { name: /what should we call you/i })
+      ).not.toBeInTheDocument();
+    });
+  });
 });

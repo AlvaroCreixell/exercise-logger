@@ -151,10 +151,15 @@ export function AppRoutes() {
   ) {
     return <Navigate to="/onboarding" replace />;
   }
-  // Post-completion guard on /onboarding.
+  // Post-onboarding guard on /onboarding: a user who has completed OR skipped
+  // onboarding should never see the welcome screen again. This also breaks
+  // the live-query race after "Maybe later" — settings write completes
+  // asynchronously, but once the flag eventually propagates this guard
+  // redirects the user to Today.
   if (
     location.pathname === "/onboarding" &&
-    settings.onboardingCompletedAt !== null
+    (settings.onboardingCompletedAt !== null ||
+      settings.onboardingSkippedAt !== null)
   ) {
     return <Navigate to="/" replace />;
   }
