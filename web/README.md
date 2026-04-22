@@ -32,6 +32,7 @@ npm run dev         # Dev server at http://localhost:5173
 | `src/shared/`| Cross-feature hooks, UI primitives, utilities    |
 | `src/features/` | Feature modules (today, workout, history, settings) |
 | `src/data/`  | Embedded exercise catalog (CSV)                  |
+| `src/test/`  | Vitest setup (`setup.ts`)                        |
 
 ## Conventions
 
