@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter, Route, Routes } from "react-router";
+import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 import QuestionnaireScreen from "@/features/onboarding/QuestionnaireScreen";
 import {
   STORAGE_KEY,
@@ -17,6 +17,16 @@ function WithRouter({ initialPath = "/onboarding/questionnaire" }: { initialPath
         <Route path="/onboarding/handoff" element={<div>HANDOFF</div>} />
       </Routes>
     </MemoryRouter>
+  );
+}
+
+function LocationReporter() {
+  const loc = useLocation();
+  const state = loc.state as { justCompleted?: boolean } | null;
+  return (
+    <div data-testid="loc-state">
+      justCompleted:{String(state?.justCompleted === true)}
+    </div>
   );
 }
 
@@ -97,5 +107,32 @@ describe("QuestionnaireScreen", () => {
     await user.click(screen.getByLabelText("Yes"));
     expect(await screen.findByText("HANDOFF")).toBeInTheDocument();
     expect(sessionStorage.getItem(STORAGE_KEY)).not.toBeNull();
+  });
+
+  it("step-11 Next navigates with state.justCompleted === true", async () => {
+    sessionStorage.clear();
+    const { saveWizardState } = await import(
+      "@/features/onboarding/lib/session-storage"
+    );
+    saveWizardState({ stepIndex: 10, answers: {} });
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter initialEntries={["/onboarding/questionnaire"]}>
+        <Routes>
+          <Route
+            path="/onboarding/questionnaire"
+            element={<QuestionnaireScreen />}
+          />
+          <Route
+            path="/onboarding/handoff"
+            element={<LocationReporter />}
+          />
+        </Routes>
+      </MemoryRouter>
+    );
+    await user.click(await screen.findByLabelText("Yes"));
+    expect(await screen.findByTestId("loc-state")).toHaveTextContent(
+      "justCompleted:true"
+    );
   });
 });

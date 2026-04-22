@@ -34,6 +34,9 @@ const OnboardingWelcomeScreen = lazy(
 const QuestionnaireScreen = lazy(
   () => import("@/features/onboarding/QuestionnaireScreen"),
 );
+const HandoffScreen = lazy(
+  () => import("@/features/onboarding/HandoffScreen"),
+);
 
 const tabs = [
   { to: "/", label: "Today", icon: Grid },
@@ -156,6 +159,7 @@ function AppRoutes() {
             path="/onboarding/questionnaire"
             element={<QuestionnaireScreen />}
           />
+          <Route path="/onboarding/handoff" element={<HandoffScreen />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>

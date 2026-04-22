@@ -73,7 +73,7 @@ export default function QuestionnaireScreen() {
 
   const onNext = () => {
     if (state.stepIndex >= TOTAL_STEPS - 1) {
-      navigate("/onboarding/handoff");
+      navigate("/onboarding/handoff", { state: { justCompleted: true } });
       return;
     }
     dispatch({ type: "next" });
