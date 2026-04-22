@@ -22,7 +22,7 @@ export function OnboardingBanner({ onDismiss }: OnboardingBannerProps) {
         type="button"
         aria-label="Dismiss banner"
         onClick={onDismiss}
-        className="flex size-6 items-center justify-center rounded-full text-ink-3 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage/40"
+        className="flex size-6 items-center justify-center rounded-full text-ink-2 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage/40"
       >
         <span aria-hidden="true">×</span>
       </button>

@@ -16,7 +16,7 @@ const cardBase =
 const cardSelected = "bg-ink text-paper border-ink";
 const titleCls = "text-sm font-medium";
 const descSelected = "text-xs text-paper/75";
-const descUnselected = "text-xs text-ink-3";
+const descUnselected = "text-xs text-ink-2";
 
 export function ChipWithDescription({
   name,

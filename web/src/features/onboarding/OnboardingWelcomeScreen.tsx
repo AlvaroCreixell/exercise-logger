@@ -36,7 +36,7 @@ export default function OnboardingWelcomeScreen() {
   return (
     <div className="flex min-h-full flex-col gap-6 px-6 py-8">
       <div className="flex flex-col gap-2">
-        <div className="text-eyebrow text-ink-3">WELCOME</div>
+        <div className="text-eyebrow text-ink-2">WELCOME</div>
         <h1 className="text-hero-serif italic text-ink">
           What should we call you?
         </h1>

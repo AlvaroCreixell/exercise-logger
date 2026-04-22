@@ -60,7 +60,7 @@ export function WizardShell({
           type="button"
           aria-label="Exit questionnaire"
           onClick={() => setConfirmOpen(true)}
-          className="text-ink-3 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage/40 rounded-full p-1"
+          className="text-ink-2 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage/40 rounded-full p-1"
         >
           <span aria-hidden="true">×</span>
         </button>

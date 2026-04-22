@@ -45,7 +45,7 @@ export function FavoritesAvoidStep({
     >
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-1">
-          <span className="text-eyebrow text-ink-3">LOVE (MUST-INCLUDE)</span>
+          <span className="text-eyebrow text-ink-2">LOVE (MUST-INCLUDE)</span>
           <StepTextArea
             ariaLabel="Love"
             value={favorites}
@@ -56,7 +56,7 @@ export function FavoritesAvoidStep({
           />
         </div>
         <div className="flex flex-col gap-1">
-          <span className="text-eyebrow text-ink-3">AVOID (SKIP THESE)</span>
+          <span className="text-eyebrow text-ink-2">AVOID (SKIP THESE)</span>
           <StepTextArea
             ariaLabel="Avoid"
             value={avoid}

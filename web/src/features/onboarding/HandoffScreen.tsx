@@ -154,12 +154,12 @@ export default function HandoffScreen() {
       <>
         <div className="flex min-h-full flex-col gap-5 px-6 py-8">
           <div className="flex items-start justify-between">
-            <p className="text-eyebrow text-ink-3">READY</p>
+            <p className="text-eyebrow text-ink-2">READY</p>
             <button
               type="button"
               aria-label="Exit"
               onClick={() => setExitOpen(true)}
-              className="text-ink-3 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage/40 rounded-full p-1"
+              className="text-ink-2 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage/40 rounded-full p-1"
             >
               <span aria-hidden="true">×</span>
             </button>
@@ -199,7 +199,7 @@ export default function HandoffScreen() {
           <button
             type="button"
             onClick={() => setStartOverOpen(true)}
-            className="self-start text-sm text-ink-3 underline underline-offset-2 hover:text-ink"
+            className="self-start text-sm text-ink-2 underline underline-offset-2 hover:text-ink"
           >
             Start over
           </button>
@@ -287,7 +287,7 @@ function Stage2({
   return (
     <div className="flex min-h-full flex-col gap-5 px-6 py-8">
       <div className="flex flex-col gap-2">
-        <p className="text-eyebrow text-ink-3">YOUR TURN</p>
+        <p className="text-eyebrow text-ink-2">YOUR TURN</p>
         <h1 className="text-hero-serif italic text-ink">
           Paste your routine when you're back.
         </h1>
@@ -332,7 +332,7 @@ function Stage2({
       <button
         type="button"
         onClick={onStartOver}
-        className="self-start text-sm text-ink-3 underline underline-offset-2 hover:text-ink"
+        className="self-start text-sm text-ink-2 underline underline-offset-2 hover:text-ink"
       >
         Start over
       </button>

@@ -48,7 +48,7 @@ export function StepTextArea({
         )}
       />
       {showCounter && (
-        <div className="self-end text-meta text-ink-3">
+        <div className="self-end text-meta text-ink-2">
           {value.length} / {maxLength}
         </div>
       )}
