@@ -89,6 +89,7 @@ export function ChipRow({
           <button
             key={opt.value}
             type="button"
+            aria-label={opt.label}
             aria-pressed={isSelected}
             onClick={() => handle(opt.value)}
             className={cn(
