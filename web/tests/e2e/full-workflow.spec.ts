@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { skipOnboardingIfShown } from "./helpers/onboarding-helpers";
 
 // ERRATA P7-D: Use Playwright's configured baseURL instead of hardcoding port.
 // page.goto("/") uses the baseURL from playwright.config.ts.
@@ -8,6 +9,7 @@ test.describe("Exercise Logger E2E Smoke Test", () => {
     await page.goto("/");
     // Wait for IndexedDB initialization to complete (Loading... disappears)
     await expect(page.getByText("Loading...")).toBeHidden({ timeout: 10000 });
+    await skipOnboardingIfShown(page);
   });
 
   test("app loads and shows the Today screen", async ({ page }) => {

@@ -24,6 +24,20 @@ describe("ExerciseLoggerDB", () => {
     expect(db.settings).toBeDefined();
   });
 
+  it("DEFAULT_SETTINGS includes all 6 onboarding fields defaulting to null", () => {
+    expect(DEFAULT_SETTINGS).toEqual({
+      id: "user",
+      activeRoutineId: null,
+      units: "kg",
+      userName: null,
+      onboardingCompletedAt: null,
+      onboardingSkippedAt: null,
+      lastGeneratedPrompt: null,
+      lastGeneratedPromptAt: null,
+      onboardingBannerDismissedAt: null,
+    });
+  });
+
   it("stores and retrieves an exercise", async () => {
     const exercise: Exercise = {
       id: "barbell-back-squat",

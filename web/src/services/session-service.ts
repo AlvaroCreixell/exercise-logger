@@ -397,6 +397,58 @@ export async function discardSession(
   );
 }
 
+/**
+ * Permanently delete a FINISHED session and all of its sessionExercises +
+ * loggedSets. Sibling of `discardSession` (which only works on active
+ * sessions and does not advance rotation). This one is the "erase from
+ * history" path — unlike discard, it cannot run on an active session.
+ *
+ * Rotation note: `finishSession` already advanced `nextDayId` when this
+ * session was finished. Deleting the session does NOT roll rotation back
+ * — `nextDayId` represents "what day comes next" and historical deletes
+ * don't change the user's forward commitments.
+ */
+export async function deleteSession(
+  db: ExerciseLoggerDB,
+  sessionId: string
+): Promise<void> {
+  await db.transaction(
+    "rw",
+    db.sessions,
+    db.sessionExercises,
+    db.loggedSets,
+    async () => {
+      const session = await db.sessions.get(sessionId);
+      if (!session) {
+        throw new Error(`Session "${sessionId}" not found`);
+      }
+      if (session.status === "active") {
+        throw new Error(
+          `Cannot delete an active session "${sessionId}". Discard it first.`
+        );
+      }
+
+      const loggedSetIds = await db.loggedSets
+        .where("sessionId")
+        .equals(sessionId)
+        .primaryKeys();
+      if (loggedSetIds.length > 0) {
+        await db.loggedSets.bulkDelete(loggedSetIds);
+      }
+
+      const seIds = await db.sessionExercises
+        .where("sessionId")
+        .equals(sessionId)
+        .primaryKeys();
+      if (seIds.length > 0) {
+        await db.sessionExercises.bulkDelete(seIds);
+      }
+
+      await db.sessions.delete(sessionId);
+    }
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Finish session
 // ---------------------------------------------------------------------------

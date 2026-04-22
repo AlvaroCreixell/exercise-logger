@@ -7,6 +7,7 @@ import type {
   LoggedSet,
   Settings,
 } from "@/domain/types";
+import { nowISO } from "@/domain/timestamp";
 
 export class ExerciseLoggerDB extends Dexie {
   exercises!: EntityTable<Exercise, "id">;
@@ -49,6 +50,40 @@ export class ExerciseLoggerDB extends Dexie {
         }
       });
     });
+
+    // Version 3: Add 6 onboarding-related fields to the settings record.
+    // None of the new fields are indexed, so the `.stores(...)` signature is
+    // identical to v2. (Dexie requires a stores() call even when nothing
+    // changes, because .upgrade() attaches to the version.)
+    //
+    // D3: existing users are silently marked as *skipped* so they don't see
+    // the first-run gate. New v3 installs get all-null defaults via
+    // DEFAULT_SETTINGS / initializeSettings().
+    //
+    // Compound-index + null trap: these six fields are unindexed, so storing
+    // null here is safe. If a future schema adds any of them to a compound
+    // index, switch to a sentinel (e.g. "") the way instanceLabel does.
+    this.version(3).stores({
+      exercises: "id",
+      routines: "id",
+      sessions: "id, status, [routineId+startedAt]",
+      sessionExercises: "id, sessionId, [sessionId+orderIndex]",
+      loggedSets:
+        "id, sessionId, [sessionExerciseId+blockIndex+setIndex], [exerciseId+loggedAt], [exerciseId+instanceLabel+blockSignature+loggedAt]",
+      settings: "id",
+    }).upgrade(async (trans) => {
+      const existing = await trans.table("settings").get("user");
+      if (existing) {
+        await trans.table("settings").update("user", {
+          userName: null,
+          onboardingCompletedAt: null,
+          onboardingSkippedAt: nowISO(),
+          lastGeneratedPrompt: null,
+          lastGeneratedPromptAt: null,
+          onboardingBannerDismissedAt: null,
+        });
+      }
+    });
   }
 }
 
@@ -57,6 +92,12 @@ export const DEFAULT_SETTINGS: Settings = {
   id: "user",
   activeRoutineId: null,
   units: "kg",
+  userName: null,
+  onboardingCompletedAt: null,
+  onboardingSkippedAt: null,
+  lastGeneratedPrompt: null,
+  lastGeneratedPromptAt: null,
+  onboardingBannerDismissedAt: null,
 };
 
 /**

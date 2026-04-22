@@ -40,6 +40,20 @@ Pure business logic functions. Every function takes `db: ExerciseLoggerDB` as it
 - `deleteRoutine(db, routineId)` — Blocked during active session. Auto-activates earliest remaining routine by `importedAt` ASC. All checks inside transaction to prevent TOCTOU races.
 - `setUnitOverride(db, sessionExerciseId, unitOverride)` — Set per-exercise unit override (`UnitSystem | null`) on a `SessionExercise`.
 
+### `onboarding-service.ts` — Onboarding state transitions
+
+All five functions are thin `db.settings.update("user", …)` calls. No transactions — the single-record updates don't interact with sessions, so no active-session guard is needed.
+
+- `markOnboardingCompleted(db)` — sets `onboardingCompletedAt = nowISO()`. Called after a successful YAML import on the handoff screen.
+- `markOnboardingSkipped(db)` — sets `onboardingSkippedAt = nowISO()`. Called by "Maybe later" on the welcome screen.
+- `saveGeneratedPrompt(db, prompt)` — sets `lastGeneratedPrompt`, `lastGeneratedPromptAt = nowISO()`, and `onboardingBannerDismissedAt = null`. Called by the handoff screen's Stage-1 button. The banner-reset lives here — do not duplicate it in the HandoffScreen.
+- `clearLastPrompt(db)` — nulls `lastGeneratedPrompt` and `lastGeneratedPromptAt`. Does NOT touch `onboardingBannerDismissedAt`.
+- `dismissOnboardingBanner(db)` — sets `onboardingBannerDismissedAt = nowISO()`.
+
+Also extended in this feature:
+
+- `settings-service.setUserName(db, name)` — trims, truncates to 40 codepoints (surrogate-safe), accepts `null` to clear.
+
 ### `backup-service.ts` — Export/import/clear
 
 - `exportBackup(db)` → BackupEnvelope — Excludes exercises (re-seeded from CSV). Allowed with active session.

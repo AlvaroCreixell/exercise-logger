@@ -1,13 +1,16 @@
 import { test, expect } from "@playwright/test";
+import { skipOnboardingIfShown } from "./helpers/onboarding-helpers";
 
 test("app loads and shows the Today screen", async ({ page }) => {
   await page.goto("/");
+  await skipOnboardingIfShown(page);
   // Fresh app auto-seeds the bundled routine — Today shows the routine with Start Workout
   await expect(page.getByText(/start workout/i)).toBeVisible({ timeout: 10000 });
 });
 
 test("bottom nav has all four tabs", async ({ page }) => {
   await page.goto("/");
+  await skipOnboardingIfShown(page);
   const nav = page.getByRole("navigation", { name: "Main navigation" });
   await expect(nav.getByText("Today")).toBeVisible();
   await expect(nav.getByText("Workout")).toBeVisible();
@@ -17,6 +20,7 @@ test("bottom nav has all four tabs", async ({ page }) => {
 
 test("can navigate between all tabs", async ({ page }) => {
   await page.goto("/");
+  await skipOnboardingIfShown(page);
 
   await page.getByRole("link", { name: "Workout" }).click();
   await expect(
@@ -39,6 +43,7 @@ test("can navigate between all tabs", async ({ page }) => {
 
 test("Service Worker activates and the app remains interactive after network goes offline", async ({ page, context }) => {
   await page.goto("/");
+  await skipOnboardingIfShown(page);
   // Wait for the SW to activate and claim this page.
   await page.waitForFunction(async () => {
     const reg = await navigator.serviceWorker.getRegistration();

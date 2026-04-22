@@ -8,6 +8,7 @@ import {
   deleteRoutine,
   setUnits,
   setUnitOverride,
+  setUserName,
 } from "@/services/settings-service";
 import type { Routine, Session, SessionExercise } from "@/domain/types";
 
@@ -268,6 +269,41 @@ describe("settings-service", () => {
 
       const updated = await db.sessionExercises.get("se2");
       expect(updated!.unitOverride).toBeNull();
+    });
+  });
+
+  describe("setUserName", () => {
+    it("stores a trimmed non-null name", async () => {
+      await setUserName(db, "  Alvaro  ");
+      const s = await getSettings(db);
+      expect(s.userName).toBe("Alvaro");
+    });
+
+    it("truncates names longer than 40 chars (does not throw)", async () => {
+      const long = "x".repeat(100);
+      await setUserName(db, long);
+      const s = await getSettings(db);
+      expect(s.userName).toBe("x".repeat(40));
+      expect(s.userName?.length).toBe(40);
+    });
+
+    it("handles unicode without splitting surrogate pairs", async () => {
+      // 60 weightlifter emoji (each one is a surrogate pair, 2 UTF-16 code units).
+      // A naive .slice(0, 40) would cut after 20 emoji and leave a lone
+      // high-surrogate. Array.from iterates by codepoint, so we keep 40 full
+      // emoji.
+      const name = "🏋".repeat(60);
+      await setUserName(db, name);
+      const s = await getSettings(db);
+      expect(Array.from(s.userName ?? "").length).toBe(40);
+      expect(s.userName).toBe("🏋".repeat(40));
+    });
+
+    it("accepts null to clear the name", async () => {
+      await setUserName(db, "Alvaro");
+      await setUserName(db, null);
+      const s = await getSettings(db);
+      expect(s.userName).toBeNull();
     });
   });
 });

@@ -9,10 +9,8 @@ import {
   type ValidationError,
 } from "@/services/routine-service";
 import { YamlErrorList } from "./YamlErrorList";
+import { GPT_URL } from "@/shared/lib/gpt-url";
 import { toast } from "sonner";
-
-const GPT_URL =
-  "https://chatgpt.com/g/g-69d6e3c4c12881919a761d49dd32d373-ace-logger-routine-maker";
 
 export default function RoutineImportScreen() {
   const fileInputRef = useRef<HTMLInputElement>(null);

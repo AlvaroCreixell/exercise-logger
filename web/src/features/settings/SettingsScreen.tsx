@@ -5,7 +5,12 @@ import { useAllRoutines, useRoutine } from "@/shared/hooks/useRoutine";
 import { useActiveSession } from "@/shared/hooks/useActiveSession";
 import { useInstallPrompt } from "@/shared/hooks/useInstallPrompt";
 import { db } from "@/db/database";
-import { setUnits, deleteRoutine } from "@/services/settings-service";
+import { setUnits, deleteRoutine, setUserName } from "@/services/settings-service";
+import { clearLastPrompt } from "@/services/onboarding-service";
+import { LastPromptCard } from "@/features/onboarding/components/LastPromptCard";
+import { Input } from "@/shared/ui/input";
+import { Button } from "@/shared/ui/button";
+import { cn } from "@/shared/lib/utils";
 import {
   exportBackup,
   downloadBackupFile,
@@ -37,6 +42,9 @@ export default function SettingsScreen() {
   const [clearOpen, setClearOpen] = useState(false);
   const [deleteActiveOpen, setDeleteActiveOpen] = useState(false);
   const [importErrors, setImportErrors] = useState<string[]>([]);
+  const [editingName, setEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState("");
+  const [newRoutineConfirmOpen, setNewRoutineConfirmOpen] = useState(false);
 
   if (!settings || routines === undefined) return null;
 
@@ -103,6 +111,61 @@ export default function SettingsScreen() {
         <h1 className="text-hero-serif italic text-foreground">Settings</h1>
       </div>
 
+      {/* Profile */}
+      <div className="space-y-3">
+        <p className="text-eyebrow text-ink-3">Profile</p>
+        <Card className="py-0">
+          {!editingName ? (
+            <button
+              type="button"
+              onClick={() => {
+                setNameDraft(settings.userName ?? "");
+                setEditingName(true);
+              }}
+              className="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-sage-soft/40"
+            >
+              <span className="text-sm font-medium">Your name</span>
+              <span
+                className={cn(
+                  "text-sm",
+                  settings.userName === null && "italic text-ink-3"
+                )}
+              >
+                {settings.userName ?? "Not set"}
+              </span>
+            </button>
+          ) : (
+            <div className="flex flex-col gap-2 px-4 py-3">
+              <Input
+                aria-label="Name editor"
+                value={nameDraft}
+                onChange={(e) => setNameDraft(e.target.value)}
+                maxLength={40}
+                placeholder="Your name"
+                className="rounded-[var(--radius-card)] bg-paper"
+              />
+              <div className="flex gap-2 self-end">
+                <Button
+                  variant="outline"
+                  onClick={() => setEditingName(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={async () => {
+                    const trimmed = nameDraft.trim();
+                    await setUserName(db, trimmed === "" ? null : trimmed);
+                    setEditingName(false);
+                  }}
+                >
+                  Save
+                </Button>
+              </div>
+            </div>
+          )}
+        </Card>
+      </div>
+
       {/* Routines */}
       <div className="space-y-3">
         <p className="text-eyebrow text-ink-3">Routine</p>
@@ -111,6 +174,22 @@ export default function SettingsScreen() {
           onDelete={() => setDeleteActiveOpen(true)}
           deleteDisabled={hasActive}
         />
+        <Card className="py-0">
+          <RowLink
+            label="✨ Create a personalized routine"
+            sublabel="Answer a short questionnaire."
+            onClick={() => {
+              if (settings.lastGeneratedPrompt !== null) {
+                setNewRoutineConfirmOpen(true);
+              } else {
+                navigate("/onboarding/questionnaire");
+              }
+            }}
+          />
+        </Card>
+        {settings.lastGeneratedPrompt !== null && (
+          <LastPromptCard settings={settings} />
+        )}
         {otherRoutines.length > 0 && (
           <RoutineList
             routines={otherRoutines}
@@ -209,6 +288,18 @@ export default function SettingsScreen() {
         variant="destructive"
         doubleConfirm
         doubleConfirmText="Tap again to confirm"
+      />
+      <ConfirmDialog
+        open={newRoutineConfirmOpen}
+        onOpenChange={setNewRoutineConfirmOpen}
+        title="Start a new routine?"
+        description="You have a saved prompt from before. Starting over will discard it. (Tap 'Paste YAML' on the saved-prompt card to continue with the previous prompt.)"
+        confirmText="Start over"
+        onConfirm={async () => {
+          await clearLastPrompt(db);
+          navigate("/onboarding/questionnaire");
+        }}
+        variant="destructive"
       />
       <ConfirmDialog
         open={deleteActiveOpen}

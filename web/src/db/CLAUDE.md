@@ -19,6 +19,23 @@ settings:       "id"
 
 Adds `unitOverride: UnitSystem | null` to `sessionExercises`. No index change — the field is not indexed. Existing rows get `unitOverride = undefined` (treated as `null`, i.e. inherit global). Note: this is the Dexie DB schema version and is distinct from the backup envelope `schemaVersion` (which stays at 1).
 
+### Schema (version 3)
+
+Adds 6 nullable fields to the `settings` record for the first-run onboarding
+feature. No index change — all new fields are unindexed, so the
+compound-index null trap does not apply (see below).
+
+New fields on `Settings`:
+
+- `userName: string | null` — user's preferred name for the Today greeting.
+- `onboardingCompletedAt: string | null` — ISO timestamp, set on successful YAML import from the handoff screen.
+- `onboardingSkippedAt: string | null` — ISO timestamp, set by "Maybe later" on the welcome screen. **Existing v2 users are backfilled with `nowISO()` here** (Decision D3) so the first-run gate does not trigger for testers already using the app.
+- `lastGeneratedPrompt: string | null` — the last questionnaire-derived prompt, persisted on the handoff screen's Stage-1 button tap.
+- `lastGeneratedPromptAt: string | null` — ISO timestamp matching `lastGeneratedPrompt`.
+- `onboardingBannerDismissedAt: string | null` — ISO timestamp when the user dismissed the Today "Finish importing your routine" banner. Reset to null whenever a new prompt is saved.
+
+Defaults on fresh v3 installs: all six are `null` (via `DEFAULT_SETTINGS`).
+
 ### Key indexes and their consumers
 
 | Index | Used by | Purpose |

@@ -133,3 +133,25 @@ export async function setUnitOverride(
 ): Promise<void> {
   await db.sessionExercises.update(sessionExerciseId, { unitOverride });
 }
+
+/**
+ * Set the user's preferred name for the Today greeting.
+ *
+ * - Trims outer whitespace.
+ * - Truncates to 40 codepoints (matches the welcome-screen `maxLength={40}`
+ *   attribute). Uses `Array.from` to respect surrogate pairs so emoji are
+ *   not split mid-character.
+ * - `null` clears the field — used by "clear name" affordances in Settings.
+ */
+export async function setUserName(
+  db: ExerciseLoggerDB,
+  name: string | null
+): Promise<void> {
+  if (name === null) {
+    await db.settings.update("user", { userName: null });
+    return;
+  }
+  const trimmed = name.trim();
+  const truncated = Array.from(trimmed).slice(0, 40).join("");
+  await db.settings.update("user", { userName: truncated });
+}

@@ -1018,11 +1018,18 @@ export async function importBackup(
       if (sessionExercises.length > 0) await db.sessionExercises.bulkAdd(sessionExercises);
       if (loggedSets.length > 0) await db.loggedSets.bulkAdd(loggedSets);
       // Strip any legacy/unknown fields (e.g. `theme` from pre-v3 backups)
-      // by only persisting the current known Settings shape.
+      // by only persisting the current known Settings shape. Fields added in
+      // later schema versions that are absent from the backup become `null`.
       const cleanSettings: Settings = {
         id: settings.id,
         activeRoutineId: settings.activeRoutineId,
         units: settings.units,
+        userName: settings.userName ?? null,
+        onboardingCompletedAt: settings.onboardingCompletedAt ?? null,
+        onboardingSkippedAt: settings.onboardingSkippedAt ?? null,
+        lastGeneratedPrompt: settings.lastGeneratedPrompt ?? null,
+        lastGeneratedPromptAt: settings.lastGeneratedPromptAt ?? null,
+        onboardingBannerDismissedAt: settings.onboardingBannerDismissedAt ?? null,
       };
       await db.settings.put(cleanSettings);
     }

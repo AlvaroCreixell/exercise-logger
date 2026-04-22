@@ -13,6 +13,7 @@ import { Toaster } from "sonner";
 import { Grid, Dumbbell, Graph, Settings } from "@/shared/icons";
 import { useAppInit } from "@/shared/hooks/useAppInit";
 import { useRoutineLaunchQueue } from "@/shared/hooks/useRoutineLaunchQueue";
+import { useSettings } from "@/shared/hooks/useSettings";
 import { SWUpdatePrompt } from "./SWUpdatePrompt";
 
 const TodayScreen = lazy(() => import("@/features/today/TodayScreen"));
@@ -27,6 +28,15 @@ const ExerciseHistoryScreen = lazy(
 const SettingsScreen = lazy(() => import("@/features/settings/SettingsScreen"));
 const RoutineImportScreen = lazy(
   () => import("@/features/settings/RoutineImportScreen"),
+);
+const OnboardingWelcomeScreen = lazy(
+  () => import("@/features/onboarding/OnboardingWelcomeScreen"),
+);
+const QuestionnaireScreen = lazy(
+  () => import("@/features/onboarding/QuestionnaireScreen"),
+);
+const HandoffScreen = lazy(
+  () => import("@/features/onboarding/HandoffScreen"),
 );
 
 const tabs = [
@@ -113,9 +123,11 @@ function Shell() {
   );
 }
 
-function AppRoutes() {
+export function AppRoutes() {
   const { ready, error } = useAppInit();
   useRoutineLaunchQueue();
+  const settings = useSettings();
+  const location = useLocation();
 
   if (error) {
     return (
@@ -127,6 +139,37 @@ function AppRoutes() {
 
   if (!ready) {
     return <LoadingState fullscreen />;
+  }
+
+  if (!settings) return <LoadingState fullscreen />;
+
+  // First-run gate.
+  if (
+    location.pathname === "/" &&
+    settings.onboardingCompletedAt == null &&
+    settings.onboardingSkippedAt == null
+  ) {
+    return <Navigate to="/onboarding" replace />;
+  }
+  // Post-onboarding guard on /onboarding: a user who has completed OR skipped
+  // onboarding should never see the welcome screen again. This also breaks
+  // the live-query race after "Maybe later" — settings write completes
+  // asynchronously, but once the flag eventually propagates this guard
+  // redirects the user to Today.
+  if (
+    location.pathname === "/onboarding" &&
+    (settings.onboardingCompletedAt !== null ||
+      settings.onboardingSkippedAt !== null)
+  ) {
+    return <Navigate to="/" replace />;
+  }
+  // Handoff guard: no prompt AND no just-completed → back to questionnaire.
+  if (
+    location.pathname === "/onboarding/handoff" &&
+    settings.lastGeneratedPrompt === null &&
+    (location.state as { justCompleted?: boolean } | null)?.justCompleted !== true
+  ) {
+    return <Navigate to="/onboarding/questionnaire" replace />;
   }
 
   return (
@@ -145,6 +188,12 @@ function AppRoutes() {
           />
           <Route path="/settings" element={<SettingsScreen />} />
           <Route path="/settings/import" element={<RoutineImportScreen />} />
+          <Route path="/onboarding" element={<OnboardingWelcomeScreen />} />
+          <Route
+            path="/onboarding/questionnaire"
+            element={<QuestionnaireScreen />}
+          />
+          <Route path="/onboarding/handoff" element={<HandoffScreen />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>
