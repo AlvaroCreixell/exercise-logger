@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import "fake-indexeddb/auto";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
 import HandoffScreen from "@/features/onboarding/HandoffScreen";
@@ -293,5 +293,58 @@ describe("HandoffScreen — Stage 2", () => {
     expect(s?.lastGeneratedPrompt).toBe("SAVED");
     expect(s?.onboardingCompletedAt).toBeNull();
     await db2.close();
+  });
+});
+
+describe("HandoffScreen — exit and Start over", () => {
+  beforeEach(() => {
+    sessionStorage.clear();
+  });
+  afterEach(() => {
+    sessionStorage.clear();
+    vi.restoreAllMocks();
+  });
+
+  it("Stage 1 close button confirms, clears wizard state, and navigates home", async () => {
+    await seedSettings();
+    saveWizardState({ stepIndex: 10, answers: FULL_ANSWERS });
+    const user = userEvent.setup();
+    render(<WithRouter initialState={{ justCompleted: true }} />);
+    // Open the exit dialog.
+    await user.click(
+      await screen.findByRole("button", { name: /^exit$/i })
+    );
+    // Confirm "Exit".
+    const dialog = await screen.findByRole("alertdialog");
+    await user.click(
+      within(dialog).getByRole("button", { name: /^exit$/i })
+    );
+    expect(await screen.findByText("HOME")).toBeInTheDocument();
+    expect(sessionStorage.getItem(STORAGE_KEY)).toBeNull();
+  });
+
+  it("Start over on Stage 2 clears prompt and routes to the questionnaire", async () => {
+    await seedSettings({
+      lastGeneratedPrompt: "SAVED",
+      lastGeneratedPromptAt: new Date().toISOString(),
+    });
+    saveWizardState({ stepIndex: 10, answers: FULL_ANSWERS });
+    const user = userEvent.setup();
+    render(<WithRouter />);
+    // Open Start-over dialog.
+    await user.click(
+      await screen.findByRole("button", { name: /start over/i })
+    );
+    const dialog = await screen.findByRole("alertdialog");
+    await user.click(
+      within(dialog).getByRole("button", { name: /start over/i })
+    );
+    expect(await screen.findByText("QUESTIONNAIRE")).toBeInTheDocument();
+
+    const db2 = new ExerciseLoggerDB();
+    const s = await db2.settings.get("user");
+    expect(s?.lastGeneratedPrompt).toBeNull();
+    await db2.close();
+    expect(sessionStorage.getItem(STORAGE_KEY)).toBeNull();
   });
 });

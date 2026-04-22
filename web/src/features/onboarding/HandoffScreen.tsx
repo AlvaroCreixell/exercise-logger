@@ -3,7 +3,10 @@ import { useLocation, useNavigate } from "react-router";
 import { toast } from "sonner";
 import { db } from "@/db/database";
 import { useSettings } from "@/shared/hooks/useSettings";
-import { saveGeneratedPrompt } from "@/services/onboarding-service";
+import {
+  saveGeneratedPrompt,
+  clearLastPrompt,
+} from "@/services/onboarding-service";
 import { buildPrompt } from "@/features/onboarding/lib/prompt-builder";
 import {
   clearWizardState,
@@ -12,6 +15,7 @@ import {
 import { GPT_URL } from "@/shared/lib/gpt-url";
 import { Button } from "@/shared/ui/button";
 import { Textarea } from "@/shared/ui/textarea";
+import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
 import { nowISO } from "@/domain/timestamp";
 import {
   validateAndNormalizeRoutine,
@@ -34,6 +38,8 @@ export default function HandoffScreen() {
   const [busy, setBusy] = useState(false);
   const [showPrompt, setShowPrompt] = useState(false);
   const [popupBlocked, setPopupBlocked] = useState(false);
+  const [exitOpen, setExitOpen] = useState(false);
+  const [startOverOpen, setStartOverOpen] = useState(false);
 
   // Guard: redirect when no prompt saved AND no just-completed flag.
   // Skip once onboarding is completed — Stage 2 nulls the prompt on success
@@ -108,50 +114,120 @@ export default function HandoffScreen() {
     }
   }
 
+  function handleExit() {
+    clearWizardState();
+    navigate("/", { replace: true });
+  }
+
+  async function handleStartOver() {
+    if (settings && settings.lastGeneratedPrompt !== null) {
+      await clearLastPrompt(db);
+    }
+    clearWizardState();
+    navigate("/onboarding/questionnaire", { replace: true });
+  }
+
+  // Always-rendered dialogs — available in both Stage 1 and Stage 2.
+  const dialogs = (
+    <>
+      <ConfirmDialog
+        open={exitOpen}
+        onOpenChange={setExitOpen}
+        title="Exit?"
+        description="Your answers won't be saved."
+        confirmText="Exit"
+        onConfirm={handleExit}
+      />
+      <ConfirmDialog
+        open={startOverOpen}
+        onOpenChange={setStartOverOpen}
+        title="Start over?"
+        description="This clears your current answers."
+        confirmText="Start over"
+        onConfirm={handleStartOver}
+      />
+    </>
+  );
+
   if (stage === "stage1") {
     return (
-      <div className="flex min-h-full flex-col gap-5 px-6 py-8">
-        <div className="flex flex-col gap-2">
-          <p className="text-eyebrow text-ink-3">READY</p>
-          <h1 className="text-hero-serif italic text-ink">
-            Ready to build your routine?
-          </h1>
-          <p className="text-sm text-ink-2 leading-relaxed">
-            Tap below to copy your prompt and open the routine-maker GPT. Paste
-            it there, then switch back here with the YAML.
-          </p>
+      <>
+        <div className="flex min-h-full flex-col gap-5 px-6 py-8">
+          <div className="flex items-start justify-between">
+            <p className="text-eyebrow text-ink-3">READY</p>
+            <button
+              type="button"
+              aria-label="Exit"
+              onClick={() => setExitOpen(true)}
+              className="text-ink-3 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage/40 rounded-full p-1"
+            >
+              <span aria-hidden="true">×</span>
+            </button>
+          </div>
+          <div className="flex flex-col gap-2">
+            <h1 className="text-hero-serif italic text-ink">
+              Ready to build your routine?
+            </h1>
+            <p className="text-sm text-ink-2 leading-relaxed">
+              Tap below to copy your prompt and open the routine-maker GPT.
+              Paste it there, then switch back here with the YAML.
+            </p>
+          </div>
+
+          <Button onClick={handleStage1Button} disabled={busy}>
+            Copy prompt & open GPT →
+          </Button>
+
+          <button
+            type="button"
+            onClick={() => setShowPrompt((v) => !v)}
+            aria-pressed={showPrompt}
+            className="self-start text-sm text-ink-2 underline underline-offset-2 hover:text-ink"
+          >
+            {showPrompt ? "Hide prompt" : "Show prompt"}
+          </button>
+
+          {showPrompt && (
+            <Textarea
+              value={promptPreview}
+              readOnly
+              onFocus={(e) => e.currentTarget.select()}
+              className="min-h-48 font-mono text-xs bg-paper"
+            />
+          )}
+
+          <button
+            type="button"
+            onClick={() => setStartOverOpen(true)}
+            className="self-start text-sm text-ink-3 underline underline-offset-2 hover:text-ink"
+          >
+            Start over
+          </button>
         </div>
-
-        <Button onClick={handleStage1Button} disabled={busy}>
-          Copy prompt & open GPT →
-        </Button>
-
-        <button
-          type="button"
-          onClick={() => setShowPrompt((v) => !v)}
-          aria-pressed={showPrompt}
-          className="self-start text-sm text-ink-2 underline underline-offset-2 hover:text-ink"
-        >
-          {showPrompt ? "Hide prompt" : "Show prompt"}
-        </button>
-
-        {showPrompt && (
-          <Textarea
-            value={promptPreview}
-            readOnly
-            onFocus={(e) => e.currentTarget.select()}
-            className="min-h-48 font-mono text-xs bg-paper"
-          />
-        )}
-      </div>
+        {dialogs}
+      </>
     );
   }
 
   // Stage 2 — the paste form.
-  return <Stage2 popupBlocked={popupBlocked} />;
+  return (
+    <>
+      <Stage2
+        popupBlocked={popupBlocked}
+        onStartOver={() => setStartOverOpen(true)}
+      />
+      {dialogs}
+    </>
+  );
 }
 
-function Stage2({ popupBlocked }: { popupBlocked: boolean }) {
+function Stage2({
+  popupBlocked,
+  onStartOver,
+}: {
+  popupBlocked: boolean;
+  onStartOver: () => void;
+}) {
   const navigate = useNavigate();
   const [yaml, setYaml] = useState("");
   const [errors, setErrors] = useState<ValidationError[]>([]);
@@ -252,6 +328,14 @@ function Stage2({ popupBlocked }: { popupBlocked: boolean }) {
       <Button onClick={handleImport} disabled={importing}>
         Import routine →
       </Button>
+
+      <button
+        type="button"
+        onClick={onStartOver}
+        className="self-start text-sm text-ink-3 underline underline-offset-2 hover:text-ink"
+      >
+        Start over
+      </button>
     </div>
   );
 }
