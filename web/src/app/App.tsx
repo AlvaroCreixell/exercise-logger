@@ -13,6 +13,7 @@ import { Toaster } from "sonner";
 import { Grid, Dumbbell, Graph, Settings } from "@/shared/icons";
 import { useAppInit } from "@/shared/hooks/useAppInit";
 import { useRoutineLaunchQueue } from "@/shared/hooks/useRoutineLaunchQueue";
+import { useSettings } from "@/shared/hooks/useSettings";
 import { SWUpdatePrompt } from "./SWUpdatePrompt";
 
 const TodayScreen = lazy(() => import("@/features/today/TodayScreen"));
@@ -122,9 +123,11 @@ function Shell() {
   );
 }
 
-function AppRoutes() {
+export function AppRoutes() {
   const { ready, error } = useAppInit();
   useRoutineLaunchQueue();
+  const settings = useSettings();
+  const location = useLocation();
 
   if (error) {
     return (
@@ -136,6 +139,32 @@ function AppRoutes() {
 
   if (!ready) {
     return <LoadingState fullscreen />;
+  }
+
+  if (!settings) return <LoadingState fullscreen />;
+
+  // First-run gate.
+  if (
+    location.pathname === "/" &&
+    settings.onboardingCompletedAt == null &&
+    settings.onboardingSkippedAt == null
+  ) {
+    return <Navigate to="/onboarding" replace />;
+  }
+  // Post-completion guard on /onboarding.
+  if (
+    location.pathname === "/onboarding" &&
+    settings.onboardingCompletedAt !== null
+  ) {
+    return <Navigate to="/" replace />;
+  }
+  // Handoff guard: no prompt AND no just-completed → back to questionnaire.
+  if (
+    location.pathname === "/onboarding/handoff" &&
+    settings.lastGeneratedPrompt === null &&
+    (location.state as { justCompleted?: boolean } | null)?.justCompleted !== true
+  ) {
+    return <Navigate to="/onboarding/questionnaire" replace />;
   }
 
   return (
