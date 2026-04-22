@@ -13,7 +13,7 @@ Four files, in this order, show the full development discipline in practice:
 
 1. [`specs/2026-03-23-exercise-logger-greenfield-design.md`](specs/2026-03-23-exercise-logger-greenfield-design.md) — the original greenfield design that kicked off the project.
 2. [`plans/2026-03-28-master-plan.md`](plans/2026-03-28-master-plan.md) — the 7-phase master plan that drove the final rewrite.
-3. [`plans/2026-03-24-hardening-pass2-spec-fidelity.md`](plans/2026-03-24-hardening-pass2-spec-fidelity.md) — a hardening pass catching the spec/code drift that surfaced during the first implementation.
+3. [`plans/2026-03-30-plan-errata.md`](plans/2026-03-30-plan-errata.md) — the 48 concrete issues Claude and Codex independently flagged while auditing each other's plans, each with a fix applied before execution began.
 4. [`reviews/codebase-review-2026-04-17.md`](reviews/codebase-review-2026-04-17.md) — a full codebase review produced by running the review skill against the shipped code.
 
 ## Design specs (`specs/`)
@@ -30,7 +30,9 @@ matching implementation plan.
 - `2026-04-09-visual-makeover-design.md` — first pass at the visual design language.
 - `2026-04-16-visual-polish-design.md` — second pass refining the visual language.
 - `2026-04-19-visual-revamp-chunking-design.md` — chunking strategy for the final visual revamp.
-- `current-design-spec.md`, `current-ui-rewrite-spec.md`, `ui-rewrite-spec.md` — snapshots of the spec at key points in the project lifecycle.
+- `current-design-spec.md` — design spec snapshot captured when the UI rewrite branched off (predates `2026-03-28-gym-routine-tracker-design.md`).
+- `current-ui-rewrite-spec.md` — earlier UI rewrite spec (still references the original `docs/superpowers/specs/...` path for the product spec).
+- `ui-rewrite-spec.md` — later UI rewrite spec (references the archive path after the docs move).
 
 ## Implementation plans (`plans/`)
 
