@@ -6,7 +6,7 @@
 Local-first PWA gym routine tracker. React + Vite + TypeScript app in `web/`, deployed to GitHub Pages. Single-user, phone-first, works offline.
 
 **Spec:** `docs/design-spec.md`
-**UI Spec:** `docs/ui-rewrite-spec.md`
+**Development archive:** `docs/archive/README.md` (all plans, design specs, reviews, handoffs)
 
 ## Architecture
 
@@ -91,7 +91,7 @@ web/src/
     ui/         # shadcn/ui primitives (installed via CLI)
     hooks/      # Shared React hooks (useAppInit, useSettings, etc.)
     components/ # Shared UI components
-  features/     # Feature modules (UI rewrite in progress)
+  features/     # Feature modules (today, workout, history, settings)
     today/      # Routine overview, day selection, start workout
     workout/    # Active workout logging, exercise cards, set forms
     history/    # Session history, session detail, exercise history
