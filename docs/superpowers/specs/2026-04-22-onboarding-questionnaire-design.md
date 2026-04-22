@@ -2,16 +2,16 @@
 
 ## Context & Intent
 
-The Custom GPT ("ace-logger-routine-maker") currently asks every new user 12
-intake questions before generating a routine YAML. Users then copy the YAML,
+The Custom GPT ("ace-logger-routine-maker") currently asks every new user a
+series of intake questions before generating a routine YAML. Users then copy the YAML,
 come back to the app, paste it into `RoutineImportScreen`, and activate it.
 The friction is concentrated at the handoff: users arrive at the GPT cold,
 have to remember what the GPT will ask, and type answers without UI support.
 
 This feature moves the intake phase *into the app*. A sequence of well-designed
-wizard screens asks the same 12 questions with phone-first input controls,
+wizard screens asks the 11 intake questions with phone-first input controls,
 builds a structured prompt, copies it to the clipboard, and opens the GPT. The
-user pastes one message instead of 12 answers, receives YAML, switches back,
+user pastes one message instead of 11 answers, receives YAML, switches back,
 and pastes — landing on the same screen they left with a paste area already
 waiting.
 
@@ -169,14 +169,34 @@ Reused on every step. Applies the handoff design tokens.
   `aria-valuemin=1`, `aria-valuemax=11`.
 - **Eyebrow:** 11px Inter 600 uppercase 0.08em tracking. Format: `STEP N OF 11
   · CATEGORY` (Schedule / Equipment / Preferences / etc.). The wizard has 11
-  questions (the 12 GPT topics with favorites+avoid merged into one step).
-  The welcome/name screen at `/onboarding` and the handoff screen are not
-  numbered into this count.
+  questions, one per GPT intake topic. The welcome/name screen at
+  `/onboarding` and the handoff screen are not numbered into this count.
 - **Hero:** 32px Instrument Serif 400 italic. The question headline.
 - **Subtitle:** 14px Inter 400 `--ink-2`. Explanatory text.
 - **Input zone:** chips, multi-select, or text area per step.
 - **Footer:** `Back` (ghost) left, `Next` (dark ink primary) right.
   Single-select steps with auto-advance render only `Back`.
+
+### Welcome screen (`/onboarding`)
+
+The welcome screen is its own route, rendered by `OnboardingWelcomeScreen` —
+not part of the 11-step wizard chrome. Two explicit actions:
+
+- **Start** — trims the name input; if non-empty, saves it via
+  `setUserName(db, name)`. Navigates to `/onboarding/questionnaire` step 0.
+  Does NOT set `onboardingSkippedAt` or `onboardingCompletedAt`. Completion
+  happens only after a successful YAML import on Stage 2.
+- **Maybe later** — does NOT save the name. Sets
+  `onboardingSkippedAt = nowISO()` and navigates to `/`. The user lands on
+  Today with the default "Hello." greeting and the pre-seeded starter
+  routine still active.
+
+The name input is autofocused on mount (`ref.current?.focus()` inside a
+`useEffect` with empty deps). Enter submits Start, not Maybe later.
+`maxLength={40}` caps length to prevent Today-greeting overflow.
+
+Later edits via Settings → Profile → "Your name" only write `userName`; they
+do not touch `onboardingCompletedAt` or `onboardingSkippedAt`.
 
 ### Step copy (final)
 
@@ -262,18 +282,31 @@ Reducer is pure. Lives at `lib/questionnaire-state.ts`. Unit tested.
 - sessionStorage unavailable (private browsing edge case): silently continue
   without resume — answers live in React state only.
 
-### Validation
+### Validation & input limits
 
 - Steps 3, 8, 9 are always optional — Next is enabled immediately.
 - All other steps require a selection before Next is tappable. Disabled Next
   button (no toast).
-- Step 0 (name) allows empty → treated as "Skip" → `userName` stays null,
-  `onboardingSkippedAt` set.
+- **Name input (welcome screen)**: trimmed on save. `maxLength={40}`.
+  Empty-after-trim on "Start" still navigates to the questionnaire but leaves
+  `userName` null. See **Welcome screen (`/onboarding`)** above for the full
+  button semantics.
+- **Restrictions text (step 3)**: `maxLength={300}`. An inline character
+  counter below the textarea appears once the user passes 240 chars.
+- **Favorites / Avoid text (step 9)**: `maxLength={200}` each, with the same
+  counter treatment when approaching the limit.
+- **Goal "Something else…" text (step 1)**: `maxLength={60}`, no counter.
+- All free-text fields are trimmed and have runs of whitespace/newlines
+  collapsed to a single space before reaching `buildPrompt` (see Prompt
+  Generation rule 9).
 
 ### Accessibility
 
 - Each step's heading receives focus on mount (via `useEffect` +
   `ref.current?.focus()`). Screen readers announce the new question.
+- Welcome screen: the name input autofocuses on mount. The "You can change
+  this anytime in Settings" hint is linked via `aria-describedby`. Enter
+  submits the Start action; Maybe later requires an explicit tap.
 - Chips: `<button type="button">` with `aria-pressed` for selection state.
 - Single-select steps with ≤ 5 options use native `<input type="radio">`
   instead of buttons for proper radiogroup semantics.
@@ -290,8 +323,10 @@ Pure, stateless, lives at `lib/prompt-builder.ts`.
 **Full-answers output:**
 
 ```
-I'd like a personalized workout routine. Here are my answers to all your intake
-questions — please skip the intake phase and generate the YAML routine directly.
+I'd like a personalized workout routine. All 11 intake topics are answered
+below — treat this as the complete intake. Do NOT ask follow-up questions.
+Proceed directly to the catalog-ID check and YAML generation per your
+self-check protocol.
 
 - Primary goal: Build muscle
 - Experience level: Intermediate — training regularly for 6+ months, know the main lifts
@@ -325,6 +360,12 @@ Please generate the complete routine YAML following the contract exactly.
 7. User name is NOT in the prompt — name is UI-only.
 8. Empty answers map → throws:
    `Error("Cannot build prompt from empty answers — complete the questionnaire first.")`.
+9. Free-text answers (restrictions, favoritesAvoid, goal "other") are
+   normalized before insertion: trim outer whitespace, then collapse runs of
+   whitespace and newlines to a single space. Empty-after-normalization
+   behaves identically to a skipped optional field (rule 1).
+10. `buildPrompt` does not enforce max-length — the wizard's text inputs do.
+    See **Validation & input limits** above.
 
 ### Persistence
 
@@ -482,13 +523,16 @@ Time-of-day prefix ("Good morning") deferred — out of scope.
 
 | Scenario | Handling |
 |---|---|
-| `clipboard.writeText` throws | Toast "Clipboard blocked — use Copy again on the next screen." Stage 2 flips anyway; Copy button retries. |
+| `clipboard.writeText` throws | Toast "Clipboard blocked — copy manually." Stage 2 flips anyway. The **"Show prompt"** block auto-expands; its textarea is `readOnly` with select-all on focus so the user can long-press-copy as a fallback. |
 | `window.open()` returns null (popup blocker) | Toast + inline GPT link as manual fallback. Stage 2 flips. |
-| Invalid YAML on Stage 2 | Reuse `YamlErrorList`. Same UX as `RoutineImportScreen`. |
-| Active session blocks import (invariant 10) | `importAndActivateRoutine` returns `{ok: false, message}` — toast the message. |
+| Invalid YAML on Stage 2 | Reuse `YamlErrorList`. Same UX as `RoutineImportScreen`. `lastGeneratedPrompt` is preserved so the user can retry without re-running the wizard. |
+| Active session blocks import (invariant 10) | `importAndActivateRoutine` returns `{ok: false, message}` — toast the message. Prompt stays saved for later retry. |
 | `clipboard.readText` fails on "Paste from clipboard" | Toast "Couldn't read clipboard. Long-press to paste manually." Button stays visible for retry. |
 | sessionStorage unavailable | Wizard skips resume mechanism silently; answers live in React state only. |
-| Route collision (user on `/onboarding` after completion) | Guard redirects to `/` if `onboardingCompletedAt !== null`. |
+| Route: `/onboarding` after completion | Guard redirects to `/` if `onboardingCompletedAt !== null`. |
+| Route: `/onboarding/handoff` with `lastGeneratedPrompt == null` and no just-completed local state | Redirect to `/onboarding/questionnaire` — nothing to hand off yet. |
+| Route: `/onboarding/questionnaire` with empty sessionStorage | Silently reset to step 0 (default reducer state). No user-visible error. |
+| Browser back from mid-wizard | Exits `/onboarding/questionnaire` to the previous page. sessionStorage is preserved so re-entering restores the step. Only the close-confirmation dialog and `restart` clear sessionStorage. |
 
 ## Testing
 
@@ -546,6 +590,25 @@ tests**. Total test count 742 → ~810.
   disruption.
 - Live demo visitors see first-run flow.
 - No feature flag needed — gate logic is inherent.
+- **Pre-seeded starter routine:** the app auto-seeds a bundled starter
+  routine on first launch. First-time users who complete the questionnaire
+  have their GPT-generated routine imported via
+  `importAndActivateRoutine`, which replaces the starter as the active
+  routine. The starter remains in the routine list (non-active) and can be
+  deleted from Settings. The success toast "Routine imported. Time to
+  train." is sufficient — no explicit "Replacing the starter routine"
+  messaging.
+- Users who tap **Maybe later** keep the pre-seeded starter as their active
+  routine with the default "Hello." greeting, and can launch the
+  questionnaire later from Settings → "Create a personalized routine".
+- **GPT instructions ship in the same PR** — `docs/custom-gpt/workout-routine-gpt.instructions.md`
+  is updated alongside the app: the "equipment preferences and dislikes"
+  intake topic is dropped (so the wizard's 11 steps map 1:1 to GPT topics),
+  and a paragraph is added instructing the GPT to skip the intake phase
+  when the user's first message already contains all 11 answers. The GPT
+  custom-GPT admin UI still needs a manual paste of the updated
+  instructions after merge — add a release-checklist line in the PR
+  description.
 
 ## Risks & Open Questions
 
