@@ -15,6 +15,8 @@ import { StreakPill } from "./StreakPill";
 import { TodayHeroCard } from "./TodayHeroCard";
 import { DaySelector } from "./DaySelector";
 import { LastSessionCard } from "./LastSessionCard";
+import { OnboardingBanner } from "./OnboardingBanner";
+import { dismissOnboardingBanner } from "@/services/onboarding-service";
 import { deriveDayMuscleGroups } from "./lib/muscleGroups";
 import { formatTodayEyebrow } from "./lib/formatDate";
 import type { Exercise, RoutineDay } from "@/domain/types";
@@ -161,7 +163,18 @@ export default function TodayScreen() {
       <div className="flex-1 space-y-5 overflow-y-auto p-5">
         <p className="text-eyebrow text-ink-3">{formatTodayEyebrow(new Date())}</p>
 
-        <h1 className="text-hero-serif italic text-foreground">Hello.</h1>
+        <h1 className="text-hero-serif italic text-foreground">
+          {settings.userName ? `Hi, ${settings.userName}.` : "Hello."}
+        </h1>
+
+        {settings.lastGeneratedPrompt !== null &&
+          settings.onboardingBannerDismissedAt === null && (
+            <OnboardingBanner
+              onDismiss={() => {
+                void dismissOnboardingBanner(db);
+              }}
+            />
+          )}
 
         <StreakPill count={streakCount} />
 

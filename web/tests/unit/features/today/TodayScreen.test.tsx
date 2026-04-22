@@ -2,7 +2,7 @@ import "fake-indexeddb/auto";
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { render, screen, cleanup, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router";
+import { MemoryRouter, Route, Routes } from "react-router";
 import TodayScreen from "@/features/today/TodayScreen";
 import { db, initializeSettings } from "@/db/database";
 import type { Routine, Session } from "@/domain/types";
@@ -202,5 +202,106 @@ describe("TodayScreen", () => {
       const sessionCreated = (await db.sessions.count()) > 0;
       expect(hasLoadingBtn || sessionCreated).toBe(true);
     });
+  });
+});
+
+function WithRouter() {
+  return (
+    <MemoryRouter initialEntries={["/"]}>
+      <Routes>
+        <Route path="/" element={<TodayScreen />} />
+        <Route path="/onboarding/handoff" element={<div>HANDOFF</div>} />
+        <Route path="/settings" element={<div>SETTINGS</div>} />
+      </Routes>
+    </MemoryRouter>
+  );
+}
+
+async function seedMinimalRoutine(): Promise<Routine> {
+  const routine: Routine = {
+    id: "r1",
+    schemaVersion: 1,
+    name: "Starter",
+    restDefaultSec: 90,
+    restSupersetSec: 60,
+    dayOrder: ["A"],
+    nextDayId: "A",
+    days: { A: { id: "A", label: "Day A", entries: [] } },
+    notes: [],
+    cardio: null,
+    importedAt: "2026-04-22T00:00:00.000Z",
+  };
+  await db.routines.put(routine);
+  await db.exercises.put({
+    id: "barbell-back-squat",
+    name: "Barbell Back Squat",
+    type: "weight",
+    equipment: "barbell",
+    muscleGroups: ["Legs"],
+  });
+  return routine;
+}
+
+describe("TodayScreen greeting + banner", () => {
+  beforeEach(async () => {
+    await Promise.all([
+      db.settings.clear(),
+      db.routines.clear(),
+      db.exercises.clear(),
+      db.sessions.clear(),
+      db.sessionExercises.clear(),
+      db.loggedSets.clear(),
+    ]);
+    await initializeSettings(db);
+    sessionStorage.clear();
+  });
+
+  afterEach(() => {
+    cleanup();
+  });
+
+  it("greets 'Hello.' when userName is null", async () => {
+    await seedMinimalRoutine();
+    const s = (await db.settings.get("user"))!;
+    await db.settings.put({ ...s, activeRoutineId: "r1" });
+    render(<WithRouter />);
+    expect(
+      await screen.findByRole("heading", { name: "Hello." })
+    ).toBeInTheDocument();
+  });
+
+  it("greets 'Hi, Alvaro.' when userName is set", async () => {
+    await seedMinimalRoutine();
+    const s = (await db.settings.get("user"))!;
+    await db.settings.put({ ...s, activeRoutineId: "r1", userName: "Alvaro" });
+    render(<WithRouter />);
+    expect(
+      await screen.findByRole("heading", { name: "Hi, Alvaro." })
+    ).toBeInTheDocument();
+  });
+
+  it("renders the onboarding banner when a prompt is saved and not dismissed; × persists dismissal", async () => {
+    await seedMinimalRoutine();
+    const s = (await db.settings.get("user"))!;
+    await db.settings.put({
+      ...s,
+      activeRoutineId: "r1",
+      lastGeneratedPrompt: "SAVED",
+      lastGeneratedPromptAt: new Date().toISOString(),
+      onboardingBannerDismissedAt: null,
+    });
+    const user = userEvent.setup();
+    render(<WithRouter />);
+    expect(await screen.findByRole("status")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /dismiss banner/i }));
+    await waitFor(() => {
+      expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    });
+
+    const persisted = await db.settings.get("user");
+    expect(persisted?.onboardingBannerDismissedAt).toMatch(
+      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/
+    );
   });
 });
