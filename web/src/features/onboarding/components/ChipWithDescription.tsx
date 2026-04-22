@@ -51,7 +51,11 @@ export function ChipWithDescription({
               name={name}
               value={opt.value}
               checked={isSelected}
-              onChange={() => handle(opt.value)}
+              // See ChipRow: onClick (fires on every click) rather than
+              // onChange (fires only on value change). Re-clicking an
+              // already-selected chip must still auto-advance.
+              onChange={() => { /* see onClick */ }}
+              onClick={() => handle(opt.value)}
               className="sr-only"
             />
             <label

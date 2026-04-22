@@ -57,7 +57,14 @@ export function ChipRow({
                 name={name}
                 value={opt.value}
                 checked={isSelected}
-                onChange={() => handle(opt.value)}
+                // Use onClick (fires on every click) rather than onChange
+                // (fires only on value change). Re-clicking an already-
+                // selected chip must still auto-advance — this is the
+                // "go back, re-select same, can't advance" bug. onChange
+                // is kept as a noop to silence React's controlled-input
+                // warning.
+                onChange={() => { /* see onClick */ }}
+                onClick={() => handle(opt.value)}
                 className="sr-only"
               />
               <label

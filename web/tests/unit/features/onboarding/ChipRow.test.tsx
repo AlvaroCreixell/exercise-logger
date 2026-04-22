@@ -65,6 +65,30 @@ describe("ChipRow (single-select, ≤ 5 options → radiogroup)", () => {
     await new Promise<void>((resolve) => queueMicrotask(resolve));
     expect(onAdvance).toHaveBeenCalledTimes(1);
   });
+
+  it("re-clicking the already-selected chip still fires onSelect AND onAdvance (regression: Back → same choice → must advance)", async () => {
+    const user = userEvent.setup();
+    const onSelect = vi.fn();
+    const onAdvance = vi.fn();
+    render(
+      <ChipRow
+        name="goal"
+        options={THREE}
+        selected="b"
+        onSelect={onSelect}
+        autoAdvance
+        onAdvance={onAdvance}
+        ariaLabel="Primary goal"
+      />
+    );
+    // Clicking the already-selected "B" MUST still trigger the handler +
+    // auto-advance. Native <input type="radio"> onChange only fires on value
+    // change, which broke re-selection after Back — we use onClick instead.
+    await user.click(screen.getByLabelText("B"));
+    expect(onSelect).toHaveBeenCalledWith("b");
+    await new Promise<void>((resolve) => queueMicrotask(resolve));
+    expect(onAdvance).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe("ChipRow (single-select, > 5 options → aria-pressed buttons)", () => {

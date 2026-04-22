@@ -62,4 +62,25 @@ describe("ChipWithDescription", () => {
     await new Promise<void>((resolve) => queueMicrotask(resolve));
     expect(onAdvance).toHaveBeenCalledTimes(1);
   });
+
+  it("re-clicking the already-selected option still fires onSelect AND onAdvance (regression: Back → same choice → must advance)", async () => {
+    const user = userEvent.setup();
+    const onSelect = vi.fn();
+    const onAdvance = vi.fn();
+    render(
+      <ChipWithDescription
+        name="experience"
+        options={EXPERIENCE}
+        selected="Intermediate"
+        onSelect={onSelect}
+        autoAdvance
+        onAdvance={onAdvance}
+        ariaLabel="Experience"
+      />
+    );
+    await user.click(screen.getByLabelText(/Intermediate/));
+    expect(onSelect).toHaveBeenCalledWith("Intermediate");
+    await new Promise<void>((resolve) => queueMicrotask(resolve));
+    expect(onAdvance).toHaveBeenCalledTimes(1);
+  });
 });
