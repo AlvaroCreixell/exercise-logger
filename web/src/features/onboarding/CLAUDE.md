@@ -32,9 +32,8 @@ features/onboarding/
     FavoritesAvoidStep.tsx       # step 9 — two stacked StepTextAreas
     SupersetsStep.tsx            # step 10 — value/label divergence for "No"
     CardioStep.tsx               # step 11 — value/label divergence for "No cardio"
-  # Sprint D adds:
-  #   HandoffScreen.tsx
-  #   components/LastPromptCard.tsx
+  HandoffScreen.tsx              # route /onboarding/handoff (Stage 1 / Stage 2 state machine)
+  components/LastPromptCard.tsx  # Settings card when lastGeneratedPrompt !== null
 ```
 
 ## Invariants
@@ -50,7 +49,7 @@ features/onboarding/
 |---|---|---|
 | `/onboarding` | `OnboardingWelcomeScreen` | C |
 | `/onboarding/questionnaire` | `QuestionnaireScreen` | C |
-| `/onboarding/handoff` | `HandoffScreen` | D (pending) |
+| `/onboarding/handoff` | `HandoffScreen` | D |
 
 ## Services the feature consumes (Sprint C/D)
 
@@ -65,6 +64,16 @@ features/onboarding/
 - `Button`, `Textarea` from `@/shared/ui/*`.
 - `cn()` from `@/shared/lib/utils` for conditional class composition.
 - `GPT_URL` from `@/shared/lib/gpt-url` (HandoffScreen window.open target).
+
+## First-run gate
+
+Wired in `@/app/App.tsx:AppRoutes`. Three guards:
+
+1. `/` with `onboardingCompletedAt === null && onboardingSkippedAt === null` → redirect to `/onboarding`.
+2. `/onboarding` with `onboardingCompletedAt !== null` → redirect to `/`.
+3. `/onboarding/handoff` with `lastGeneratedPrompt === null` AND no `location.state.justCompleted === true` → redirect to `/onboarding/questionnaire`.
+
+The `HandoffScreen` component has a defensive `useEffect` redirect that matches guard 3 — it's a no-op once `AppRoutes` short-circuits first, but keeps the screen correct in isolation (e.g., in component tests). That effect also short-circuits when `onboardingCompletedAt !== null`, so a successful Stage-2 import does not bounce back to the questionnaire during the brief re-render window between the settings write and the navigation.
 
 ## Design tokens
 
