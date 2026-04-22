@@ -264,4 +264,20 @@ export interface Settings {
   activeRoutineId: string | null;
   /** Display unit preference. */
   units: UnitSystem;
+  /**
+   * User's preferred name for the greeting on Today.
+   * Set on the onboarding welcome screen or later via Settings → Profile.
+   * null means "no name set" — UI falls back to "Hello.".
+   */
+  userName: string | null;
+  /** ISO UTC timestamp when the user completed the full onboarding flow (successful YAML import on Stage 2). null = not yet. */
+  onboardingCompletedAt: string | null;
+  /** ISO UTC timestamp when the user skipped onboarding ("Maybe later" on welcome, or migrated-from-v2). null = not skipped. */
+  onboardingSkippedAt: string | null;
+  /** The last prompt produced by `buildPrompt`, persisted on Stage 1 handoff button tap. null when no prompt has been generated. */
+  lastGeneratedPrompt: string | null;
+  /** ISO UTC timestamp matching `lastGeneratedPrompt`. null when `lastGeneratedPrompt` is null. */
+  lastGeneratedPromptAt: string | null;
+  /** ISO UTC timestamp when the user dismissed the Today "Finish importing your routine" banner. Reset to null whenever a new prompt is saved. */
+  onboardingBannerDismissedAt: string | null;
 }
