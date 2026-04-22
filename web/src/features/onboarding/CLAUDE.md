@@ -18,10 +18,20 @@ features/onboarding/
     ChipMulti.tsx              # multi-select chips with optional exclusive value
     ChipWithDescription.tsx    # vertical single-select with secondary descriptions
     StepTextArea.tsx           # textarea + optional skip chip + character counter
-  # Sprint C adds:
-  #   OnboardingWelcomeScreen.tsx
-  #   QuestionnaireScreen.tsx    (the orchestrator that binds session-storage)
-  #   steps/*.tsx                (11 step components)
+  OnboardingWelcomeScreen.tsx    # route /onboarding
+  QuestionnaireScreen.tsx        # route /onboarding/questionnaire (orchestrator)
+  steps/
+    GoalStep.tsx                 # step 1 — chip-with-other for "Something else…"
+    ExperienceStep.tsx           # step 2
+    RestrictionsStep.tsx         # step 3 — StepTextArea + skip chip
+    DaysPerWeekStep.tsx          # step 4
+    SessionLengthStep.tsx        # step 5
+    DistinctDaysStep.tsx         # step 6 — numbers-only chips (D10)
+    EquipmentStep.tsx            # step 7 — ChipMulti with Bodyweight-only exclusivity
+    PrioritiesStep.tsx           # step 8 — multi-select + standalone skip chip
+    FavoritesAvoidStep.tsx       # step 9 — two stacked StepTextAreas
+    SupersetsStep.tsx            # step 10 — value/label divergence for "No"
+    CardioStep.tsx               # step 11 — value/label divergence for "No cardio"
   # Sprint D adds:
   #   HandoffScreen.tsx
   #   components/LastPromptCard.tsx
@@ -33,6 +43,14 @@ features/onboarding/
 - **sessionStorage is silent-fail.** `session-storage.ts` swallows every exception — private browsing, quota, missing sessionStorage — and degrades gracefully to "no resume."
 - **Exclusivity lives in `ChipMulti`.** The reducer stores whatever values array it receives; the mutual-exclusion rule for "Bodyweight only" is enforced inside `ChipMulti.nextFor`.
 - **Prompt co-ships with the GPT instructions.** `prompt-builder.ts` and `docs/custom-gpt/workout-routine-gpt.instructions.md` must be updated in the same commit when the intake topics or lead-in text change.
+
+## Routes owned by this feature
+
+| Route | Component | Sprint |
+|---|---|---|
+| `/onboarding` | `OnboardingWelcomeScreen` | C |
+| `/onboarding/questionnaire` | `QuestionnaireScreen` | C |
+| `/onboarding/handoff` | `HandoffScreen` | D (pending) |
 
 ## Services the feature consumes (Sprint C/D)
 
