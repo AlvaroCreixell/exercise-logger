@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { render } from "@testing-library/react";
+import { act, render, waitFor } from "@testing-library/react";
 import { MemoryRouter, Routes, Route, useLocation } from "react-router";
 import { useRoutineLaunchQueue } from "@/shared/hooks/useRoutineLaunchQueue";
 
@@ -34,9 +34,9 @@ describe("useRoutineLaunchQueue", () => {
   });
 
   it("navigates to /settings/import with launchYaml state when a file is handed in", async () => {
-    type Consumer = (params: { files: readonly unknown[] }) => Promise<void> | void;
-    let consumer: Consumer | null = null;
-    (globalThis as { launchQueue?: { setConsumer: (c: Consumer) => void } }).launchQueue = {
+    type LaunchConsumer = (params: { files: readonly unknown[] }) => Promise<void> | void;
+    let consumer: LaunchConsumer | null = null;
+    (globalThis as { launchQueue?: { setConsumer: (c: LaunchConsumer) => void } }).launchQueue = {
       setConsumer: (c) => { consumer = c; },
     };
 
@@ -60,12 +60,20 @@ describe("useRoutineLaunchQueue", () => {
     );
 
     expect(consumer).not.toBeNull();
-    await consumer!({ files: [fakeHandle] });
 
-    // Give React a flush.
-    await new Promise((r) => setTimeout(r, 0));
+    // Wrap the consumer invocation in `act` so React flushes the navigate()
+    // state update before we assert. Replaces a prior `setTimeout(0)` flush
+    // that was not reliable under React 19 concurrent rendering.
+    await act(async () => {
+      await consumer!({ files: [fakeHandle] });
+    });
 
-    expect(capturedPath).toBe("/settings/import");
+    // `waitFor` guards against any remaining scheduler churn and makes the
+    // assertion deterministic even if LocationProbe re-renders in multiple
+    // passes.
+    await waitFor(() => {
+      expect(capturedPath).toBe("/settings/import");
+    });
     expect(capturedState).toEqual({ launchYaml: fakeText });
   });
 });
