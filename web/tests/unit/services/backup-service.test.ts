@@ -1206,3 +1206,37 @@ describe("validator hardening — Sprint 2 — duplicate slot check", () => {
     expect(errors.filter((e) => /duplicate.*slot/i.test(e.message))).toEqual([]);
   });
 });
+
+describe("validator hardening — Sprint 2 — extended referential integrity", () => {
+  it("rejects a LoggedSet whose sessionId disagrees with its parent SessionExercise.sessionId", () => {
+    const cat = new Set([catalogId]);
+    const payload = makeMinimalValidPayload();
+    // Make the LoggedSet point at the right parent SE but a different session.
+    payload.data.sessions.push(makeSession("s2", { id: "s2" }));
+    payload.data.loggedSets[0]!.sessionId = "s2"; // parent SE is in "s1"
+    const errors = validateBackupPayload(payload, cat);
+    expect(errors.some((e) =>
+      e.field === "data.loggedSets[0].sessionId" &&
+      /parent sessionExercise/i.test(e.message)
+    )).toBe(true);
+  });
+
+  it("rejects a Session.routineId that doesn't reference an imported routine", () => {
+    const cat = new Set([catalogId]);
+    const payload = makeMinimalValidPayload();
+    payload.data.sessions[0]!.routineId = "ghost-routine";
+    const errors = validateBackupPayload(payload, cat);
+    expect(errors.some((e) =>
+      e.field === "data.sessions[0].routineId" &&
+      /not in the imported routines/i.test(e.message)
+    )).toBe(true);
+  });
+
+  it("accepts Session.routineId === null (history survives routine deletion)", () => {
+    const cat = new Set([catalogId]);
+    const payload = makeMinimalValidPayload();
+    payload.data.sessions[0]!.routineId = null;
+    const errors = validateBackupPayload(payload, cat);
+    expect(errors.filter((e) => e.field === "data.sessions[0].routineId")).toEqual([]);
+  });
+});

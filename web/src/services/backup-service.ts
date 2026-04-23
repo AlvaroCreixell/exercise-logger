@@ -1088,6 +1088,46 @@ export function validateBackupPayload(
     }
   });
 
+  // Sprint 2: loggedSets.sessionId must equal the parent SessionExercise's sessionId.
+  // Build a lookup: sessionExercise.id -> sessionExercise.sessionId.
+  const seSessionByIdLookup = new Map<string, string>();
+  sessionExercises.forEach((se) => {
+    if (typeof se === "object" && se !== null) {
+      const seObj = se as Record<string, unknown>;
+      if (isString(seObj.id) && isString(seObj.sessionId)) {
+        seSessionByIdLookup.set(seObj.id as string, seObj.sessionId as string);
+      }
+    }
+  });
+  loggedSets.forEach((ls, i) => {
+    if (typeof ls !== "object" || ls === null) return;
+    const lsObj = ls as Record<string, unknown>;
+    const lsSeId = lsObj.sessionExerciseId;
+    const lsSessionId = lsObj.sessionId;
+    if (typeof lsSeId === "string" && typeof lsSessionId === "string") {
+      const parentSessionId = seSessionByIdLookup.get(lsSeId);
+      if (parentSessionId !== undefined && parentSessionId !== lsSessionId) {
+        errors.push({
+          field: `data.loggedSets[${i}].sessionId`,
+          message: `disagrees with parent sessionExercise: LoggedSet.sessionId="${lsSessionId}" but SessionExercise.sessionId="${parentSessionId}"`,
+        });
+      }
+    }
+  });
+
+  // Sprint 2: Session.routineId, when non-null, must reference an imported routine.
+  sessions.forEach((s, i) => {
+    if (typeof s !== "object" || s === null) return;
+    const sObj = s as Record<string, unknown>;
+    const rId = sObj.routineId;
+    if (isString(rId) && !routineIds.has(rId)) {
+      errors.push({
+        field: `data.sessions[${i}].routineId`,
+        message: `references routine "${rId}" which is not in the imported routines`,
+      });
+    }
+  });
+
   return errors;
 }
 
