@@ -28,6 +28,10 @@ import type { Settings } from "@/domain/types";
 beforeAll(async () => {
   await Promise.all([
     import("@/features/onboarding/OnboardingWelcomeScreen"),
+    // TodayScreen is not directly asserted by these tests, but the four
+    // "stay on Today" cases redirect into it via the first-run gate; the
+    // Suspense fallback there contributes to the same race. Keep both
+    // chunks warmed so any gate-logic change can't reintroduce the flake.
     import("@/features/today/TodayScreen"),
   ]);
 });
