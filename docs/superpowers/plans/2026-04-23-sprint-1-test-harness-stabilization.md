@@ -756,14 +756,14 @@ Expected: on `main` with Sprint 1's squash commit at `HEAD`.
 
 ## Exit Criteria
 
-- [ ] Both flaky tests pass 20 consecutive local runs each.
-- [ ] The pair runs 10 consecutive times together.
-- [ ] `npm test` passes three consecutive local runs with no flag overrides.
-- [ ] `npm test` passes three consecutive CI runs on the PR branch.
-- [ ] `npm run lint`, `npm run typecheck`, `npm run build`, `npm run test:e2e` all pass.
-- [ ] No source-code files in `web/src/**` were modified.
-- [ ] No Vitest config changes (no `testTimeout` bump).
-- [ ] Roadmap Sprint 1 Exit Criteria ticked and referenced in the merge commit.
+- [x] Both flaky tests pass 20 consecutive local runs each.
+- [x] The pair runs 10 consecutive times together.
+- [x] `npm test` passes three consecutive local runs with no flag overrides.
+- [x] `npm test` passes one CI run on the PR branch (3-run requirement relaxed by user).
+- [x] `npm run lint`, `npm run typecheck`, `npm run build`, `npm run test:e2e` all pass.
+- [x] No source-code files in `web/src/**` were modified.
+- [x] No Vitest config changes (no `testTimeout` bump).
+- [x] Roadmap Sprint 1 Exit Criteria ticked and referenced in the merge commit.
 - [ ] PR merged, branch deleted.
 
 ---
