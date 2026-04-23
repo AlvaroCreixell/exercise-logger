@@ -764,7 +764,7 @@ Expected: on `main` with Sprint 1's squash commit at `HEAD`.
 - [x] No source-code files in `web/src/**` were modified.
 - [x] No Vitest config changes (no `testTimeout` bump).
 - [x] Roadmap Sprint 1 Exit Criteria ticked and referenced in the merge commit.
-- [ ] PR merged, branch deleted.
+- [x] PR merged, branch deleted.
 
 ---
 
