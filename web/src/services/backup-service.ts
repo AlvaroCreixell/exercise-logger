@@ -252,19 +252,65 @@ function validateSetBlock(
     });
   }
 
-  if (b.minValue !== undefined && !isNumber(b.minValue)) {
-    errors.push({ field: `${path}.minValue`, message: "must be a number" });
+  // Exactly-one-of: either {minValue, maxValue} together, or exactValue alone.
+  const hasMin = b.minValue !== undefined;
+  const hasMax = b.maxValue !== undefined;
+  const hasExact = b.exactValue !== undefined;
+  const hasRange = hasMin || hasMax; // partial range counts as "trying to use range"
+
+  if (hasRange === hasExact) {
+    // Either both or neither — both are invalid.
+    errors.push({
+      field: path,
+      message:
+        "must define exactly one of: a {minValue, maxValue} range OR an exactValue",
+    });
+  } else if (hasRange) {
+    // Range path: require both min AND max as finite positive numbers, with min < max.
+    if (!isFinitePositive(b.minValue)) {
+      errors.push({
+        field: `${path}.minValue`,
+        message: "must be a finite positive number",
+      });
+    }
+    if (!isFinitePositive(b.maxValue)) {
+      errors.push({
+        field: `${path}.maxValue`,
+        message: "must be a finite positive number",
+      });
+    }
+    if (
+      isFinitePositive(b.minValue) &&
+      isFinitePositive(b.maxValue) &&
+      (b.minValue as number) >= (b.maxValue as number)
+    ) {
+      errors.push({
+        field: path,
+        message: `minValue (${b.minValue}) must be less than maxValue (${b.maxValue})`,
+      });
+    }
+  } else {
+    // Exact path: require finite positive number.
+    if (!isFinitePositive(b.exactValue)) {
+      errors.push({
+        field: `${path}.exactValue`,
+        message: "must be a finite positive number",
+      });
+    }
   }
-  if (b.maxValue !== undefined && !isNumber(b.maxValue)) {
-    errors.push({ field: `${path}.maxValue`, message: "must be a number" });
+
+  if (
+    !isFiniteNumber(b.count) ||
+    !Number.isInteger(b.count) ||
+    (b.count as number) < 1
+  ) {
+    errors.push({
+      field: `${path}.count`,
+      message: "must be a finite integer >= 1",
+    });
   }
-  if (b.exactValue !== undefined && !isNumber(b.exactValue)) {
-    errors.push({ field: `${path}.exactValue`, message: "must be a number" });
-  }
-  if (!isNumber(b.count) || b.count < 1) {
-    errors.push({ field: `${path}.count`, message: "must be an integer >= 1" });
-  }
-  if (b.tag !== undefined && !VALID_TAGS.includes(b.tag as SetTag)) {
+
+  if (b.tag !== undefined && b.tag !== null && !VALID_TAGS.includes(b.tag as SetTag)) {
     errors.push({
       field: `${path}.tag`,
       message: `must be one of: ${VALID_TAGS.join(", ")}`,

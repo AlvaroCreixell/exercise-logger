@@ -923,6 +923,125 @@ describe("validator hardening — Sprint 2 — finite numerics", () => {
   });
 });
 
+describe("validator hardening — Sprint 2 — SetBlock contract", () => {
+  it("rejects a block with both range AND exact value", () => {
+    const cat = new Set([catalogId]);
+    const payload = makeMinimalValidPayload();
+    payload.data.sessionExercises[0]!.setBlocksSnapshot = [{
+      targetKind: "reps",
+      minValue: 8,
+      maxValue: 12,
+      exactValue: 10,
+      count: 3,
+    } as never]; // intentional invalid shape
+    const errors = validateBackupPayload(payload, cat);
+    expect(errors.some((e) =>
+      /must define exactly one of/i.test(e.message)
+    )).toBe(true);
+  });
+
+  it("rejects a block with neither range NOR exact value", () => {
+    const cat = new Set([catalogId]);
+    const payload = makeMinimalValidPayload();
+    payload.data.sessionExercises[0]!.setBlocksSnapshot = [{
+      targetKind: "reps",
+      count: 3,
+    } as never];
+    const errors = validateBackupPayload(payload, cat);
+    expect(errors.some((e) =>
+      /must define exactly one of/i.test(e.message)
+    )).toBe(true);
+  });
+
+  it("rejects a range with min >= max", () => {
+    const cat = new Set([catalogId]);
+    const payload = makeMinimalValidPayload();
+    payload.data.sessionExercises[0]!.setBlocksSnapshot = [{
+      targetKind: "reps",
+      minValue: 10,
+      maxValue: 8,
+      count: 3,
+    }];
+    const errors = validateBackupPayload(payload, cat);
+    expect(errors.some((e) =>
+      /minValue.*must be less than maxValue/i.test(e.message)
+    )).toBe(true);
+  });
+
+  it("rejects non-integer count", () => {
+    const cat = new Set([catalogId]);
+    const payload = makeMinimalValidPayload();
+    payload.data.sessionExercises[0]!.setBlocksSnapshot = [{
+      targetKind: "reps",
+      minValue: 8,
+      maxValue: 12,
+      count: 2.5,
+    }];
+    const errors = validateBackupPayload(payload, cat);
+    expect(errors.some((e) =>
+      e.field.endsWith(".count") && /integer/i.test(e.message)
+    )).toBe(true);
+  });
+
+  it("rejects zero or negative exactValue", () => {
+    const cat = new Set([catalogId]);
+    const payload = makeMinimalValidPayload();
+    payload.data.sessionExercises[0]!.setBlocksSnapshot = [{
+      targetKind: "duration",
+      exactValue: -30,
+      count: 1,
+    }];
+    const errors = validateBackupPayload(payload, cat);
+    expect(errors.some((e) =>
+      e.field.endsWith(".exactValue") && /positive/i.test(e.message)
+    )).toBe(true);
+  });
+
+  it("rejects zero or negative minValue/maxValue", () => {
+    const cat = new Set([catalogId]);
+    const payload = makeMinimalValidPayload();
+    payload.data.sessionExercises[0]!.setBlocksSnapshot = [{
+      targetKind: "reps",
+      minValue: 0,
+      maxValue: 5,
+      count: 1,
+    }];
+    const errors = validateBackupPayload(payload, cat);
+    expect(errors.some((e) =>
+      e.field.endsWith(".minValue") && /positive/i.test(e.message)
+    )).toBe(true);
+  });
+
+  it("accepts a fully-valid range block", () => {
+    const cat = new Set([catalogId]);
+    const payload = makeMinimalValidPayload();
+    payload.data.sessionExercises[0]!.setBlocksSnapshot = [{
+      targetKind: "reps",
+      minValue: 8,
+      maxValue: 12,
+      count: 3,
+    }];
+    const errors = validateBackupPayload(payload, cat);
+    expect(errors.filter((e) =>
+      e.field.startsWith("data.sessionExercises[0].setBlocksSnapshot")
+    )).toEqual([]);
+  });
+
+  it("accepts a fully-valid exact block", () => {
+    const cat = new Set([catalogId]);
+    const payload = makeMinimalValidPayload();
+    payload.data.sessionExercises[0]!.setBlocksSnapshot = [{
+      targetKind: "duration",
+      exactValue: 30,
+      count: 2,
+    }];
+    const errors = validateBackupPayload(payload, cat);
+    expect(errors.filter((e) =>
+      e.field.startsWith("data.sessionExercises[0].setBlocksSnapshot")
+    )).toEqual([]);
+  });
+});
+
 describe("export -> import round-trip", () => {
   it("round-trips all persisted user data", async () => {
     // Populate data
