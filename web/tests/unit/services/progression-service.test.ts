@@ -1311,6 +1311,86 @@ describe("progression-service", () => {
   });
 });
 
+describe("fallback ambiguity — Sprint 2", () => {
+  let db: ExerciseLoggerDB;
+
+  beforeEach(async () => {
+    db = new ExerciseLoggerDB();
+    await initializeSettings(db);
+    await db.exercises.put(makeExercise("squat"));
+  });
+
+  afterEach(async () => {
+    await db.delete();
+  });
+
+  it("returns [] when the most recent finished session contains two matching untagged reps blocks", async () => {
+    const blockA: SetBlock = { targetKind: "reps", minValue: 8, maxValue: 12, count: 3 };
+    const blockB: SetBlock = { targetKind: "reps", minValue: 6, maxValue: 10, count: 2 };
+
+    const session = makeFinishedSession("s1", "2026-04-20T11:00:00.000Z");
+    // Same exercise twice in the same session, distinct instanceLabel kept ""
+    const se1 = makeSessionExercise("se1", "s1", "squat", [blockA]);
+    const se2 = makeSessionExercise("se2", "s1", "squat", [blockB], { orderIndex: 1 });
+
+    await db.sessions.put(session);
+    await db.sessionExercises.bulkAdd([se1, se2]);
+    await db.loggedSets.bulkAdd([
+      makeLoggedSet("l1", "s1", "se1", "squat", 0, 0, blockA),
+      makeLoggedSet("l2", "s1", "se1", "squat", 0, 1, blockA),
+      makeLoggedSet("l3", "s1", "se1", "squat", 0, 2, blockA),
+      makeLoggedSet("l4", "s1", "se2", "squat", 0, 0, blockB),
+      makeLoggedSet("l5", "s1", "se2", "squat", 0, 1, blockB),
+    ]);
+
+    // Use a NEW (drifted) blockSignature so primary match misses; tag and
+    // targetKind still match both prior blocks.
+    const driftedBlock: SetBlock = { targetKind: "reps", minValue: 5, maxValue: 9, count: 3 };
+    const driftedSig = generateBlockSignature(driftedBlock);
+
+    const result = await findMatchingBlock(
+      db,
+      "squat",
+      null,
+      driftedSig,
+      null, // no tag
+      "reps",
+    );
+
+    expect(result).toEqual([]);
+  });
+
+  it("returns the single matching block when fallback resolves unambiguously", async () => {
+    const blockA: SetBlock = { targetKind: "reps", minValue: 8, maxValue: 12, count: 3 };
+
+    const session = makeFinishedSession("s1", "2026-04-20T11:00:00.000Z");
+    const se1 = makeSessionExercise("se1", "s1", "squat", [blockA]);
+
+    await db.sessions.put(session);
+    await db.sessionExercises.put(se1);
+    await db.loggedSets.bulkAdd([
+      makeLoggedSet("l1", "s1", "se1", "squat", 0, 0, blockA),
+      makeLoggedSet("l2", "s1", "se1", "squat", 0, 1, blockA),
+      makeLoggedSet("l3", "s1", "se1", "squat", 0, 2, blockA),
+    ]);
+
+    const driftedBlock: SetBlock = { targetKind: "reps", minValue: 5, maxValue: 9, count: 3 };
+    const driftedSig = generateBlockSignature(driftedBlock);
+
+    const result = await findMatchingBlock(
+      db,
+      "squat",
+      null,
+      driftedSig,
+      null,
+      "reps",
+    );
+
+    expect(result).toHaveLength(3);
+    expect(result.map((ls) => ls.id).sort()).toEqual(["l1", "l2", "l3"]);
+  });
+});
+
 describe("computeTrainingCadence", () => {
   let db: ExerciseLoggerDB;
 

@@ -142,7 +142,7 @@ export async function findMatchingBlock(
   });
 
   if (fallbackMatches.length > 0) {
-    return findMostRecentFinishedSessionSets(db, fallbackMatches);
+    return findMostRecentFinishedSessionSets(db, fallbackMatches, true);
   }
 
   return [];
@@ -153,10 +153,17 @@ export async function findMatchingBlock(
  * finished session, and return only the sets from that session.
  *
  * Sets are returned sorted by setIndex ascending.
+ *
+ * When `blockGrouping` is true (used by the fallback path), this further
+ * groups the most recent session's matching sets by (sessionExerciseId,
+ * blockIndex). If exactly one group, returns it. If more than one group,
+ * returns [] — the fallback cannot honestly attribute the sets to a single
+ * historical block.
  */
 async function findMostRecentFinishedSessionSets(
   db: ExerciseLoggerDB,
-  loggedSets: LoggedSet[]
+  loggedSets: LoggedSet[],
+  blockGrouping: boolean = false,
 ): Promise<LoggedSet[]> {
   // Group by sessionId
   const bySession = new Map<string, LoggedSet[]>();
@@ -192,6 +199,27 @@ async function findMostRecentFinishedSessionSets(
 
   const mostRecentSession = sessions[0]!;
   const matchingSets = bySession.get(mostRecentSession.id) ?? [];
+
+  if (blockGrouping) {
+    // Sprint 2 (F2): in fallback mode, the most recent session may contain
+    // more than one matching block (same exerciseId+instanceLabel+tag+
+    // targetKind, distinct blockSignature now-drifted). Group by
+    // (sessionExerciseId, blockIndex). If more than one group, bail —
+    // we cannot honestly attribute sets to a specific historical block.
+    const byBlock = new Map<string, LoggedSet[]>();
+    for (const ls of matchingSets) {
+      const key = `${ls.sessionExerciseId}::${ls.blockIndex}`;
+      const existing = byBlock.get(key);
+      if (existing) {
+        existing.push(ls);
+      } else {
+        byBlock.set(key, [ls]);
+      }
+    }
+    if (byBlock.size > 1) {
+      return [];
+    }
+  }
 
   // Sort by setIndex ascending
   return matchingSets.sort((a, b) => a.setIndex - b.setIndex);
