@@ -1060,6 +1060,34 @@ export function validateBackupPayload(
     }
   });
 
+  // Sprint 2: duplicate slot check.
+  // Dexie has a unique compound index on [sessionExerciseId+blockIndex+setIndex]
+  // for loggedSets. Catch duplicates here so the failure mode is a clean
+  // BackupValidationError instead of a Dexie ConstraintError mid-transaction.
+  const slotKeys = new Set<string>();
+  loggedSets.forEach((ls, i) => {
+    if (typeof ls !== "object" || ls === null) return;
+    const lsObj = ls as Record<string, unknown>;
+    const seId = lsObj.sessionExerciseId;
+    const bIdx = lsObj.blockIndex;
+    const sIdx = lsObj.setIndex;
+    if (
+      typeof seId === "string" &&
+      typeof bIdx === "number" &&
+      typeof sIdx === "number"
+    ) {
+      const key = `${seId}::${bIdx}::${sIdx}`;
+      if (slotKeys.has(key)) {
+        errors.push({
+          field: `data.loggedSets[${i}]`,
+          message: `duplicate slot: another LoggedSet already targets sessionExerciseId="${seId}", blockIndex=${bIdx}, setIndex=${sIdx}`,
+        });
+      } else {
+        slotKeys.add(key);
+      }
+    }
+  });
+
   return errors;
 }
 

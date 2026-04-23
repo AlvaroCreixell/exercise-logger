@@ -1175,3 +1175,34 @@ describe("validator hardening — Sprint 2 — Settings onboarding fields", () =
     expect(errors.filter((e) => e.field.startsWith("data.settings."))).toEqual([]);
   });
 });
+
+describe("validator hardening — Sprint 2 — duplicate slot check", () => {
+  it("rejects two LoggedSets sharing (sessionExerciseId, blockIndex, setIndex)", () => {
+    const cat = new Set([catalogId]);
+    const payload = makeMinimalValidPayload();
+    const original = payload.data.loggedSets[0]!;
+    const dup: LoggedSet = {
+      ...original,
+      id: "ls2",
+      // same sessionExerciseId, blockIndex, setIndex — distinct id only
+    };
+    payload.data.loggedSets.push(dup);
+    const errors = validateBackupPayload(payload, cat);
+    expect(errors.some((e) =>
+      /duplicate.*slot/i.test(e.message)
+    )).toBe(true);
+  });
+
+  it("accepts two LoggedSets in the same block but different setIndex", () => {
+    const cat = new Set([catalogId]);
+    const payload = makeMinimalValidPayload();
+    const original = payload.data.loggedSets[0]!;
+    payload.data.loggedSets.push({
+      ...original,
+      id: "ls2",
+      setIndex: 1,
+    });
+    const errors = validateBackupPayload(payload, cat);
+    expect(errors.filter((e) => /duplicate.*slot/i.test(e.message))).toEqual([]);
+  });
+});
