@@ -247,7 +247,7 @@ function isWeightEligible(effectiveType: ExerciseType): boolean {
 }
 
 function allSetsLogged(matchingSets: LoggedSet[], expectedCount: number): boolean {
-  return matchingSets.length >= expectedCount;
+  return matchingSets.length === expectedCount;
 }
 
 // P5-A [CERTAIN — BUG]: allSetsHitCeiling must inspect targetKind and compare

@@ -1389,6 +1389,30 @@ describe("fallback ambiguity — Sprint 2", () => {
     expect(result).toHaveLength(3);
     expect(result.map((ls) => ls.id).sort()).toEqual(["l1", "l2", "l3"]);
   });
+
+  it("calculateBlockSuggestion does NOT progress when more sets are logged than the block prescribes", () => {
+    const block: SetBlock = { targetKind: "reps", minValue: 8, maxValue: 12, count: 3 };
+
+    // 4 sets logged, all hitting ceiling; block prescribes 3.
+    const sets: LoggedSet[] = [
+      { ...makeLoggedSet("l1", "s1", "se1", "squat", 0, 0, block), performedReps: 12 },
+      { ...makeLoggedSet("l2", "s1", "se1", "squat", 0, 1, block), performedReps: 12 },
+      { ...makeLoggedSet("l3", "s1", "se1", "squat", 0, 2, block), performedReps: 12 },
+      { ...makeLoggedSet("l4", "s1", "se1", "squat", 0, 3, block), performedReps: 12 },
+    ];
+
+    const suggestion = calculateBlockSuggestion(
+      sets,
+      block,
+      0,
+      "weight",
+      "barbell",
+      "kg",
+    );
+
+    expect(suggestion).not.toBeNull();
+    expect(suggestion!.isProgression).toBe(false); // would have been true under `>=`
+  });
 });
 
 describe("computeTrainingCadence", () => {
