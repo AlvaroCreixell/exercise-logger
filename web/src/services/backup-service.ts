@@ -840,10 +840,7 @@ function validateSettings(
   const s = settings as Record<string, unknown>;
 
   if (s.id !== "user") {
-    errors.push({
-      field: `${path}.id`,
-      message: 'must be "user"',
-    });
+    errors.push({ field: `${path}.id`, message: 'must be "user"' });
   }
   if (!isStringOrNull(s.activeRoutineId)) {
     errors.push({
@@ -856,6 +853,38 @@ function validateSettings(
       field: `${path}.units`,
       message: `must be one of: ${VALID_UNITS.join(", ")}`,
     });
+  }
+
+  // userName: string-or-null; codepoint length <= 40 (mirrors setUserName).
+  if (!isStringOrNull(s.userName)) {
+    errors.push({
+      field: `${path}.userName`,
+      message: "must be a string or null",
+    });
+  } else if (typeof s.userName === "string" && Array.from(s.userName).length > 40) {
+    errors.push({
+      field: `${path}.userName`,
+      message: "must be 40 codepoints or fewer",
+    });
+  }
+
+  // Five timestamp fields: each string-or-null. We do not enforce ISO format
+  // here — the live setters call nowISO() which guarantees ISO 8601, and
+  // validating format on read would risk rejecting backups from minor format
+  // drift. Match live-service strictness: type only.
+  for (const field of [
+    "onboardingCompletedAt",
+    "onboardingSkippedAt",
+    "lastGeneratedPrompt",
+    "lastGeneratedPromptAt",
+    "onboardingBannerDismissedAt",
+  ] as const) {
+    if (!isStringOrNull(s[field])) {
+      errors.push({
+        field: `${path}.${field}`,
+        message: "must be a string or null",
+      });
+    }
   }
   // Pre-v3 backups may include a `theme` field; accept but ignore it.
   // It gets stripped in importBackup() before persisting.

@@ -1099,3 +1099,79 @@ describe("export -> import round-trip", () => {
     expect(settings!.activeRoutineId).toBe("r1");
   });
 });
+
+describe("validator hardening — Sprint 2 — Settings onboarding fields", () => {
+  it("rejects userName as a number", () => {
+    const cat = new Set([catalogId]);
+    const payload = makeMinimalValidPayload();
+    (payload.data.settings as Record<string, unknown>).userName = 42;
+    const errors = validateBackupPayload(payload, cat);
+    expect(errors.some((e) =>
+      e.field === "data.settings.userName" && /string or null/i.test(e.message)
+    )).toBe(true);
+  });
+
+  it("rejects userName longer than 40 codepoints", () => {
+    const cat = new Set([catalogId]);
+    const payload = makeMinimalValidPayload();
+    (payload.data.settings as Record<string, unknown>).userName = "a".repeat(41);
+    const errors = validateBackupPayload(payload, cat);
+    expect(errors.some((e) =>
+      e.field === "data.settings.userName" && /40/.test(e.message)
+    )).toBe(true);
+  });
+
+  it("counts emoji as single codepoints (40-emoji name accepted)", () => {
+    const cat = new Set([catalogId]);
+    const payload = makeMinimalValidPayload();
+    // 40 grinning-face emoji codepoints; each is one Array.from element but two UTF-16 code units.
+    (payload.data.settings as Record<string, unknown>).userName = "😀".repeat(40);
+    const errors = validateBackupPayload(payload, cat);
+    expect(errors.filter((e) => e.field === "data.settings.userName")).toEqual([]);
+  });
+
+  it("rejects onboardingCompletedAt as a number", () => {
+    const cat = new Set([catalogId]);
+    const payload = makeMinimalValidPayload();
+    (payload.data.settings as Record<string, unknown>).onboardingCompletedAt = 0;
+    const errors = validateBackupPayload(payload, cat);
+    expect(errors.some((e) =>
+      e.field === "data.settings.onboardingCompletedAt" && /string or null/i.test(e.message)
+    )).toBe(true);
+  });
+
+  it("accepts all six onboarding fields as null", () => {
+    const cat = new Set([catalogId]);
+    const payload = makeMinimalValidPayload();
+    // settings already has them as null in makeMinimalValidPayload; assert no errors come back
+    // for these specific fields.
+    const errors = validateBackupPayload(payload, cat);
+    const onboardingFields = [
+      "userName",
+      "onboardingCompletedAt",
+      "onboardingSkippedAt",
+      "lastGeneratedPrompt",
+      "lastGeneratedPromptAt",
+      "onboardingBannerDismissedAt",
+    ];
+    for (const f of onboardingFields) {
+      expect(errors.filter((e) => e.field === `data.settings.${f}`)).toEqual([]);
+    }
+  });
+
+  it("accepts ISO-shaped strings for the five timestamp fields", () => {
+    const cat = new Set([catalogId]);
+    const payload = makeMinimalValidPayload();
+    const stamp = "2026-04-23T00:00:00.000Z";
+    Object.assign(payload.data.settings, {
+      userName: "Alice",
+      onboardingCompletedAt: stamp,
+      onboardingSkippedAt: null,
+      lastGeneratedPrompt: "some prompt",
+      lastGeneratedPromptAt: stamp,
+      onboardingBannerDismissedAt: null,
+    });
+    const errors = validateBackupPayload(payload, cat);
+    expect(errors.filter((e) => e.field.startsWith("data.settings."))).toEqual([]);
+  });
+});
