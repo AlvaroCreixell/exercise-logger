@@ -210,6 +210,26 @@ function isArrayOf<T>(v: unknown, guard: (item: unknown) => item is T): v is T[]
   return Array.isArray(v) && v.every(guard);
 }
 
+/** Strict numeric check — rejects NaN, Infinity, -Infinity. */
+function isFiniteNumber(v: unknown): v is number {
+  return typeof v === "number" && Number.isFinite(v);
+}
+
+/** Finite number > 0. */
+function isFinitePositive(v: unknown): v is number {
+  return isFiniteNumber(v) && v > 0;
+}
+
+/** Integer >= 0 (and finite). */
+function isFiniteNonNegativeInteger(v: unknown): v is number {
+  return isFiniteNumber(v) && Number.isInteger(v) && v >= 0;
+}
+
+/** Finite number or null. Used for performance fields on LoggedSet. */
+function isFiniteNumberOrNull(v: unknown): v is number | null {
+  return v === null || isFiniteNumber(v);
+}
+
 // ---------------------------------------------------------------------------
 // Structural validators for each record type
 // ---------------------------------------------------------------------------
@@ -727,28 +747,28 @@ function validateLoggedSet(
       message: `must be one of: ${VALID_TAGS.join(", ")}, or null`,
     });
   }
-  if (!isNumberOrNull(s.performedWeightKg)) {
+  if (!isFiniteNumberOrNull(s.performedWeightKg)) {
     errors.push({
       field: `${path}.performedWeightKg`,
-      message: "must be a number or null",
+      message: "must be a finite number or null",
     });
   }
-  if (!isNumberOrNull(s.performedReps)) {
+  if (!isFiniteNumberOrNull(s.performedReps)) {
     errors.push({
       field: `${path}.performedReps`,
-      message: "must be a number or null",
+      message: "must be a finite number or null",
     });
   }
-  if (!isNumberOrNull(s.performedDurationSec)) {
+  if (!isFiniteNumberOrNull(s.performedDurationSec)) {
     errors.push({
       field: `${path}.performedDurationSec`,
-      message: "must be a number or null",
+      message: "must be a finite number or null",
     });
   }
-  if (!isNumberOrNull(s.performedDistanceM)) {
+  if (!isFiniteNumberOrNull(s.performedDistanceM)) {
     errors.push({
       field: `${path}.performedDistanceM`,
-      message: "must be a number or null",
+      message: "must be a finite number or null",
     });
   }
   if (!isString(s.loggedAt)) {

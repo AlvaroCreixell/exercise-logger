@@ -843,6 +843,86 @@ describe("readJsonFile", () => {
 // Round-trip test
 // =========================================================================
 
+// ---------------------------------------------------------------------------
+// Sprint 2 — finite-numerics hardening
+// ---------------------------------------------------------------------------
+
+const catalogId = "barbell-back-squat";
+
+function makeMinimalValidPayload(): BackupEnvelope {
+  const routine = makeRoutine("r1");
+  const session = makeSession("s1");
+  const se = makeSessionExercise("se1", "s1", catalogId);
+  const ls = makeLoggedSet("ls1", "s1", "se1", catalogId);
+  return {
+    app: "exercise-logger",
+    schemaVersion: 1,
+    exportedAt: "2026-04-23T00:00:00.000Z",
+    data: {
+      routines: [routine],
+      sessions: [session],
+      sessionExercises: [se],
+      loggedSets: [ls],
+      settings: {
+        id: "user",
+        activeRoutineId: "r1",
+        units: "kg",
+        userName: null,
+        onboardingCompletedAt: null,
+        onboardingSkippedAt: null,
+        lastGeneratedPrompt: null,
+        lastGeneratedPromptAt: null,
+        onboardingBannerDismissedAt: null,
+      },
+    },
+  };
+}
+
+describe("validator hardening — Sprint 2 — finite numerics", () => {
+  it("rejects performedReps === Infinity", () => {
+    const cat = new Set([catalogId]);
+    const payload = makeMinimalValidPayload();
+    payload.data.loggedSets[0]!.performedReps = Infinity;
+    const errors = validateBackupPayload(payload, cat);
+    expect(errors.some((e) =>
+      e.field === "data.loggedSets[0].performedReps" &&
+      /must be a finite/i.test(e.message)
+    )).toBe(true);
+  });
+
+  it("rejects performedWeightKg === -Infinity", () => {
+    const cat = new Set([catalogId]);
+    const payload = makeMinimalValidPayload();
+    payload.data.loggedSets[0]!.performedWeightKg = -Infinity;
+    const errors = validateBackupPayload(payload, cat);
+    expect(errors.some((e) =>
+      e.field === "data.loggedSets[0].performedWeightKg" &&
+      /must be a finite/i.test(e.message)
+    )).toBe(true);
+  });
+
+  it("rejects performedDurationSec === NaN (existing behavior preserved)", () => {
+    const cat = new Set([catalogId]);
+    const payload = makeMinimalValidPayload();
+    payload.data.loggedSets[0]!.performedDurationSec = NaN;
+    const errors = validateBackupPayload(payload, cat);
+    expect(errors.some((e) =>
+      e.field === "data.loggedSets[0].performedDurationSec" &&
+      /must be a finite/i.test(e.message)
+    )).toBe(true);
+  });
+
+  it("accepts finite numerics including 0 and negative weight", () => {
+    const cat = new Set([catalogId]);
+    const payload = makeMinimalValidPayload();
+    payload.data.loggedSets[0]!.performedReps = 0;
+    payload.data.loggedSets[0]!.performedWeightKg = -10; // semantics policed elsewhere
+    payload.data.loggedSets[0]!.performedDurationSec = null;
+    const errors = validateBackupPayload(payload, cat);
+    expect(errors.filter((e) => e.field.startsWith("data.loggedSets[0].performed"))).toEqual([]);
+  });
+});
+
 describe("export -> import round-trip", () => {
   it("round-trips all persisted user data", async () => {
     // Populate data
