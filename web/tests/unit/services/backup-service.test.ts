@@ -1176,6 +1176,75 @@ describe("validator hardening — Sprint 2 — Settings onboarding fields", () =
   });
 });
 
+describe("validator hardening — Sprint 2 — legacy backup round-trip", () => {
+  it("a backup produced by today's exportBackup validates and re-imports cleanly", async () => {
+    // Build a non-trivial state: one routine, two finished sessions, multiple
+    // session exercises, multiple logged sets across blocks.
+    const exercise = makeExercise(catalogId);
+    const routine = makeRoutine("r1");
+    const session1 = makeSession("s1", { finishedAt: "2026-04-20T11:00:00.000Z" });
+    const session2 = makeSession("s2", {
+      id: "s2",
+      startedAt: "2026-04-22T10:00:00.000Z",
+      finishedAt: "2026-04-22T11:00:00.000Z",
+    });
+    const se1 = makeSessionExercise("se1", "s1", catalogId);
+    const se2 = makeSessionExercise("se2", "s2", catalogId);
+    const sets = [
+      makeLoggedSet("ls1", "s1", "se1", catalogId),
+      makeLoggedSet("ls2", "s1", "se1", catalogId, { setIndex: 1 }),
+      makeLoggedSet("ls3", "s1", "se1", catalogId, { setIndex: 2 }),
+      makeLoggedSet("ls4", "s2", "se2", catalogId),
+    ];
+
+    // Seed the DB (exercises already in db from beforeEach, but put is idempotent).
+    await db.exercises.put(exercise);
+    await db.routines.put(routine);
+    await db.sessions.bulkAdd([session1, session2]);
+    await db.sessionExercises.bulkAdd([se1, se2]);
+    await db.loggedSets.bulkAdd(sets);
+    await db.settings.put({
+      ...DEFAULT_SETTINGS,
+      activeRoutineId: "r1",
+      userName: "Alice",
+      onboardingCompletedAt: "2026-04-19T09:00:00.000Z",
+    });
+
+    // Export.
+    const envelope = await exportBackup(db);
+
+    // Validate against the live catalog.
+    const cat = new Set((await db.exercises.toArray()).map((e) => e.id));
+    const errors = validateBackupPayload(envelope, cat);
+    expect(errors).toEqual([]);
+
+    // Wipe user data (mimic fresh-DB import target; keep exercises as catalog).
+    await db.routines.clear();
+    await db.sessions.clear();
+    await db.sessionExercises.clear();
+    await db.loggedSets.clear();
+    await db.settings.put(DEFAULT_SETTINGS);
+
+    // Import.
+    await importBackup(db, envelope);
+
+    // Confirm tables match.
+    const r2 = await db.routines.toArray();
+    const s2 = await db.sessions.toArray();
+    const se2x = await db.sessionExercises.toArray();
+    const ls2 = await db.loggedSets.toArray();
+    const set2 = await db.settings.get("user");
+
+    expect(r2).toHaveLength(1);
+    expect(s2).toHaveLength(2);
+    expect(se2x).toHaveLength(2);
+    expect(ls2).toHaveLength(4);
+    expect(set2?.userName).toBe("Alice");
+    expect(set2?.activeRoutineId).toBe("r1");
+    expect(set2?.onboardingCompletedAt).toBe("2026-04-19T09:00:00.000Z");
+  });
+});
+
 describe("validator hardening — Sprint 2 — duplicate slot check", () => {
   it("rejects two LoggedSets sharing (sessionExerciseId, blockIndex, setIndex)", () => {
     const cat = new Set([catalogId]);
