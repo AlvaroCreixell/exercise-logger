@@ -138,9 +138,9 @@ Examples:
 Rules:
 
 - a range must be `[min, max]`
-- range values must be numbers
+- range values must be finite positive numbers (`> 0`)
 - `min` must be less than `max`
-- exact values must be numbers
+- exact values must be finite positive numbers (`> 0`)
 - `count` is required
 - `count` must be an integer `>= 1`
 - `tag` is optional
@@ -176,6 +176,8 @@ cardio:
     - { name: "Bike", detail: "15-20 min easy pace" }
 ```
 
+`cardio.notes` must be a string. Each `cardio.options[]` entry must include both `name` and `detail` as strings. Missing or non-string fields are rejected.
+
 ### `notes`
 
 ```yaml
@@ -183,6 +185,8 @@ notes:
   - "Rotation is continuous."
   - "Rest after both exercises in a superset round."
 ```
+
+Each element of `notes` must be a string. Numbers, nulls, or other types are rejected.
 
 ## Common Failure Cases
 
@@ -202,3 +206,6 @@ The generated YAML is invalid if any of these happen:
 - unsupported `type_override`
 - unsupported `equipment_override`
 - duplicate same-day exercise without distinct `instance_label`
+- `notes` element is not a string
+- `cardio.notes` or any `cardio.options[].name` / `.detail` is not a string
+- range bound or exact value is zero, negative, or non-finite
