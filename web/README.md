@@ -13,7 +13,7 @@ npm run dev         # Dev server at http://localhost:5173
 
 | Command             | What it does                                         |
 |---------------------|------------------------------------------------------|
-| `npm test`          | Unit + integration tests (Vitest, 742 tests)         |
+| `npm test`          | Unit + integration tests (Vitest — 960 tests across 101 files at Sprint 5 close) |
 | `npm run test:watch`| Vitest in watch mode                                 |
 | `npm run build`     | Production build + PWA service worker                |
 | `npm run preview`   | Preview the production build at http://localhost:4173 |

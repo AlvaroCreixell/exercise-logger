@@ -12,7 +12,7 @@ import { SupersetGroup } from "@/features/workout/SupersetGroup";
 import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
 import { Button } from "@/shared/ui/button";
 import { getEffectiveUnit } from "@/domain/unit-helpers";
-import { computeSessionVolumeKg } from "./lib/sessionStats";
+import { computeSessionVolumeKg } from "@/shared/lib/sessionStats";
 import { SessionDetailHeader } from "./SessionDetailHeader";
 import { SessionDetailStatsTile } from "./SessionDetailStatsTile";
 import { SessionDetailExerciseCard } from "./SessionDetailExerciseCard";

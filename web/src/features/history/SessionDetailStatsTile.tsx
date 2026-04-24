@@ -1,6 +1,6 @@
 import { Card, CardContent } from "@/shared/ui/card";
 import type { UnitSystem } from "@/domain/enums";
-import { formatVolume } from "./lib/sessionStats";
+import { formatVolume } from "@/shared/lib/sessionStats";
 
 interface SessionDetailStatsTileProps {
   setCount: number;

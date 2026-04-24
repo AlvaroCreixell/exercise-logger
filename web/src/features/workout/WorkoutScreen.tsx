@@ -21,7 +21,7 @@ import { FinishCelebration } from "./FinishCelebration";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { Dumbbell } from "@/shared/icons";
 import { toast } from "sonner";
-import { computeSessionVolumeKg } from "@/features/history/lib/sessionStats";
+import { computeSessionVolumeKg } from "@/shared/lib/sessionStats";
 import type { SessionExercise, LoggedSet } from "@/domain/types";
 
 function computeElapsedSec(startedAt: string): number {

@@ -1,7 +1,7 @@
 import { Link } from "react-router";
 import { Back } from "@/shared/icons";
 import type { Session } from "@/domain/types";
-import { formatShortDuration } from "./lib/sessionStats";
+import { formatShortDuration } from "@/shared/lib/sessionStats";
 
 interface SessionDetailHeaderProps {
   session: Session;

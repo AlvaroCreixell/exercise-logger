@@ -250,8 +250,9 @@ function allSetsLogged(matchingSets: LoggedSet[], expectedCount: number): boolea
   return matchingSets.length === expectedCount;
 }
 
-// P5-A [CERTAIN — BUG]: allSetsHitCeiling must inspect targetKind and compare
-// ceiling against the appropriate field, not just performedReps.
+/** True iff every set in `sets` hit the ceiling for the given target kind.
+ *  For reps targets the ceiling check uses performedReps; for duration
+ *  targets, performedDurationSec; for distance, performedDistanceM. */
 function allSetsHitCeiling(sets: LoggedSet[], ceiling: number, targetKind: TargetKind): boolean {
   if (sets.length === 0) return false;
   return sets.every((ls) => {
@@ -311,7 +312,6 @@ export function calculateBlockSuggestion(
   const conditionRange = isRangeBlock(block);
   const conditionWeight = isWeightEligible(effectiveType);
   const conditionAllLogged = allSetsLogged(matchingSets, block.count);
-  // P5-A: pass targetKind to allSetsHitCeiling
   const conditionAllHitCeiling = conditionRange
     ? allSetsHitCeiling(matchingSets, block.maxValue!, block.targetKind)
     : false;
@@ -336,9 +336,9 @@ export function calculateBlockSuggestion(
     // produces output consistent with the lbs path.
     suggestedWeightKg = Math.round(suggestedWeightKg * 100) / 100;
 
-    // P5-B [CERTAIN — BUG]: Ensure the suggestion is at least one increment
-    // above the previous weight. Use getIncrement() directly instead of
-    // roundToIncrement which can round down to 0 for small values.
+    // Floor the suggestion at one increment above the previous weight.
+    // roundToIncrement can round down to 0 for small values, so we use
+    // getIncrement() directly to guarantee monotonic progression.
     if (suggestedWeightKg <= previousWeightKg) {
       suggestedWeightKg = previousWeightKg + getIncrement(effectiveEquipment, "kg");
     }

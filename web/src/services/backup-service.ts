@@ -313,9 +313,7 @@ function validateSetBlock(
   }
 }
 
-/**
- * ERRATA P7-B: Validate a RoutineExerciseEntry inside a day.
- */
+/** Validate a RoutineExerciseEntry inside a day. */
 function validateRoutineExerciseEntry(
   entry: unknown,
   path: string,
@@ -334,7 +332,7 @@ function validateRoutineExerciseEntry(
   if (!isString(e.exerciseId)) {
     errors.push({ field: `${path}.exerciseId`, message: "must be a string" });
   } else if (!catalogIds.has(e.exerciseId as string)) {
-    // ERRATA P7-A: check exerciseId against catalog
+    // exerciseId must reference an entry in the seeded catalog
     errors.push({
       field: `${path}.exerciseId`,
       message: `exercise "${e.exerciseId}" not found in current catalog`,
@@ -349,9 +347,7 @@ function validateRoutineExerciseEntry(
   }
 }
 
-/**
- * ERRATA P7-B: Validate a RoutineEntry (either exercise or superset).
- */
+/** Validate a RoutineEntry (either exercise or superset). */
 function validateRoutineEntry(
   entry: unknown,
   path: string,
@@ -446,7 +442,7 @@ function validateRoutine(
   if (typeof r.days !== "object" || r.days === null) {
     errors.push({ field: `${path}.days`, message: "must be an object" });
   } else {
-    // ERRATA P7-B: Deep-validate each RoutineDay and its entries
+    // Deep-validate each RoutineDay and its entries
     const days = r.days as Record<string, unknown>;
     for (const [dayId, day] of Object.entries(days)) {
       const dayPath = `${path}.days.${dayId}`;
@@ -900,7 +896,7 @@ function validateSettings(
  * 4. Every referenced exerciseId must exist in the current catalog
  * 5. At most one imported session may be "active"
  * 6. Every row must pass structural validation
- * 7. (ERRATA P7-C) Cross-record FK integrity checks
+ * 7. Cross-record FK integrity checks
  *
  * @param json - The parsed JSON object to validate.
  * @param catalogIds - Set of exercise IDs from the current seeded catalog.
@@ -980,7 +976,7 @@ export function validateBackupPayload(
   const sessionExercises = data.sessionExercises as unknown[];
   const loggedSets = data.loggedSets as unknown[];
 
-  // ERRATA P7-A/P7-B: pass catalogIds to validateRoutine for deep exerciseId checks
+  // Pass catalogIds so each routine deep-validates its exerciseId references.
   routines.forEach((r, i) => validateRoutine(r, i, catalogIds, errors));
   sessions.forEach((s, i) => validateSession(s, i, catalogIds, errors));
   sessionExercises.forEach((se, i) =>
@@ -1006,7 +1002,7 @@ export function validateBackupPayload(
   }
 
   // -------------------------------------------------------------------------
-  // ERRATA P7-C: Cross-record FK integrity checks
+  // Cross-record FK integrity checks
   // -------------------------------------------------------------------------
 
   // Build ID sets from the imported data

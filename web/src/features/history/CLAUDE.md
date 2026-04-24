@@ -22,7 +22,8 @@ Browse past sessions and drill down into set-level detail. Routes:
 ## Local utilities (`lib/`)
 
 - `groupByMonth.ts` — `groupSessionsByMonth()` with local-time boundaries.
-- `sessionStats.ts` — Aggregations: `computeSessionVolumeKg`, per-session set counts. Also used by the Workout feature's finish celebration.
+
+Aggregations (`computeSessionVolumeKg`, `formatVolume`, `formatShortDuration`) live at `@/shared/lib/sessionStats` — the History feature consumes them via that path, and the Workout feature's `FinishCelebration` and `WorkoutScreen` do too. (Moved from `features/history/lib/` in Sprint 5 to fix the `shared → features` import inversion in `useFinishedSessionSummaries`.)
 
 ## Hooks used
 
