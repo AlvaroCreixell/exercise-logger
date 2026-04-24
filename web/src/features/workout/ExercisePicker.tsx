@@ -85,7 +85,7 @@ export function ExercisePicker({
                   </div>
                   {inWorkout ? (
                     <Badge variant="secondary" className="shrink-0 text-[11px]">
-                      In workout
+                      Add again
                     </Badge>
                   ) : (
                     <Plus size={16} aria-hidden />
