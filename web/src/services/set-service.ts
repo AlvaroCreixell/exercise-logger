@@ -145,10 +145,16 @@ export async function logSet(
           );
         }
 
-        // [P4-G] Validate setIndex against block count
-        if (setIndex < 0 || setIndex >= block.count) {
+        // setIndex must be non-negative. Overrun (`setIndex >= block.count`) is
+        // permitted: Sprint 4's "+ Add extra set" affordance on ExerciseCard
+        // creates rows at setIndex = block.count + N and persists them through
+        // logSet. The Dexie compound index `[sessionExerciseId+blockIndex+
+        // setIndex]` keeps slots unique. Progression remains safe because
+        // Sprint 2's `allSetsLogged === expectedCount` rejects over-logging
+        // for the +5% gate.
+        if (setIndex < 0) {
           throw new Error(
-            `Set index ${setIndex} out of range for block ${blockIndex} of session exercise "${sessionExerciseId}" (block has ${block.count} sets)`
+            `Set index ${setIndex} cannot be negative (block ${blockIndex} of session exercise "${sessionExerciseId}")`
           );
         }
 

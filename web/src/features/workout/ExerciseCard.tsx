@@ -60,14 +60,18 @@ export function ExerciseCard({
   const [extraTaps, setExtraTaps] = useState<Record<number, number>>({});
 
   // Logged-driven extras: for each block, the highest setIndex among its
-  // loggedSets, minus block.count + 1 (clamped to >= 0).
+  // loggedSets, minus block.count + 1 (clamped to >= 0). Skip the scan
+  // entirely for extras-origin SessionExercises (no blocks → loggedExtras
+  // would always be empty anyway).
   const loggedExtras: Record<number, number> = {};
-  for (const ls of loggedSets) {
-    const block = blocks[ls.blockIndex];
-    if (!block) continue;
-    const overrun = ls.setIndex - block.count + 1;
-    if (overrun > 0) {
-      loggedExtras[ls.blockIndex] = Math.max(loggedExtras[ls.blockIndex] ?? 0, overrun);
+  if (blocks.length > 0) {
+    for (const ls of loggedSets) {
+      const block = blocks[ls.blockIndex];
+      if (!block) continue;
+      const overrun = ls.setIndex - block.count + 1;
+      if (overrun > 0) {
+        loggedExtras[ls.blockIndex] = Math.max(loggedExtras[ls.blockIndex] ?? 0, overrun);
+      }
     }
   }
 
@@ -179,12 +183,20 @@ export function ExerciseCard({
                   );
                 }
                 // "+ Add extra set" button below this block.
+                // Multi-block exercises render one button per block; the
+                // aria-label disambiguates them so screen-reader users know
+                // which block they're extending.
                 rows.push(
                   <button
                     key={`add-extra-${bi}`}
                     type="button"
+                    aria-label={
+                      blocks.length > 1
+                        ? `Add extra set to set block ${bi + 1}`
+                        : "Add extra set"
+                    }
                     onClick={() => addExtraSet(bi)}
-                    className="ml-9 self-start text-[11px] font-semibold uppercase tracking-widest text-ink-3 hover:text-sage-deep transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage/40 rounded-sm py-1"
+                    className="ml-9 text-[11px] font-semibold uppercase tracking-widest text-ink-3 hover:text-sage-deep transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage/40 rounded-sm py-1"
                   >
                     + Add extra set
                   </button>,

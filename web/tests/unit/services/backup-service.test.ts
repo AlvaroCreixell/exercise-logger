@@ -1040,6 +1040,39 @@ describe("validator hardening — Sprint 2 — SetBlock contract", () => {
       e.field.startsWith("data.sessionExercises[0].setBlocksSnapshot")
     )).toEqual([]);
   });
+
+  // CodeRabbit nitpick on PR #22: cover the < 1 integer branch explicitly.
+  it("rejects count: 0 (integer-but-below-minimum branch)", () => {
+    const cat = new Set([catalogId]);
+    const payload = makeMinimalValidPayload();
+    payload.data.sessionExercises[0]!.setBlocksSnapshot = [{
+      targetKind: "reps",
+      minValue: 8,
+      maxValue: 12,
+      count: 0,
+    }];
+    const errors = validateBackupPayload(payload, cat);
+    expect(errors.some((e) =>
+      e.field.endsWith(".count") && (/integer/i.test(e.message) || />= 1/.test(e.message))
+    )).toBe(true);
+  });
+
+  // CodeRabbit nitpick on PR #22: prove min >= max rejects equality, not
+  // only strict greater-than.
+  it("rejects minValue === maxValue (equality, not just min > max)", () => {
+    const cat = new Set([catalogId]);
+    const payload = makeMinimalValidPayload();
+    payload.data.sessionExercises[0]!.setBlocksSnapshot = [{
+      targetKind: "reps",
+      minValue: 10,
+      maxValue: 10,
+      count: 3,
+    }];
+    const errors = validateBackupPayload(payload, cat);
+    expect(errors.some((e) =>
+      /must be less than maxValue/i.test(e.message)
+    )).toBe(true);
+  });
 });
 
 describe("export -> import round-trip", () => {

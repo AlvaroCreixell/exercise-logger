@@ -514,7 +514,7 @@ describe("ExerciseCard — Add extra set (Sprint 4 D3b)", () => {
     expect(screen.getAllByRole("button", { name: /^Set \d+/ })).toHaveLength(5);
   });
 
-  it("two-block exercise gets two independent + Add extra set buttons", () => {
+  it("two-block exercise gets two independent + Add extra set buttons with disambiguating aria-labels", () => {
     const blockA: SetBlock = { targetKind: "reps", minValue: 6, maxValue: 8, count: 2, tag: "top" };
     const blockB: SetBlock = { targetKind: "reps", minValue: 8, maxValue: 12, count: 3 };
     render(
@@ -528,6 +528,23 @@ describe("ExerciseCard — Add extra set (Sprint 4 D3b)", () => {
       />,
     );
     expect(screen.getAllByRole("button", { name: /add extra set/i })).toHaveLength(2);
+    // Per-block aria-labels disambiguate the two buttons for screen readers.
+    expect(screen.getByRole("button", { name: "Add extra set to set block 1" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Add extra set to set block 2" })).toBeInTheDocument();
+  });
+
+  it("single-block exercise uses the unscoped aria-label (no disambiguation needed)", () => {
+    render(
+      <ExerciseCard
+        sessionExercise={makeSessionExercise()}
+        loggedSets={[]}
+        units="kg"
+        historyData={undefined}
+        extraHistory={undefined}
+        onSetTap={vi.fn()}
+      />,
+    );
+    expect(screen.getByRole("button", { name: "Add extra set" })).toBeInTheDocument();
   });
 
   it("progress badge counts only prescribed-slot completion (extras don't push past denominator)", () => {
