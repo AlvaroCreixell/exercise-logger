@@ -1290,22 +1290,55 @@ describe("validator hardening — Sprint 2 — extended referential integrity", 
     )).toBe(true);
   });
 
-  it("rejects a Session.routineId that doesn't reference an imported routine", () => {
-    const cat = new Set([catalogId]);
-    const payload = makeMinimalValidPayload();
-    payload.data.sessions[0]!.routineId = "ghost-routine";
-    const errors = validateBackupPayload(payload, cat);
-    expect(errors.some((e) =>
-      e.field === "data.sessions[0].routineId" &&
-      /not in the imported routines/i.test(e.message)
-    )).toBe(true);
-  });
-
   it("accepts Session.routineId === null (history survives routine deletion)", () => {
     const cat = new Set([catalogId]);
     const payload = makeMinimalValidPayload();
     payload.data.sessions[0]!.routineId = null;
     const errors = validateBackupPayload(payload, cat);
+    expect(errors.filter((e) => e.field === "data.sessions[0].routineId")).toEqual([]);
+  });
+});
+
+describe("Sprint 2 hotfix — backward-compat", () => {
+  it("accepts a legacy settings object that omits the six onboarding fields", () => {
+    const cat = new Set([catalogId]);
+    const payload = makeMinimalValidPayload();
+    // Remove the six onboarding keys entirely (legacy pre-onboarding shape).
+    const settingsObj = payload.data.settings as Record<string, unknown>;
+    delete settingsObj.userName;
+    delete settingsObj.onboardingCompletedAt;
+    delete settingsObj.onboardingSkippedAt;
+    delete settingsObj.lastGeneratedPrompt;
+    delete settingsObj.lastGeneratedPromptAt;
+    delete settingsObj.onboardingBannerDismissedAt;
+    const errors = validateBackupPayload(payload, cat);
+    // None of the six onboarding fields should produce errors when omitted.
+    const onboardingFields = [
+      "userName",
+      "onboardingCompletedAt",
+      "onboardingSkippedAt",
+      "lastGeneratedPrompt",
+      "lastGeneratedPromptAt",
+      "onboardingBannerDismissedAt",
+    ];
+    for (const f of onboardingFields) {
+      expect(errors.filter((e) => e.field === `data.settings.${f}`)).toEqual([]);
+    }
+  });
+
+  it("accepts a backup whose Session.routineId references a routine no longer in routines (post-deleteRoutine)", () => {
+    const cat = new Set([catalogId]);
+    const payload = makeMinimalValidPayload();
+    // Simulate deleteRoutine: the session retains its routineId, but the
+    // routine has been removed from the routines collection. The runtime
+    // tolerates this via Session snapshot fields (invariant 5).
+    payload.data.routines = []; // routine deleted
+    payload.data.settings.activeRoutineId = null; // settings would be updated by deleteRoutine
+    // payload.data.sessions[0].routineId still equals "r1" (the original makeMinimalValidPayload value).
+    const errors = validateBackupPayload(payload, cat);
+    // The Session.routineId field MUST NOT produce an error when the
+    // referenced routine is missing — invariant 5: history survives routine
+    // deletion via snapshots.
     expect(errors.filter((e) => e.field === "data.sessions[0].routineId")).toEqual([]);
   });
 });
