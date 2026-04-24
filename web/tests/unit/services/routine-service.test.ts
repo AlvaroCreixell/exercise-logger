@@ -1387,3 +1387,205 @@ describe("validateAndNormalizeRoutine — integration with real files", () => {
     expect(routine.cardio!.options[0]!.name).toBe("Walk");
   });
 });
+
+describe("validateAndNormalizeRoutine — strict (Sprint 4 D4)", () => {
+  let exerciseLookup: Map<string, Exercise>;
+
+  beforeAll(() => {
+    // Provide a minimal catalog with the IDs the test fixtures use.
+    exerciseLookup = new Map([
+      ["barbell-back-squat", {
+        id: "barbell-back-squat",
+        name: "Barbell Back Squat",
+        type: "weight" as const,
+        equipment: "barbell" as const,
+        muscleGroups: ["Legs"],
+      }],
+    ]);
+  });
+
+  function baseValidYaml(): string {
+    return `
+version: 1
+name: Test
+rest_default_sec: 90
+rest_superset_sec: 60
+day_order: [A]
+days:
+  A:
+    label: Day A
+    entries:
+      - exercise_id: barbell-back-squat
+        sets:
+          - { reps: [8, 12], count: 3 }
+`;
+  }
+
+  it("rejects notes containing a non-string element (no String() coercion)", async () => {
+    const yaml = baseValidYaml() + `
+notes:
+  - "First note"
+  - 42
+`;
+    const result = await validateAndNormalizeRoutine(yaml, exerciseLookup);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.errors.some((e) =>
+      e.path.startsWith("notes[1]") && /must be a string/i.test(e.message)
+    )).toBe(true);
+  });
+
+  it("accepts notes containing only strings", async () => {
+    const yaml = baseValidYaml() + `
+notes:
+  - "First note"
+  - "Second note"
+`;
+    const result = await validateAndNormalizeRoutine(yaml, exerciseLookup);
+    expect(result.ok).toBe(true);
+  });
+
+  it("rejects cardio with non-string notes (no '' fallback)", async () => {
+    const yaml = baseValidYaml() + `
+cardio:
+  notes: 42
+  options: []
+`;
+    const result = await validateAndNormalizeRoutine(yaml, exerciseLookup);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.errors.some((e) =>
+      e.path === "cardio.notes" && /must be a string/i.test(e.message)
+    )).toBe(true);
+  });
+
+  it("rejects cardio option with missing name (no '' fallback)", async () => {
+    const yaml = baseValidYaml() + `
+cardio:
+  notes: "Optional"
+  options:
+    - { detail: "20 min" }
+`;
+    const result = await validateAndNormalizeRoutine(yaml, exerciseLookup);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.errors.some((e) =>
+      /cardio\.options\[0\]\.name/.test(e.path) && /must be a string/i.test(e.message)
+    )).toBe(true);
+  });
+
+  it("rejects cardio option with missing detail (no '' fallback)", async () => {
+    const yaml = baseValidYaml() + `
+cardio:
+  notes: "Optional"
+  options:
+    - { name: "Walk" }
+`;
+    const result = await validateAndNormalizeRoutine(yaml, exerciseLookup);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.errors.some((e) =>
+      /cardio\.options\[0\]\.detail/.test(e.path) && /must be a string/i.test(e.message)
+    )).toBe(true);
+  });
+
+  it("accepts cardio with full string fields", async () => {
+    const yaml = baseValidYaml() + `
+cardio:
+  notes: "After lifting"
+  options:
+    - { name: "Walk", detail: "20-30 min" }
+    - { name: "Bike", detail: "15-20 min" }
+`;
+    const result = await validateAndNormalizeRoutine(yaml, exerciseLookup);
+    expect(result.ok).toBe(true);
+  });
+
+  it("rejects exactValue of zero (must be positive)", async () => {
+    const yaml = `
+version: 1
+name: Test
+rest_default_sec: 90
+rest_superset_sec: 60
+day_order: [A]
+days:
+  A:
+    label: Day A
+    entries:
+      - exercise_id: barbell-back-squat
+        sets:
+          - { duration: 0, count: 1 }
+`;
+    const result = await validateAndNormalizeRoutine(yaml, exerciseLookup);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.errors.some((e) => /positive/i.test(e.message))).toBe(true);
+  });
+
+  it("rejects negative exactValue", async () => {
+    const yaml = `
+version: 1
+name: Test
+rest_default_sec: 90
+rest_superset_sec: 60
+day_order: [A]
+days:
+  A:
+    label: Day A
+    entries:
+      - exercise_id: barbell-back-squat
+        sets:
+          - { distance: -1000, count: 1 }
+`;
+    const result = await validateAndNormalizeRoutine(yaml, exerciseLookup);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.errors.some((e) => /positive/i.test(e.message))).toBe(true);
+  });
+
+  it("rejects range with zero or negative minValue", async () => {
+    const yaml = `
+version: 1
+name: Test
+rest_default_sec: 90
+rest_superset_sec: 60
+day_order: [A]
+days:
+  A:
+    label: Day A
+    entries:
+      - exercise_id: barbell-back-squat
+        sets:
+          - { reps: [0, 8], count: 1 }
+`;
+    const result = await validateAndNormalizeRoutine(yaml, exerciseLookup);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.errors.some((e) => /positive/i.test(e.message))).toBe(true);
+  });
+
+  it("accepts a positive range", async () => {
+    const yaml = baseValidYaml(); // already uses { reps: [8, 12], count: 3 }
+    const result = await validateAndNormalizeRoutine(yaml, exerciseLookup);
+    expect(result.ok).toBe(true);
+  });
+
+  it("accepts a positive exact target", async () => {
+    const yaml = `
+version: 1
+name: Test
+rest_default_sec: 90
+rest_superset_sec: 60
+day_order: [A]
+days:
+  A:
+    label: Day A
+    entries:
+      - exercise_id: barbell-back-squat
+        sets:
+          - { reps: 8, count: 3 }
+`;
+    const result = await validateAndNormalizeRoutine(yaml, exerciseLookup);
+    expect(result.ok).toBe(true);
+  });
+});
