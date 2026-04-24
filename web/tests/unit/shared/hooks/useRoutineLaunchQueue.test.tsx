@@ -24,19 +24,25 @@ describe("useRoutineLaunchQueue", () => {
 
   it("is a no-op when launchQueue is absent", () => {
     delete (globalThis as { launchQueue?: unknown }).launchQueue;
-    render(
-      <MemoryRouter>
-        <Consumer />
-      </MemoryRouter>,
-    );
-    // Nothing to assert: the hook must not throw.
-    expect(true).toBe(true);
+    // The render itself is the assertion: if useRoutineLaunchQueue's effect
+    // dereferences a missing launchQueue, render() throws and the test fails.
+    expect(() =>
+      render(
+        <MemoryRouter>
+          <Consumer />
+        </MemoryRouter>,
+      ),
+    ).not.toThrow();
   });
 
   it("navigates to /settings/import with launchYaml state when a file is handed in", async () => {
-    type LaunchConsumer = (params: { files: readonly unknown[] }) => Promise<void> | void;
-    let consumer: LaunchConsumer | null = null;
-    (globalThis as { launchQueue?: { setConsumer: (c: LaunchConsumer) => void } }).launchQueue = {
+    // Renamed from `LaunchConsumer` to `FileHandlerCallback` to avoid the name
+    // echo with `LaunchConsumer` in `useRoutineLaunchQueue.ts` (different
+    // shape; the source uses `ReadonlyArray<FileSystemHandle>` while the test
+    // uses `readonly unknown[]` for stub flexibility).
+    type FileHandlerCallback = (params: { files: readonly unknown[] }) => Promise<void> | void;
+    let consumer: FileHandlerCallback | null = null;
+    (globalThis as { launchQueue?: { setConsumer: (c: FileHandlerCallback) => void } }).launchQueue = {
       setConsumer: (c) => { consumer = c; },
     };
 
