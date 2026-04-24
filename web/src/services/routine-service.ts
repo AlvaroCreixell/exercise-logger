@@ -868,7 +868,7 @@ export async function importAndActivateRoutine(
           ok: false,
           blocked: "active-session",
           message:
-            "Cannot replace active routine while a workout session is active. Finish or discard the session first.",
+            "Cannot import a routine while a workout session is active. Finish or discard the session first.",
         } as const;
       }
 

@@ -63,7 +63,7 @@ test.describe("Session detail — non-weight set rendering (F3)", () => {
       .fill(BODYWEIGHT_ROUTINE_YAML);
 
     await page
-      .getByRole("button", { name: /replace active routine/i })
+      .getByRole("button", { name: /import and activate routine/i })
       .click();
 
     // After successful import the app navigates back to /settings via

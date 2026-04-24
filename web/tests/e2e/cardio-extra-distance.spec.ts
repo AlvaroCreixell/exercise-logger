@@ -61,7 +61,7 @@ test.describe("Cardio extra — distance-only logging (F5)", () => {
       .fill(WEIGHT_ROUTINE_YAML);
 
     // Wait for button to be enabled before clicking.
-    const importButton = page.getByRole("button", { name: /replace active routine/i });
+    const importButton = page.getByRole("button", { name: /import and activate routine/i });
     await expect(importButton).toBeEnabled({ timeout: 5_000 });
     await importButton.click();
 
