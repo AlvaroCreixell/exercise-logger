@@ -476,7 +476,7 @@ describe("set-service", () => {
       expect(finalRow.performedWeightKg).toBe(10);
     });
 
-    it("[P4-G] throws if setIndex is out of range for block count", async () => {
+    it("throws if setIndex is negative", async () => {
       const routine = makeRoutine([
         {
           kind: "exercise",
@@ -489,15 +489,56 @@ describe("set-service", () => {
       const session = await startSessionWithCatalog(db, routine, "A");
       const seId = session.sessionExercises[0]!.id;
 
-      // setIndex 1 is out of range for a block with count=1
       await expect(
-        logSet(db, seId, 0, 1, {
+        logSet(db, seId, 0, -1, {
           performedWeightKg: 100,
           performedReps: 7,
           performedDurationSec: null,
           performedDistanceM: null,
         })
-      ).rejects.toThrow("Set index 1 out of range");
+      ).rejects.toThrow("cannot be negative");
+    });
+
+    it("accepts setIndex >= block.count (extra-set overrun, Sprint 4 D3b)", async () => {
+      // The "+ Add extra set" button on ExerciseCard creates rows at
+      // setIndex = block.count + N. logSet must accept those slots so the
+      // user can persist their burnout sets through the same upsert path.
+      const routine = makeRoutine([
+        {
+          kind: "exercise",
+          entryId: "A-e0",
+          exerciseId: "barbell-back-squat",
+          setBlocks: [TOP_SET_BLOCK], // count: 1
+        },
+      ]);
+      await db.routines.add(routine);
+      const session = await startSessionWithCatalog(db, routine, "A");
+      const seId = session.sessionExercises[0]!.id;
+
+      // First log the prescribed slot (setIndex 0).
+      await logSet(db, seId, 0, 0, {
+        performedWeightKg: 100,
+        performedReps: 7,
+        performedDurationSec: null,
+        performedDistanceM: null,
+      });
+
+      // Then an extra at setIndex 1 (overrun by 1) — block.count is 1.
+      const extra = await logSet(db, seId, 0, 1, {
+        performedWeightKg: 100,
+        performedReps: 5,
+        performedDurationSec: null,
+        performedDistanceM: null,
+      });
+
+      expect(extra.setIndex).toBe(1);
+      expect(extra.performedReps).toBe(5);
+
+      const rows = (await db.loggedSets.toArray()).filter(
+        (r) => r.sessionExerciseId === seId,
+      );
+      expect(rows).toHaveLength(2);
+      expect(rows.map((r) => r.setIndex).sort()).toEqual([0, 1]);
     });
 
     // --- Error cases ---
