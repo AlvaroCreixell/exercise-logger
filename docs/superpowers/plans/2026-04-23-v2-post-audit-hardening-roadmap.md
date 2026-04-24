@@ -232,11 +232,11 @@ Recommendation: A now, revisit B if Sprint 4 picks "strict YAML" and a unified s
 
 ### Exit Criteria
 
-- [ ] All six backup-validation invariants covered by new tests and implementation.
-- [ ] Progression fallback bail-out implemented with three new regression tests.
-- [ ] No legacy-backup import regressed (round-trip test passes).
-- [ ] Full gate green.
-- [ ] PR merged.
+- [x] All six backup-validation invariants covered by new tests and implementation.
+- [x] Progression fallback bail-out implemented with three new regression tests.
+- [x] No legacy-backup import regressed (round-trip test passes).
+- [x] Full gate green.
+- [x] PR merged.
 
 ### Next Step
 
@@ -598,8 +598,8 @@ After Sprint 5 merges, the user (or a reviewer) confirms:
 - [ ] All fifteen audit findings have a resolution (implemented, dropped with documented rationale, or converted to a tracked follow-up).
 - [x] `npm test` passes consecutive CI runs without any timeout overrides (Sprint 1 closed with 1 green CI run; local 5x + 3x runs all clean).
 - [ ] `npm run lint`, `npm run typecheck`, `npm run build`, `npm run test:e2e` pass on the main branch.
-- [ ] Backup round-trip: export → tamper → import rejects with precise errors; valid export → import produces identical state.
-- [ ] Progression fallback: two-block ambiguity → no suggestion; single match → correct suggestion.
+- [x] Backup round-trip: export → tamper → import rejects with precise errors; valid export → import produces identical state.
+- [x] Progression fallback: two-block ambiguity → no suggestion; single match → correct suggestion.
 - [ ] Every logged-set kind renders non-dash on every screen that shows logged sets.
 - [ ] `ConfirmDialog` rejection produces a visible toast by default.
 - [ ] Routine import copy matches behavior.
