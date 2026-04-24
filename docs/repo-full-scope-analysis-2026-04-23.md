@@ -566,3 +566,33 @@ Tasks:
 ## Bottom Line
 
 The repo is strong. It has a real domain model, good local-first architecture, serious tests, and a working PWA deployment path. The highest-return work is not a rewrite. It is targeted hardening of import/progression contracts, fixing a few user-visible history/logging inconsistencies, and removing small architecture/documentation drifts before they compound.
+
+---
+
+## Addendum: Closure Status (Sprint 5 close)
+
+This audit's findings were addressed by the v2 Post-Audit Hardening Roadmap
+(`docs/superpowers/plans/2026-04-23-v2-post-audit-hardening-roadmap.md`)
+across five sprints. All 15 findings are closed.
+
+| F# | Finding (short form) | Closed by | Sprint |
+|---|---|---|---|
+| F1 | Backup validator weaker than live services | PR #22 | 2 |
+| F2 | Progression fallback can merge multiple historical blocks | PR #22 | 2 |
+| F3 | `SessionDetailExerciseCard` drops non-weight sets | PR #24 | 3 |
+| F4 | `npm test` flaky (AppRoutes Suspense + useRoutineLaunchQueue act) | PR #21 | 1 |
+| F5 | Cardio-extra distance-only logging blocked | PR #24 | 3 |
+| F6 | `ConfirmDialog` swallows async errors | PR #24 | 3 |
+| F7 | `/history/exercise/:exerciseId` orphan route | PR #25 | 4 |
+| F8 | "Replace active routine" copy mismatch | PR #25 | 4 |
+| F9 | YAML validation more lenient than the contract | PR #25 | 4 |
+| F10 | `useExerciseHistory` deps incomplete (closed as documentation) | PR #26 | 5 |
+| F11 | `shared` → `features` import inversion (`sessionStats` move) | PR #26 | 5 |
+| F12 | Duplicate `web/src/main.tsx` (deleted) | PR #26 | 5 |
+| F13 | `ExercisePicker` confusing duplicate-extra UX | PR #25 | 4 |
+| F14 | README stats stale | PR #26 | 5 |
+| F15 | Historical review labels in production comments | PR #26 | 5 |
+
+Sprint 2 hotfix (PR #23) repaired two backward-compat regressions introduced by Sprint 2's validator hardening (legacy backups with omitted onboarding fields; sessions with deleted-routine `routineId` references).
+
+PR numbers are GitHub's auto-assigned numbers. The roadmap doc tracks one Rollup checklist that mirrors this table at sprint-by-sprint granularity.
