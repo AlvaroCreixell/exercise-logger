@@ -1,9 +1,18 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
+import { toast } from "sonner";
+
+vi.mock("sonner", () => ({
+  toast: { error: vi.fn() },
+}));
 
 describe("ConfirmDialog", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it("renders title and description when open", () => {
     render(
       <ConfirmDialog
@@ -101,5 +110,69 @@ describe("ConfirmDialog", () => {
       />
     );
     expect(screen.queryByText("Hidden")).not.toBeInTheDocument();
+  });
+});
+
+describe("ConfirmDialog error surfacing", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("calls onError when onConfirm rejects and onError is provided", async () => {
+    const user = userEvent.setup();
+    const err = new Error("boom");
+    const onError = vi.fn();
+    const onOpenChange = vi.fn();
+    render(
+      <ConfirmDialog
+        open={true}
+        onOpenChange={onOpenChange}
+        title="Confirm"
+        description="Are you sure?"
+        confirmText="Yes"
+        onConfirm={async () => { throw err; }}
+        onError={onError}
+      />
+    );
+    await user.click(screen.getByRole("button", { name: "Yes" }));
+    expect(onError).toHaveBeenCalledWith(err);
+    expect(toast.error).not.toHaveBeenCalled();
+    // Dialog should remain open (handleOpenChange(false) NOT called for the close path).
+    // Cancel-path or success-path opens onOpenChange(false); error path does not.
+    expect(onOpenChange).not.toHaveBeenCalled();
+  });
+
+  it("falls back to toast.error when onError is not provided", async () => {
+    const user = userEvent.setup();
+    render(
+      <ConfirmDialog
+        open={true}
+        onOpenChange={vi.fn()}
+        title="Confirm"
+        description="Are you sure?"
+        confirmText="Yes"
+        onConfirm={async () => { throw new Error("kaboom"); }}
+      />
+    );
+    await user.click(screen.getByRole("button", { name: "Yes" }));
+    expect(toast.error).toHaveBeenCalledWith("kaboom");
+  });
+
+  it("closes the dialog on a successful onConfirm", async () => {
+    const user = userEvent.setup();
+    const onOpenChange = vi.fn();
+    render(
+      <ConfirmDialog
+        open={true}
+        onOpenChange={onOpenChange}
+        title="Confirm"
+        description="Are you sure?"
+        confirmText="Yes"
+        onConfirm={async () => { /* resolve */ }}
+      />
+    );
+    await user.click(screen.getByRole("button", { name: "Yes" }));
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+    expect(toast.error).not.toHaveBeenCalled();
   });
 });

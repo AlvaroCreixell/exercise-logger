@@ -8,6 +8,7 @@ import {
   AlertDialogTitle,
 } from "@/shared/ui/alert-dialog";
 import { Button } from "@/shared/ui/button";
+import { toast } from "sonner";
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -16,6 +17,14 @@ interface ConfirmDialogProps {
   description: string;
   confirmText: string;
   onConfirm: () => Promise<void> | void;
+  /**
+   * Optional handler invoked when `onConfirm` rejects. When provided,
+   * the default toast fallback is suppressed — the caller owns the
+   * UX. When omitted, the dialog surfaces the error via
+   * `toast.error(message)` so destructive actions cannot fail silently.
+   * In both cases the dialog stays open after the error.
+   */
+  onError?: (err: unknown) => void;
   variant?: "default" | "destructive";
   doubleConfirm?: boolean;
   doubleConfirmText?: string;
@@ -28,6 +37,7 @@ export function ConfirmDialog({
   description,
   confirmText,
   onConfirm,
+  onError,
   variant = "default",
   doubleConfirm = false,
   doubleConfirmText = "Tap again to confirm",
@@ -55,10 +65,17 @@ export function ConfirmDialog({
     try {
       await onConfirm();
       handleOpenChange(false);
-    } catch {
+    } catch (err) {
       setPending(false);
+      if (onError) {
+        onError(err);
+      } else {
+        const message = err instanceof Error ? err.message : String(err);
+        toast.error(message);
+      }
+      // Dialog remains open so the user can retry or cancel.
     }
-  }, [doubleConfirm, confirmedOnce, onConfirm, handleOpenChange]);
+  }, [doubleConfirm, confirmedOnce, onConfirm, onError, handleOpenChange]);
 
   const buttonLabel = doubleConfirm && confirmedOnce
     ? doubleConfirmText
