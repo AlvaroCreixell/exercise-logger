@@ -56,7 +56,7 @@ describe("SessionDetailExerciseCard", () => {
     expect(screen.getByText("32kg × 11")).toBeVisible();
   });
 
-  it("renders '—' for sets missing weight or reps", () => {
+  it("renders '—' for a truly empty set (all four performance fields null)", () => {
     const sets = [makeSet({ performedWeightKg: null, performedReps: null })];
     render(
       <SessionDetailExerciseCard
