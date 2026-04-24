@@ -1,18 +1,13 @@
 import { Card, CardContent } from "@/shared/ui/card";
 import type { LoggedSet } from "@/domain/types";
 import type { UnitSystem } from "@/domain/enums";
-import { toDisplayWeight } from "@/domain/unit-conversion";
+import { formatLoggedSet } from "@/shared/lib/formatLoggedSet";
 
 interface SessionDetailExerciseCardProps {
   exerciseName: string;
   loggedSets: LoggedSet[];
   units: UnitSystem;
   onSetTap: (blockIndex: number, setIndex: number) => void;
-}
-
-function formatPillContent(set: LoggedSet, units: UnitSystem): string {
-  if (set.performedWeightKg == null || set.performedReps == null) return "—";
-  return `${toDisplayWeight(set.performedWeightKg, units)}×${set.performedReps}`;
 }
 
 export function SessionDetailExerciseCard({
@@ -34,7 +29,7 @@ export function SessionDetailExerciseCard({
                   onClick={() => onSetTap(set.blockIndex, set.setIndex)}
                   className="inline-flex items-center rounded-[var(--radius-pill)] bg-sage-soft px-2.5 py-1 text-xs font-medium tabular-nums text-sage-deep transition-colors hover:bg-sage-soft/70 focus-visible:ring-2 focus-visible:ring-sage/40 outline-none"
                 >
-                  {formatPillContent(set, units)}
+                  {formatLoggedSet(set, units)}
                 </button>
               </li>
             ))}

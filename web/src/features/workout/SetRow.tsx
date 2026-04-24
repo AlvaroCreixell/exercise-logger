@@ -1,7 +1,7 @@
 import { Check } from "@/shared/icons";
 import type { LoggedSet } from "@/domain/types";
 import type { UnitSystem } from "@/domain/enums";
-import { toDisplayWeight } from "@/domain/unit-conversion";
+import { formatLoggedSetParts } from "@/shared/lib/formatLoggedSet";
 
 interface SetRowProps {
   /** Continuous-across-blocks 1-based index shown in the empty-state row. */
@@ -18,33 +18,6 @@ interface SetRowProps {
   onClick: () => void;
 }
 
-function formatLoggedValue(
-  ls: LoggedSet,
-  units: UnitSystem,
-): {
-  primary: string | null;
-  unit: string | null;
-  secondary: string | null;
-} {
-  if (ls.performedWeightKg != null && ls.performedReps != null) {
-    return {
-      primary: `${toDisplayWeight(ls.performedWeightKg, units)}`,
-      unit: units,
-      secondary: `${ls.performedReps}`,
-    };
-  }
-  if (ls.performedReps != null) {
-    return { primary: `${ls.performedReps}`, unit: "reps", secondary: null };
-  }
-  if (ls.performedDurationSec != null) {
-    return { primary: `${ls.performedDurationSec}`, unit: "s", secondary: null };
-  }
-  if (ls.performedDistanceM != null) {
-    return { primary: `${ls.performedDistanceM}`, unit: "m", secondary: null };
-  }
-  return { primary: "✓", unit: null, secondary: null };
-}
-
 export function SetRow({
   setNumber,
   loggedSet,
@@ -56,7 +29,10 @@ export function SetRow({
   const isLogged = loggedSet !== undefined;
 
   if (isLogged) {
-    const { primary, unit, secondary } = formatLoggedValue(loggedSet, units);
+    const parts = formatLoggedSetParts(loggedSet, units);
+    const primary = parts?.primary ?? "✓";
+    const unit = parts?.unit ?? null;
+    const secondary = parts?.secondary ?? null;
     const showTop = isTopBlock;
     const showPR = loggedSet.isPersonalRecord === true;
 

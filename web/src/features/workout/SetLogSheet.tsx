@@ -211,8 +211,15 @@ export function SetLogSheet({
       performedDistanceM: distance.trim() ? parseFloat(distance) : null,
       isPersonalRecord: isPR,
     };
-    if (isSetInputEmpty(targetKind, input)) {
-      toast.error("Enter at least " + (targetKind === "reps" ? "reps" : targetKind === "duration" ? "duration" : "distance") + " to save.");
+    if (isSetInputEmpty(targetKind, input, { cardioExtra: isCardioExtra })) {
+      const requiredField = isCardioExtra
+        ? "duration or distance"
+        : targetKind === "reps"
+          ? "reps"
+          : targetKind === "duration"
+            ? "duration"
+            : "distance";
+      toast.error(`Enter at least ${requiredField} to save.`);
       return;
     }
     setSaving(true);
