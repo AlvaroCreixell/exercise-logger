@@ -86,7 +86,15 @@ export function ExerciseCard({
   }
 
   const totalPrescribed = blocks.reduce((s, b) => s + b.count, 0);
-  const totalLogged = loggedSets.filter((ls) => ls.origin === "routine").length;
+  // The N/X badge counts only prescribed-slot completion. Extra sets logged
+  // via "+ Add extra set" don't push the numerator past the denominator —
+  // they're bonus work, not progress against the routine.
+  const totalLogged = loggedSets.filter((ls) => {
+    if (ls.origin !== "routine") return false;
+    const block = blocks[ls.blockIndex];
+    if (!block) return false;
+    return ls.setIndex < block.count;
+  }).length;
 
   // Flatten history.lastTime across blocks for the LAST strip.
   const lastStripSets = blocks.flatMap((_, i) => historyData?.lastTime[i]?.sets ?? []);

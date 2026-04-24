@@ -529,4 +529,52 @@ describe("ExerciseCard — Add extra set (Sprint 4 D3b)", () => {
     );
     expect(screen.getAllByRole("button", { name: /add extra set/i })).toHaveLength(2);
   });
+
+  it("progress badge counts only prescribed-slot completion (extras don't push past denominator)", () => {
+    // 3-prescribed block, all 3 prescribed slots logged + 1 extra at setIndex=3.
+    const se = makeSessionExercise();
+    const sets = [
+      makeLoggedSet({ id: "l0", setIndex: 0 }),
+      makeLoggedSet({ id: "l1", setIndex: 1 }),
+      makeLoggedSet({ id: "l2", setIndex: 2 }),
+      makeLoggedSet({ id: "l3", setIndex: 3 }), // extra
+    ];
+    render(
+      <ExerciseCard
+        sessionExercise={se}
+        loggedSets={sets}
+        units="kg"
+        historyData={undefined}
+        extraHistory={undefined}
+        onSetTap={vi.fn()}
+      />,
+    );
+    // Badge label should read "3/3", not "4/3".
+    expect(screen.getByLabelText("3 of 3 sets logged")).toBeInTheDocument();
+  });
+
+  it("extra rows inside a top-tagged block do NOT carry the TOP badge", () => {
+    const topBlock: SetBlock = { targetKind: "reps", minValue: 6, maxValue: 8, count: 1, tag: "top" };
+    const se = makeSessionExercise({ setBlocksSnapshot: [topBlock] });
+    const sets = [
+      makeLoggedSet({ id: "l0", setIndex: 0, tag: "top" }), // prescribed top set, logged
+      makeLoggedSet({ id: "l1", setIndex: 1, tag: null }),  // extra, not top
+    ];
+    render(
+      <ExerciseCard
+        sessionExercise={se}
+        loggedSets={sets}
+        units="kg"
+        historyData={undefined}
+        extraHistory={undefined}
+        onSetTap={vi.fn()}
+      />,
+    );
+    // The prescribed (Set 1) row should show TOP. The extra (Set 2) row should not.
+    const setRows = screen.getAllByRole("button", { name: /^Set \d+/ });
+    expect(setRows).toHaveLength(2);
+    // Set 1 carries TOP somewhere in its descendants.
+    const topMarkers = screen.getAllByText("TOP");
+    expect(topMarkers).toHaveLength(1); // only one TOP across both rows
+  });
 });
