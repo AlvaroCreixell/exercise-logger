@@ -3,7 +3,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/db/database";
 import { useExerciseHistoryGroups } from "@/shared/hooks/useExerciseHistoryGroups";
 import { useSettings } from "@/shared/hooks/useSettings";
-import { toDisplayWeight } from "@/domain/unit-conversion";
+import { formatLoggedSet } from "@/shared/lib/formatLoggedSet";
 import { getEffectiveUnit } from "@/domain/unit-helpers";
 import type { LoggedSet } from "@/domain/types";
 import type { SetTag } from "@/domain/enums";
@@ -97,27 +97,11 @@ export default function ExerciseHistoryScreen() {
                               </span>
                             )}
                             <div className="flex flex-wrap gap-x-3 gap-y-0.5">
-                              {block.sets.map((ls, si) => {
-                                let text = "";
-                                if (ls.performedWeightKg != null && ls.performedReps != null) {
-                                  const w = toDisplayWeight(
-                                    ls.performedWeightKg,
-                                    entryUnits
-                                  );
-                                  text = `${w}${entryUnits} x ${ls.performedReps}`;
-                                } else if (ls.performedReps != null) {
-                                  text = `${ls.performedReps} reps`;
-                                } else if (ls.performedDurationSec != null) {
-                                  text = `${ls.performedDurationSec}s`;
-                                } else if (ls.performedDistanceM != null) {
-                                  text = `${ls.performedDistanceM}m`;
-                                }
-                                return (
-                                  <span key={si} className="text-sm tabular-nums font-medium">
-                                    {text}
-                                  </span>
-                                );
-                              })}
+                              {block.sets.map((ls, si) => (
+                                <span key={si} className="text-sm tabular-nums font-medium">
+                                  {formatLoggedSet(ls, entryUnits, { fallback: "" })}
+                                </span>
+                              ))}
                             </div>
                           </div>
                         );
