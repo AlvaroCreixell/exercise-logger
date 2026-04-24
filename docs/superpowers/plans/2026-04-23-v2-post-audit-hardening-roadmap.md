@@ -368,12 +368,12 @@ Audit existing callers (`SettingsScreen` clear-all-data, discard-session, etc.) 
 
 ### Exit Criteria
 
-- [ ] Shared formatter lives in `shared/lib`, is pure, and is the sole source of logged-set display formatting.
-- [ ] `SessionDetailExerciseCard` shows correct text for all five value combinations.
-- [ ] Cardio-extra distance-only save succeeds; duration-only unchanged.
-- [ ] `ConfirmDialog` surfaces rejections; dialog stays open.
-- [ ] Full gate green.
-- [ ] PR merged.
+- [x] Shared formatter lives in `shared/lib`, is pure, and is the sole source of logged-set display formatting.
+- [x] `SessionDetailExerciseCard` shows correct text for all five value combinations.
+- [x] Cardio-extra distance-only save succeeds; duration-only unchanged.
+- [x] `ConfirmDialog` surfaces rejections; dialog stays open.
+- [x] Full gate green.
+- [x] PR merged.
 
 ### Next Step
 
@@ -600,8 +600,8 @@ After Sprint 5 merges, the user (or a reviewer) confirms:
 - [ ] `npm run lint`, `npm run typecheck`, `npm run build`, `npm run test:e2e` pass on the main branch.
 - [x] Backup round-trip: export → tamper → import rejects with precise errors; valid export → import produces identical state.
 - [x] Progression fallback: two-block ambiguity → no suggestion; single match → correct suggestion.
-- [ ] Every logged-set kind renders non-dash on every screen that shows logged sets.
-- [ ] `ConfirmDialog` rejection produces a visible toast by default.
+- [x] Every logged-set kind renders non-dash on every screen that shows logged sets.
+- [x] `ConfirmDialog` rejection produces a visible toast by default.
 - [ ] Routine import copy matches behavior.
 - [ ] `/history/exercise/:exerciseId` is reachable from UI (or the route was removed, per D1b).
 - [ ] `ExercisePicker` handles duplicates per the chosen product decision.
