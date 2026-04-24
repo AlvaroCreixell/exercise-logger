@@ -576,14 +576,14 @@ Present D1–D4 to the user. Capture answers. Then invoke `superpowers:writing-p
 
 ### Exit Criteria
 
-- [ ] `sessionStats` lives in `shared/lib`, imports all updated.
-- [ ] Duplicate top-level `main.tsx` gone (or stubbed with documented reason).
-- [ ] Audit-era review labels removed from `web/src/**`.
-- [ ] README stats match reality.
-- [ ] `useExerciseHistory` deps investigation closed — either fixed with test or documented as a non-issue.
-- [ ] `docs/repo-full-scope-analysis-2026-04-23.md` has a closing addendum.
-- [ ] Full gate green.
-- [ ] PR merged.
+- [x] `sessionStats` lives in `shared/lib`, imports all updated.
+- [x] Duplicate top-level `main.tsx` gone (or stubbed with documented reason).
+- [x] Audit-era review labels removed from `web/src/**`.
+- [x] README stats match reality.
+- [x] `useExerciseHistory` deps investigation closed — either fixed with test or documented as a non-issue.
+- [x] `docs/repo-full-scope-analysis-2026-04-23.md` has a closing addendum.
+- [x] Full gate green.
+- [x] PR merged.
 
 ### Next Step
 
@@ -595,9 +595,9 @@ Invoke `superpowers:writing-plans` with the **Scope** and **Target Files** secti
 
 After Sprint 5 merges, the user (or a reviewer) confirms:
 
-- [ ] All fifteen audit findings have a resolution (implemented, dropped with documented rationale, or converted to a tracked follow-up).
+- [x] All fifteen audit findings have a resolution (implemented, dropped with documented rationale, or converted to a tracked follow-up).
 - [x] `npm test` passes consecutive CI runs without any timeout overrides (Sprint 1 closed with 1 green CI run; local 5x + 3x runs all clean).
-- [ ] `npm run lint`, `npm run typecheck`, `npm run build`, `npm run test:e2e` pass on the main branch.
+- [x] `npm run lint`, `npm run typecheck`, `npm run build`, `npm run test:e2e` pass on the main branch.
 - [x] Backup round-trip: export → tamper → import rejects with precise errors; valid export → import produces identical state.
 - [x] Progression fallback: two-block ambiguity → no suggestion; single match → correct suggestion.
 - [x] Every logged-set kind renders non-dash on every screen that shows logged sets.
@@ -606,9 +606,9 @@ After Sprint 5 merges, the user (or a reviewer) confirms:
 - [x] `/history/exercise/:exerciseId` is reachable from UI (or the route was removed, per D1b).
 - [x] `ExercisePicker` handles duplicates per the chosen product decision.
 - [x] YAML validation matches the contract it advertises (or the contract doc matches the permissive behavior, per D4b).
-- [ ] README stats reflect current counts.
-- [ ] No audit-era `P5-A`/`[CERTAIN - BUG]`/`ERRATA` comments remain in `web/src/**`.
-- [ ] `docs/repo-full-scope-analysis-2026-04-23.md` is annotated with the closing roadmap link.
+- [x] README stats reflect current counts.
+- [x] No audit-era `P5-A`/`[CERTAIN - BUG]`/`ERRATA` comments remain in `web/src/**`.
+- [x] `docs/repo-full-scope-analysis-2026-04-23.md` is annotated with the closing roadmap link.
 
 ## Followups Explicitly Deferred (Not Scheduled By This Roadmap)
 
