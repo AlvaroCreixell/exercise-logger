@@ -159,6 +159,7 @@ export default function SessionDetailScreen() {
               <SessionDetailExerciseCard
                 key={d.sessionExercise.id}
                 exerciseName={d.sessionExercise.exerciseNameSnapshot}
+                exerciseId={d.sessionExercise.exerciseId}
                 loggedSets={d.loggedSets}
                 units={getEffectiveUnit(d.sessionExercise.unitOverride, units)}
                 onSetTap={(bi, si) => handleSetTap(d.sessionExercise, bi, si)}
@@ -171,6 +172,7 @@ export default function SessionDetailScreen() {
                 <SessionDetailExerciseCard
                   key={d.sessionExercise.id}
                   exerciseName={d.sessionExercise.exerciseNameSnapshot}
+                  exerciseId={d.sessionExercise.exerciseId}
                   loggedSets={d.loggedSets}
                   units={getEffectiveUnit(d.sessionExercise.unitOverride, units)}
                   onSetTap={(bi, si) => handleSetTap(d.sessionExercise, bi, si)}

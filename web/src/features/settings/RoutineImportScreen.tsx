@@ -130,7 +130,7 @@ export default function RoutineImportScreen() {
         disabled={!canImport}
         onClick={handlePaste}
       >
-        {importing ? "Importing…" : "Replace active routine"}
+        {importing ? "Importing…" : "Import and activate routine"}
       </Button>
 
       <div className="space-y-2">

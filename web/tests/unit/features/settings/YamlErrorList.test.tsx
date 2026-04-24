@@ -53,12 +53,12 @@ describe("YamlErrorList", () => {
     render(
       <YamlErrorList
         errors={[
-          { path: "", message: "Cannot replace active routine while a workout session is active." },
+          { path: "", message: "Cannot import a routine while a workout session is active." },
         ]}
       />
     );
     // Message still visible
-    expect(screen.getByText(/cannot replace active routine/i)).toBeVisible();
+    expect(screen.getByText(/cannot import a routine/i)).toBeVisible();
     // "ROOT" eyebrow must NOT render (formatErrorPath("") returns "Root", which uppercases via CSS)
     expect(screen.queryByText(/^Root$/i)).toBeNull();
   });

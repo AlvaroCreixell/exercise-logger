@@ -66,10 +66,14 @@ Always obey these rules:
 - Each exercise item must include at least one `sets` block.
 - Each set block must define exactly one target: `reps`, `duration`, or `distance`.
 - Use a range as `[min, max]` and ensure `min < max`.
+- Range bounds must be finite positive numbers (`> 0`).
 - Use an exact target as a number, for example `reps: 8` or `distance: 2000`.
+- Exact targets must be finite positive numbers (`> 0`).
 - `count` must be an integer `>= 1`.
 - `tag` is optional and may only be `top` or `amrap`.
 - `instance_label`, `type_override`, `equipment_override`, and `notes` are optional.
+- Top-level `notes` (when present) must be an array of strings — no numbers, nulls, or objects.
+- `cardio.notes` (when `cardio` is present) must be a string. Each `cardio.options[]` entry must include both `name` and `detail` as strings.
 - Duplicate `exercise_id` values in the same day are only allowed when every duplicate has a distinct `instance_label`.
 - In a superset, both items must have the same total number of working sets after expanding all set blocks.
 - Do not invent fields outside the supported schema.
@@ -108,5 +112,8 @@ Before answering, verify every item below. Run the catalog-ID check **literally*
 - every `count` is a positive integer
 - every superset has exactly 2 items and equal total working set count
 - there are no unsupported tags, type overrides, or equipment overrides
+- every `notes` entry, when present, is a string
+- every `cardio.notes`, `cardio.options[].name`, and `cardio.options[].detail` is a string when `cardio` is present
+- every range bound and exact target is a finite positive number
 
 If any check fails, fix it before responding.

@@ -1,10 +1,14 @@
+import { Link } from "react-router";
 import { Card, CardContent } from "@/shared/ui/card";
 import type { LoggedSet } from "@/domain/types";
 import type { UnitSystem } from "@/domain/enums";
 import { formatLoggedSet } from "@/shared/lib/formatLoggedSet";
 
 interface SessionDetailExerciseCardProps {
+  /** Display name (snapshot from session). */
   exerciseName: string;
+  /** Exercise catalog ID. Drives the link to per-exercise history. */
+  exerciseId: string;
   loggedSets: LoggedSet[];
   units: UnitSystem;
   onSetTap: (blockIndex: number, setIndex: number) => void;
@@ -12,6 +16,7 @@ interface SessionDetailExerciseCardProps {
 
 export function SessionDetailExerciseCard({
   exerciseName,
+  exerciseId,
   loggedSets,
   units,
   onSetTap,
@@ -19,7 +24,12 @@ export function SessionDetailExerciseCard({
   return (
     <Card className="py-0">
       <CardContent className="space-y-3 px-4 py-4">
-        <p className="text-sm font-semibold text-foreground">{exerciseName}</p>
+        <Link
+          to={`/history/exercise/${exerciseId}`}
+          className="inline-block text-sm font-semibold text-foreground hover:text-sage-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage/40 rounded-sm"
+        >
+          {exerciseName}
+        </Link>
         {loggedSets.length > 0 && (
           <ul className="flex flex-wrap gap-2">
             {loggedSets.map((set) => (

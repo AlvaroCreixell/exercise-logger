@@ -449,10 +449,20 @@ export async function validateAndNormalizeRoutine(
   }
 
   // --- notes (optional) ---
-  let notes: string[] = [];
+  const notes: string[] = [];
   if (raw.notes !== undefined && raw.notes !== null) {
     if (Array.isArray(raw.notes)) {
-      notes = raw.notes.map((n: unknown) => String(n));
+      const rawNotes = raw.notes as unknown[];
+      for (let i = 0; i < rawNotes.length; i++) {
+        if (typeof rawNotes[i] !== "string") {
+          errors.push({
+            path: `notes[${i}]`,
+            message: "notes element must be a string",
+          });
+        } else {
+          notes.push(rawNotes[i] as string);
+        }
+      }
     } else {
       errors.push({
         path: "notes",
@@ -469,20 +479,58 @@ export async function validateAndNormalizeRoutine(
         notes?: unknown;
         options?: unknown;
       };
-      const cardioNotes =
-        typeof rawCardio.notes === "string" ? rawCardio.notes : "";
+
+      // cardio.notes must be a string (no "" fallback).
+      let cardioNotes = "";
+      if (typeof rawCardio.notes !== "string") {
+        errors.push({
+          path: "cardio.notes",
+          message: "cardio.notes must be a string",
+        });
+      } else {
+        cardioNotes = rawCardio.notes;
+      }
+
       const cardioOptions: RoutineCardioOption[] = [];
-      if (Array.isArray(rawCardio.options)) {
-        for (const opt of rawCardio.options) {
-          if (typeof opt === "object" && opt !== null) {
+      if (rawCardio.options !== undefined) {
+        if (!Array.isArray(rawCardio.options)) {
+          errors.push({
+            path: "cardio.options",
+            message: "cardio.options must be an array",
+          });
+        } else {
+          for (let oi = 0; oi < rawCardio.options.length; oi++) {
+            const opt = rawCardio.options[oi];
+            const optPath = `cardio.options[${oi}]`;
+            if (typeof opt !== "object" || opt === null) {
+              errors.push({ path: optPath, message: "must be an object" });
+              continue;
+            }
             const o = opt as { name?: unknown; detail?: unknown };
-            cardioOptions.push({
-              name: typeof o.name === "string" ? o.name : "",
-              detail: typeof o.detail === "string" ? o.detail : "",
-            });
+            const nameOk = typeof o.name === "string";
+            const detailOk = typeof o.detail === "string";
+            if (!nameOk) {
+              errors.push({
+                path: `${optPath}.name`,
+                message: "must be a string",
+              });
+            }
+            if (!detailOk) {
+              errors.push({
+                path: `${optPath}.detail`,
+                message: "must be a string",
+              });
+            }
+            if (nameOk && detailOk) {
+              cardioOptions.push({
+                name: o.name as string,
+                detail: o.detail as string,
+              });
+            }
           }
         }
       }
+
       cardio = { notes: cardioNotes, options: cardioOptions };
     } else {
       errors.push({
@@ -710,6 +758,12 @@ function validateSetBlock(
           message: "Range values must be numbers",
         });
         valid = false;
+      } else if (!Number.isFinite(min) || !Number.isFinite(max) || min <= 0 || max <= 0) {
+        errors.push({
+          path: `${path}.${targetKey}`,
+          message: `${targetKey} range bounds must be finite positive numbers, got [${min}, ${max}]`,
+        });
+        valid = false;
       } else if (min >= max) {
         errors.push({
           path: `${path}.${targetKey}`,
@@ -722,8 +776,15 @@ function validateSetBlock(
       }
     }
   } else if (typeof targetValue === "number") {
-    // Exact value
-    exactValue = targetValue;
+    if (!Number.isFinite(targetValue) || targetValue <= 0) {
+      errors.push({
+        path: `${path}.${targetKey}`,
+        message: `${targetKey} must be a finite positive number, got ${targetValue}`,
+      });
+      valid = false;
+    } else {
+      exactValue = targetValue;
+    }
   } else {
     errors.push({
       path: `${path}.${targetKey}`,
@@ -868,7 +929,7 @@ export async function importAndActivateRoutine(
           ok: false,
           blocked: "active-session",
           message:
-            "Cannot replace active routine while a workout session is active. Finish or discard the session first.",
+            "Cannot import a routine while a workout session is active. Finish or discard the session first.",
         } as const;
       }
 

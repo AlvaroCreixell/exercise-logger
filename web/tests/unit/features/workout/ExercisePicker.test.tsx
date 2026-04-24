@@ -83,7 +83,7 @@ describe("ExercisePicker", () => {
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 
-  it("marks exercises already in the workout with an 'In workout' badge", async () => {
+  it("marks exercises already in the workout with an 'Add again' badge", async () => {
     render(
       <ExercisePicker
         open={true}
@@ -94,9 +94,9 @@ describe("ExercisePicker", () => {
     );
     await waitFor(() => expect(screen.getByRole("button", { name: /Bench Press/ })).toBeVisible());
     const benchRow = screen.getByRole("button", { name: /Bench Press/ });
-    expect(benchRow).toHaveTextContent(/In workout/i);
+    expect(benchRow).toHaveTextContent(/Add again/i);
     const squatRow = screen.getByRole("button", { name: /Back Squat/ });
-    expect(squatRow).not.toHaveTextContent(/In workout/i);
+    expect(squatRow).not.toHaveTextContent(/Add again/i);
   });
 
   it("uses the exercise name as the button's accessible name (meta hidden from a11y)", async () => {

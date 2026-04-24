@@ -410,3 +410,171 @@ describe("ExerciseCard — extras", () => {
     expect(screen.getByText(/Tap to log · last 85×9/)).toBeVisible();
   });
 });
+
+describe("ExerciseCard — Add extra set (Sprint 4 D3b)", () => {
+  it("renders an '+ Add extra set' button for each block on a routine card", () => {
+    render(
+      <ExerciseCard
+        sessionExercise={makeSessionExercise()}
+        loggedSets={[]}
+        units="kg"
+        historyData={undefined}
+        extraHistory={undefined}
+        onSetTap={vi.fn()}
+      />,
+    );
+    const buttons = screen.getAllByRole("button", { name: /add extra set/i });
+    expect(buttons).toHaveLength(1); // single-block exercise
+  });
+
+  it("does NOT render the button for an extras-origin exercise (origin=extra has no blocks)", () => {
+    render(
+      <ExerciseCard
+        sessionExercise={makeSessionExercise({ origin: "extra", setBlocksSnapshot: [] })}
+        loggedSets={[]}
+        units="kg"
+        historyData={undefined}
+        extraHistory={null}
+        onSetTap={vi.fn()}
+      />,
+    );
+    expect(screen.queryByRole("button", { name: /add extra set/i })).toBeNull();
+  });
+
+  it("tapping '+ Add extra set' renders an additional empty SetRow below the prescribed rows", async () => {
+    const user = userEvent.setup();
+    render(
+      <ExerciseCard
+        sessionExercise={makeSessionExercise()}
+        loggedSets={[]}
+        units="kg"
+        historyData={undefined}
+        extraHistory={undefined}
+        onSetTap={vi.fn()}
+      />,
+    );
+    // Block prescribes 3 sets → 3 empty SetRows initially.
+    expect(screen.getAllByRole("button", { name: /^Set \d+/ })).toHaveLength(3);
+    await user.click(screen.getByRole("button", { name: /add extra set/i }));
+    // Now 4 SetRows (3 prescribed + 1 extra)
+    expect(screen.getAllByRole("button", { name: /^Set \d+/ })).toHaveLength(4);
+  });
+
+  it("rehydrates extras from loggedSets — a logged set at setIndex=block.count renders as the 4th SetRow without tapping", () => {
+    const se = makeSessionExercise(); // block.count = 3
+    const logged = [makeLoggedSet({ id: "ls-extra", blockIndex: 0, setIndex: 3 })]; // setIndex=3 → overrun=1
+    render(
+      <ExerciseCard
+        sessionExercise={se}
+        loggedSets={logged}
+        units="kg"
+        historyData={undefined}
+        extraHistory={undefined}
+        onSetTap={vi.fn()}
+      />,
+    );
+    // Should render 4 SetRows (3 prescribed + 1 logged extra) without any tap.
+    expect(screen.getAllByRole("button", { name: /^Set \d+/ })).toHaveLength(4);
+  });
+
+  it("clicking an extra row calls onSetTap with (blockIndex=0, setIndex=block.count)", async () => {
+    const user = userEvent.setup();
+    const onSetTap = vi.fn();
+    render(
+      <ExerciseCard
+        sessionExercise={makeSessionExercise()}
+        loggedSets={[]}
+        units="kg"
+        historyData={undefined}
+        extraHistory={undefined}
+        onSetTap={onSetTap}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: /add extra set/i }));
+    // The new 4th set row: blockIndex=0, setIndex=3 (block.count=3).
+    await user.click(screen.getByRole("button", { name: /^Set 4/ }));
+    expect(onSetTap).toHaveBeenCalledWith(0, 3);
+  });
+
+  it("tapping '+ Add extra set' twice adds two extras (counter is per-block, additive)", async () => {
+    const user = userEvent.setup();
+    render(
+      <ExerciseCard
+        sessionExercise={makeSessionExercise()}
+        loggedSets={[]}
+        units="kg"
+        historyData={undefined}
+        extraHistory={undefined}
+        onSetTap={vi.fn()}
+      />,
+    );
+    const button = screen.getByRole("button", { name: /add extra set/i });
+    await user.click(button);
+    await user.click(button);
+    expect(screen.getAllByRole("button", { name: /^Set \d+/ })).toHaveLength(5);
+  });
+
+  it("two-block exercise gets two independent + Add extra set buttons", () => {
+    const blockA: SetBlock = { targetKind: "reps", minValue: 6, maxValue: 8, count: 2, tag: "top" };
+    const blockB: SetBlock = { targetKind: "reps", minValue: 8, maxValue: 12, count: 3 };
+    render(
+      <ExerciseCard
+        sessionExercise={makeSessionExercise({ setBlocksSnapshot: [blockA, blockB] })}
+        loggedSets={[]}
+        units="kg"
+        historyData={undefined}
+        extraHistory={undefined}
+        onSetTap={vi.fn()}
+      />,
+    );
+    expect(screen.getAllByRole("button", { name: /add extra set/i })).toHaveLength(2);
+  });
+
+  it("progress badge counts only prescribed-slot completion (extras don't push past denominator)", () => {
+    // 3-prescribed block, all 3 prescribed slots logged + 1 extra at setIndex=3.
+    const se = makeSessionExercise();
+    const sets = [
+      makeLoggedSet({ id: "l0", setIndex: 0 }),
+      makeLoggedSet({ id: "l1", setIndex: 1 }),
+      makeLoggedSet({ id: "l2", setIndex: 2 }),
+      makeLoggedSet({ id: "l3", setIndex: 3 }), // extra
+    ];
+    render(
+      <ExerciseCard
+        sessionExercise={se}
+        loggedSets={sets}
+        units="kg"
+        historyData={undefined}
+        extraHistory={undefined}
+        onSetTap={vi.fn()}
+      />,
+    );
+    // Badge label should read "3/3", not "4/3".
+    expect(screen.getByLabelText("3 of 3 sets logged")).toBeInTheDocument();
+  });
+
+  it("extra rows inside a top-tagged block do NOT carry the TOP badge", () => {
+    const topBlock: SetBlock = { targetKind: "reps", minValue: 6, maxValue: 8, count: 1, tag: "top" };
+    const se = makeSessionExercise({ setBlocksSnapshot: [topBlock] });
+    const sets = [
+      makeLoggedSet({ id: "l0", setIndex: 0, tag: "top" }), // prescribed top set, logged
+      makeLoggedSet({ id: "l1", setIndex: 1, tag: null }),  // extra, not top
+    ];
+    render(
+      <ExerciseCard
+        sessionExercise={se}
+        loggedSets={sets}
+        units="kg"
+        historyData={undefined}
+        extraHistory={undefined}
+        onSetTap={vi.fn()}
+      />,
+    );
+    // The prescribed (Set 1) row should show TOP. The extra (Set 2) row should not.
+    const setRows = screen.getAllByRole("button", { name: /^Set \d+/ });
+    expect(setRows).toHaveLength(2);
+    // Set 1 carries TOP somewhere in its descendants.
+    const topMarkers = screen.getAllByText("TOP");
+    expect(topMarkers).toHaveLength(1); // only one TOP across both rows
+  });
+});

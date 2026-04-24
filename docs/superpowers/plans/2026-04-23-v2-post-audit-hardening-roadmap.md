@@ -474,10 +474,10 @@ Each task below becomes a chunk in the per-sprint implementation plan.
 
 ### Exit Criteria
 
-- [ ] All four product decisions recorded (in commit messages and, if substantial, a short ADR in `docs/archive`).
-- [ ] Each accepted decision's scope implemented, tested, and documented.
-- [ ] Full gate green.
-- [ ] PR merged.
+- [x] All four product decisions recorded (in commit messages and, if substantial, a short ADR in `docs/archive`).
+- [x] Each accepted decision's scope implemented, tested, and documented.
+- [x] Full gate green.
+- [x] PR merged.
 
 ### Next Step
 
@@ -602,10 +602,10 @@ After Sprint 5 merges, the user (or a reviewer) confirms:
 - [x] Progression fallback: two-block ambiguity → no suggestion; single match → correct suggestion.
 - [x] Every logged-set kind renders non-dash on every screen that shows logged sets.
 - [x] `ConfirmDialog` rejection produces a visible toast by default.
-- [ ] Routine import copy matches behavior.
-- [ ] `/history/exercise/:exerciseId` is reachable from UI (or the route was removed, per D1b).
-- [ ] `ExercisePicker` handles duplicates per the chosen product decision.
-- [ ] YAML validation matches the contract it advertises (or the contract doc matches the permissive behavior, per D4b).
+- [x] Routine import copy matches behavior.
+- [x] `/history/exercise/:exerciseId` is reachable from UI (or the route was removed, per D1b).
+- [x] `ExercisePicker` handles duplicates per the chosen product decision.
+- [x] YAML validation matches the contract it advertises (or the contract doc matches the permissive behavior, per D4b).
 - [ ] README stats reflect current counts.
 - [ ] No audit-era `P5-A`/`[CERTAIN - BUG]`/`ERRATA` comments remain in `web/src/**`.
 - [ ] `docs/repo-full-scope-analysis-2026-04-23.md` is annotated with the closing roadmap link.

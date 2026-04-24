@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router";
 import { SessionDetailExerciseCard } from "@/features/history/SessionDetailExerciseCard";
 import type { LoggedSet } from "@/domain/types";
 
@@ -29,12 +30,15 @@ function makeSet(overrides: Partial<LoggedSet>): LoggedSet {
 describe("SessionDetailExerciseCard", () => {
   it("renders the exercise name", () => {
     render(
-      <SessionDetailExerciseCard
-        exerciseName="Dumbbell Romanian Deadlift"
-        loggedSets={[]}
-        units="kg"
-        onSetTap={() => {}}
-      />,
+      <MemoryRouter>
+        <SessionDetailExerciseCard
+          exerciseName="Dumbbell Romanian Deadlift"
+          exerciseId="dumbbell-romanian-deadlift"
+          loggedSets={[]}
+          units="kg"
+          onSetTap={() => {}}
+        />
+      </MemoryRouter>,
     );
     expect(screen.getByText("Dumbbell Romanian Deadlift")).toBeVisible();
   });
@@ -45,12 +49,15 @@ describe("SessionDetailExerciseCard", () => {
       makeSet({ id: "b", setIndex: 1, performedWeightKg: 32, performedReps: 11 }),
     ];
     render(
-      <SessionDetailExerciseCard
-        exerciseName="RDL"
-        loggedSets={sets}
-        units="kg"
-        onSetTap={() => {}}
-      />,
+      <MemoryRouter>
+        <SessionDetailExerciseCard
+          exerciseName="RDL"
+          exerciseId="rdl"
+          loggedSets={sets}
+          units="kg"
+          onSetTap={() => {}}
+        />
+      </MemoryRouter>,
     );
     expect(screen.getByText("30kg × 14")).toBeVisible();
     expect(screen.getByText("32kg × 11")).toBeVisible();
@@ -59,12 +66,15 @@ describe("SessionDetailExerciseCard", () => {
   it("renders '—' for a truly empty set (all four performance fields null)", () => {
     const sets = [makeSet({ performedWeightKg: null, performedReps: null })];
     render(
-      <SessionDetailExerciseCard
-        exerciseName="RDL"
-        loggedSets={sets}
-        units="kg"
-        onSetTap={() => {}}
-      />,
+      <MemoryRouter>
+        <SessionDetailExerciseCard
+          exerciseName="RDL"
+          exerciseId="rdl"
+          loggedSets={sets}
+          units="kg"
+          onSetTap={() => {}}
+        />
+      </MemoryRouter>,
     );
     expect(screen.getByText("—")).toBeVisible();
   });
@@ -75,12 +85,15 @@ describe("SessionDetailExerciseCard", () => {
       makeSet({ id: "a", blockIndex: 0, setIndex: 2, performedWeightKg: 30, performedReps: 14 }),
     ];
     render(
-      <SessionDetailExerciseCard
-        exerciseName="RDL"
-        loggedSets={sets}
-        units="kg"
-        onSetTap={spy}
-      />,
+      <MemoryRouter>
+        <SessionDetailExerciseCard
+          exerciseName="RDL"
+          exerciseId="rdl"
+          loggedSets={sets}
+          units="kg"
+          onSetTap={spy}
+        />
+      </MemoryRouter>,
     );
     const user = userEvent.setup();
     await user.click(screen.getByRole("button", { name: /30kg × 14/ }));
@@ -90,12 +103,15 @@ describe("SessionDetailExerciseCard", () => {
   it("converts weight to display units when units='lbs'", () => {
     const sets = [makeSet({ performedWeightKg: 22.68, performedReps: 10 })];
     render(
-      <SessionDetailExerciseCard
-        exerciseName="RDL"
-        loggedSets={sets}
-        units="lbs"
-        onSetTap={() => {}}
-      />,
+      <MemoryRouter>
+        <SessionDetailExerciseCard
+          exerciseName="RDL"
+          exerciseId="rdl"
+          loggedSets={sets}
+          units="lbs"
+          onSetTap={() => {}}
+        />
+      </MemoryRouter>,
     );
     expect(screen.getByText(/50lbs × 10/)).toBeVisible();
   });
@@ -103,12 +119,15 @@ describe("SessionDetailExerciseCard", () => {
   it("preserves fractional kg without rounding (82.5×5, not 83×5)", () => {
     const sets = [makeSet({ performedWeightKg: 82.5, performedReps: 5 })];
     render(
-      <SessionDetailExerciseCard
-        exerciseName="RDL"
-        loggedSets={sets}
-        units="kg"
-        onSetTap={() => {}}
-      />,
+      <MemoryRouter>
+        <SessionDetailExerciseCard
+          exerciseName="RDL"
+          exerciseId="rdl"
+          loggedSets={sets}
+          units="kg"
+          onSetTap={() => {}}
+        />
+      </MemoryRouter>,
     );
     expect(screen.getByText("82.5kg × 5")).toBeVisible();
     expect(screen.queryByText("83kg × 5")).toBeNull();
@@ -118,12 +137,15 @@ describe("SessionDetailExerciseCard", () => {
     // 82.5 kg ≈ 181.88 lbs; toDisplayWeight clips to 2 decimals
     const sets = [makeSet({ performedWeightKg: 82.5, performedReps: 5 })];
     render(
-      <SessionDetailExerciseCard
-        exerciseName="RDL"
-        loggedSets={sets}
-        units="lbs"
-        onSetTap={() => {}}
-      />,
+      <MemoryRouter>
+        <SessionDetailExerciseCard
+          exerciseName="RDL"
+          exerciseId="rdl"
+          loggedSets={sets}
+          units="lbs"
+          onSetTap={() => {}}
+        />
+      </MemoryRouter>,
     );
     expect(screen.getByText(/^181\.\d+lbs × 5$/)).toBeVisible();
     expect(screen.queryByText("182lbs × 5")).toBeNull();
@@ -131,12 +153,15 @@ describe("SessionDetailExerciseCard", () => {
 
   it("renders no pills when loggedSets is empty", () => {
     render(
-      <SessionDetailExerciseCard
-        exerciseName="RDL"
-        loggedSets={[]}
-        units="kg"
-        onSetTap={() => {}}
-      />,
+      <MemoryRouter>
+        <SessionDetailExerciseCard
+          exerciseName="RDL"
+          exerciseId="rdl"
+          loggedSets={[]}
+          units="kg"
+          onSetTap={() => {}}
+        />
+      </MemoryRouter>,
     );
     expect(screen.queryByRole("button")).toBeNull();
   });
@@ -171,61 +196,99 @@ function makeLoggedSet(overrides: Partial<LoggedSet>): LoggedSet {
 describe("SessionDetailExerciseCard — formatLoggedSet migration (Task 4)", () => {
   it("renders weight + reps as 'Wkg × R'", () => {
     render(
-      <SessionDetailExerciseCard
-        exerciseName="Squat"
-        loggedSets={[makeLoggedSet({ performedWeightKg: 80, performedReps: 10 })]}
-        units="kg"
-        onSetTap={vi.fn()}
-      />
+      <MemoryRouter>
+        <SessionDetailExerciseCard
+          exerciseName="Squat"
+          exerciseId="squat"
+          loggedSets={[makeLoggedSet({ performedWeightKg: 80, performedReps: 10 })]}
+          units="kg"
+          onSetTap={vi.fn()}
+        />
+      </MemoryRouter>
     );
     expect(screen.getByRole("button", { name: /80kg × 10/ })).toBeInTheDocument();
   });
 
   it("renders reps-only as 'R reps' (was '—' pre-fix)", () => {
     render(
-      <SessionDetailExerciseCard
-        exerciseName="Push-up"
-        loggedSets={[makeLoggedSet({ performedReps: 12 })]}
-        units="kg"
-        onSetTap={vi.fn()}
-      />
+      <MemoryRouter>
+        <SessionDetailExerciseCard
+          exerciseName="Push-up"
+          exerciseId="push-up"
+          loggedSets={[makeLoggedSet({ performedReps: 12 })]}
+          units="kg"
+          onSetTap={vi.fn()}
+        />
+      </MemoryRouter>
     );
     expect(screen.getByRole("button", { name: /12 reps/ })).toBeInTheDocument();
   });
 
   it("renders duration-only as 'Ds' (was '—' pre-fix)", () => {
     render(
-      <SessionDetailExerciseCard
-        exerciseName="Plank"
-        loggedSets={[makeLoggedSet({ performedDurationSec: 60 })]}
-        units="kg"
-        onSetTap={vi.fn()}
-      />
+      <MemoryRouter>
+        <SessionDetailExerciseCard
+          exerciseName="Plank"
+          exerciseId="plank"
+          loggedSets={[makeLoggedSet({ performedDurationSec: 60 })]}
+          units="kg"
+          onSetTap={vi.fn()}
+        />
+      </MemoryRouter>
     );
     expect(screen.getByRole("button", { name: /60s/ })).toBeInTheDocument();
   });
 
   it("renders distance-only as 'Dm' (was '—' pre-fix)", () => {
     render(
-      <SessionDetailExerciseCard
-        exerciseName="Run"
-        loggedSets={[makeLoggedSet({ performedDistanceM: 500 })]}
-        units="kg"
-        onSetTap={vi.fn()}
-      />
+      <MemoryRouter>
+        <SessionDetailExerciseCard
+          exerciseName="Run"
+          exerciseId="run"
+          loggedSets={[makeLoggedSet({ performedDistanceM: 500 })]}
+          units="kg"
+          onSetTap={vi.fn()}
+        />
+      </MemoryRouter>
     );
     expect(screen.getByRole("button", { name: /500m/ })).toBeInTheDocument();
   });
 
   it("renders the dash for a truly empty set", () => {
     render(
-      <SessionDetailExerciseCard
-        exerciseName="Empty"
-        loggedSets={[makeLoggedSet({})]}
-        units="kg"
-        onSetTap={vi.fn()}
-      />
+      <MemoryRouter>
+        <SessionDetailExerciseCard
+          exerciseName="Empty"
+          exerciseId="empty"
+          loggedSets={[makeLoggedSet({})]}
+          units="kg"
+          onSetTap={vi.fn()}
+        />
+      </MemoryRouter>
     );
     expect(screen.getByRole("button", { name: /—/ })).toBeInTheDocument();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Navigation link test (Task 2 — F7 closure)
+// ---------------------------------------------------------------------------
+
+describe("SessionDetailExerciseCard exercise-history link", () => {
+  it("renders the exercise name as a link to /history/exercise/:exerciseId", () => {
+    render(
+      <MemoryRouter>
+        <SessionDetailExerciseCard
+          exerciseName="Barbell Squat"
+          exerciseId="barbell-back-squat"
+          loggedSets={[]}
+          units="kg"
+          onSetTap={vi.fn()}
+        />
+      </MemoryRouter>
+    );
+    const link = screen.getByRole("link", { name: /barbell squat/i });
+    expect(link).toBeInTheDocument();
+    expect(link).toHaveAttribute("href", "/history/exercise/barbell-back-squat");
   });
 });
