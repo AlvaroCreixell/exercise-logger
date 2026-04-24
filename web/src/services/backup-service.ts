@@ -850,8 +850,10 @@ function validateSettings(
     });
   }
 
-  // userName: string-or-null; codepoint length <= 40 (mirrors setUserName).
-  if (!isStringOrNull(s.userName)) {
+  // userName: string-or-null OR undefined for legacy backups. importBackup
+  // normalizes missing fields to null via `?? null`. Mirrors setUserName's
+  // codepoint-length truncation when present.
+  if (s.userName !== undefined && !isStringOrNull(s.userName)) {
     errors.push({
       field: `${path}.userName`,
       message: "must be a string or null",
@@ -863,10 +865,9 @@ function validateSettings(
     });
   }
 
-  // Five timestamp fields: each string-or-null. We do not enforce ISO format
-  // here — the live setters call nowISO() which guarantees ISO 8601, and
-  // validating format on read would risk rejecting backups from minor format
-  // drift. Match live-service strictness: type only.
+  // Five timestamp fields: each string-or-null OR undefined for legacy
+  // backups. importBackup normalizes missing fields to null via `?? null`,
+  // matching live setter behavior. ISO format is intentionally not enforced.
   for (const field of [
     "onboardingCompletedAt",
     "onboardingSkippedAt",
@@ -874,7 +875,7 @@ function validateSettings(
     "lastGeneratedPromptAt",
     "onboardingBannerDismissedAt",
   ] as const) {
-    if (!isStringOrNull(s[field])) {
+    if (s[field] !== undefined && !isStringOrNull(s[field])) {
       errors.push({
         field: `${path}.${field}`,
         message: "must be a string or null",
@@ -1110,18 +1111,13 @@ export function validateBackupPayload(
     }
   });
 
-  // Sprint 2: Session.routineId, when non-null, must reference an imported routine.
-  sessions.forEach((s, i) => {
-    if (typeof s !== "object" || s === null) return;
-    const sObj = s as Record<string, unknown>;
-    const rId = sObj.routineId;
-    if (isString(rId) && !routineIds.has(rId)) {
-      errors.push({
-        field: `data.sessions[${i}].routineId`,
-        message: `references routine "${rId}" which is not in the imported routines`,
-      });
-    }
-  });
+  // Sprint 2 hotfix: do NOT require Session.routineId to reference a current
+  // routine. After deleteRoutine, historical sessions retain their stale
+  // routineId by design — invariant 5 ("history survives routine deletion")
+  // is supported via snapshot fields (routineNameSnapshot, dayLabelSnapshot,
+  // dayOrderSnapshot). Rejecting backups with stale routineIds would block
+  // restore for any user who had ever deleted a routine.
+  // Type-only check on routineId is performed in validateSession.
 
   return errors;
 }

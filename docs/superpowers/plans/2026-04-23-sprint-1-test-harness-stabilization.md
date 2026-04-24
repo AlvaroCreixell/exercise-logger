@@ -345,7 +345,7 @@ beforeAll(async () => {
   ]);
 });
 
-/** Timeout used for all findBy*/waitFor calls in this suite. 4000ms is
+/** Timeout used for all findBy* / waitFor calls in this suite. 4000ms is
  * comfortably below Vitest's 5000ms per-test limit and well above the
  * observed async cost of useAppInit + useSettings on slow workers. */
 const WAIT_TIMEOUT = 4000;
