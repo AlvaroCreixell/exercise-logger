@@ -449,7 +449,7 @@ export async function validateAndNormalizeRoutine(
   }
 
   // --- notes (optional) ---
-  let notes: string[] = [];
+  const notes: string[] = [];
   if (raw.notes !== undefined && raw.notes !== null) {
     if (Array.isArray(raw.notes)) {
       const rawNotes = raw.notes as unknown[];
