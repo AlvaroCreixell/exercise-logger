@@ -220,11 +220,6 @@ function isFinitePositive(v: unknown): v is number {
   return isFiniteNumber(v) && v > 0;
 }
 
-/** Integer >= 0 (and finite). */
-function isFiniteNonNegativeInteger(v: unknown): v is number {
-  return isFiniteNumber(v) && Number.isInteger(v) && v >= 0;
-}
-
 /** Finite number or null. Used for performance fields on LoggedSet. */
 function isFiniteNumberOrNull(v: unknown): v is number | null {
   return v === null || isFiniteNumber(v);
