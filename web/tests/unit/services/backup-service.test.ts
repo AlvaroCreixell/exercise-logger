@@ -843,6 +843,205 @@ describe("readJsonFile", () => {
 // Round-trip test
 // =========================================================================
 
+// ---------------------------------------------------------------------------
+// Sprint 2 — finite-numerics hardening
+// ---------------------------------------------------------------------------
+
+const catalogId = "barbell-back-squat";
+
+function makeMinimalValidPayload(): BackupEnvelope {
+  const routine = makeRoutine("r1");
+  const session = makeSession("s1");
+  const se = makeSessionExercise("se1", "s1", catalogId);
+  const ls = makeLoggedSet("ls1", "s1", "se1", catalogId);
+  return {
+    app: "exercise-logger",
+    schemaVersion: 1,
+    exportedAt: "2026-04-23T00:00:00.000Z",
+    data: {
+      routines: [routine],
+      sessions: [session],
+      sessionExercises: [se],
+      loggedSets: [ls],
+      settings: {
+        id: "user",
+        activeRoutineId: "r1",
+        units: "kg",
+        userName: null,
+        onboardingCompletedAt: null,
+        onboardingSkippedAt: null,
+        lastGeneratedPrompt: null,
+        lastGeneratedPromptAt: null,
+        onboardingBannerDismissedAt: null,
+      },
+    },
+  };
+}
+
+describe("validator hardening — Sprint 2 — finite numerics", () => {
+  it("rejects performedReps === Infinity", () => {
+    const cat = new Set([catalogId]);
+    const payload = makeMinimalValidPayload();
+    payload.data.loggedSets[0]!.performedReps = Infinity;
+    const errors = validateBackupPayload(payload, cat);
+    expect(errors.some((e) =>
+      e.field === "data.loggedSets[0].performedReps" &&
+      /must be a finite/i.test(e.message)
+    )).toBe(true);
+  });
+
+  it("rejects performedWeightKg === -Infinity", () => {
+    const cat = new Set([catalogId]);
+    const payload = makeMinimalValidPayload();
+    payload.data.loggedSets[0]!.performedWeightKg = -Infinity;
+    const errors = validateBackupPayload(payload, cat);
+    expect(errors.some((e) =>
+      e.field === "data.loggedSets[0].performedWeightKg" &&
+      /must be a finite/i.test(e.message)
+    )).toBe(true);
+  });
+
+  it("rejects performedDurationSec === NaN (existing behavior preserved)", () => {
+    const cat = new Set([catalogId]);
+    const payload = makeMinimalValidPayload();
+    payload.data.loggedSets[0]!.performedDurationSec = NaN;
+    const errors = validateBackupPayload(payload, cat);
+    expect(errors.some((e) =>
+      e.field === "data.loggedSets[0].performedDurationSec" &&
+      /must be a finite/i.test(e.message)
+    )).toBe(true);
+  });
+
+  it("accepts finite numerics including 0 and negative weight", () => {
+    const cat = new Set([catalogId]);
+    const payload = makeMinimalValidPayload();
+    payload.data.loggedSets[0]!.performedReps = 0;
+    payload.data.loggedSets[0]!.performedWeightKg = -10; // semantics policed elsewhere
+    payload.data.loggedSets[0]!.performedDurationSec = null;
+    const errors = validateBackupPayload(payload, cat);
+    expect(errors.filter((e) => e.field.startsWith("data.loggedSets[0].performed"))).toEqual([]);
+  });
+});
+
+describe("validator hardening — Sprint 2 — SetBlock contract", () => {
+  it("rejects a block with both range AND exact value", () => {
+    const cat = new Set([catalogId]);
+    const payload = makeMinimalValidPayload();
+    payload.data.sessionExercises[0]!.setBlocksSnapshot = [{
+      targetKind: "reps",
+      minValue: 8,
+      maxValue: 12,
+      exactValue: 10,
+      count: 3,
+    } as never]; // intentional invalid shape
+    const errors = validateBackupPayload(payload, cat);
+    expect(errors.some((e) =>
+      /must define exactly one of/i.test(e.message)
+    )).toBe(true);
+  });
+
+  it("rejects a block with neither range NOR exact value", () => {
+    const cat = new Set([catalogId]);
+    const payload = makeMinimalValidPayload();
+    payload.data.sessionExercises[0]!.setBlocksSnapshot = [{
+      targetKind: "reps",
+      count: 3,
+    } as never];
+    const errors = validateBackupPayload(payload, cat);
+    expect(errors.some((e) =>
+      /must define exactly one of/i.test(e.message)
+    )).toBe(true);
+  });
+
+  it("rejects a range with min >= max", () => {
+    const cat = new Set([catalogId]);
+    const payload = makeMinimalValidPayload();
+    payload.data.sessionExercises[0]!.setBlocksSnapshot = [{
+      targetKind: "reps",
+      minValue: 10,
+      maxValue: 8,
+      count: 3,
+    }];
+    const errors = validateBackupPayload(payload, cat);
+    expect(errors.some((e) =>
+      /minValue.*must be less than maxValue/i.test(e.message)
+    )).toBe(true);
+  });
+
+  it("rejects non-integer count", () => {
+    const cat = new Set([catalogId]);
+    const payload = makeMinimalValidPayload();
+    payload.data.sessionExercises[0]!.setBlocksSnapshot = [{
+      targetKind: "reps",
+      minValue: 8,
+      maxValue: 12,
+      count: 2.5,
+    }];
+    const errors = validateBackupPayload(payload, cat);
+    expect(errors.some((e) =>
+      e.field.endsWith(".count") && /integer/i.test(e.message)
+    )).toBe(true);
+  });
+
+  it("rejects zero or negative exactValue", () => {
+    const cat = new Set([catalogId]);
+    const payload = makeMinimalValidPayload();
+    payload.data.sessionExercises[0]!.setBlocksSnapshot = [{
+      targetKind: "duration",
+      exactValue: -30,
+      count: 1,
+    }];
+    const errors = validateBackupPayload(payload, cat);
+    expect(errors.some((e) =>
+      e.field.endsWith(".exactValue") && /positive/i.test(e.message)
+    )).toBe(true);
+  });
+
+  it("rejects zero or negative minValue/maxValue", () => {
+    const cat = new Set([catalogId]);
+    const payload = makeMinimalValidPayload();
+    payload.data.sessionExercises[0]!.setBlocksSnapshot = [{
+      targetKind: "reps",
+      minValue: 0,
+      maxValue: 5,
+      count: 1,
+    }];
+    const errors = validateBackupPayload(payload, cat);
+    expect(errors.some((e) =>
+      e.field.endsWith(".minValue") && /positive/i.test(e.message)
+    )).toBe(true);
+  });
+
+  it("accepts a fully-valid range block", () => {
+    const cat = new Set([catalogId]);
+    const payload = makeMinimalValidPayload();
+    payload.data.sessionExercises[0]!.setBlocksSnapshot = [{
+      targetKind: "reps",
+      minValue: 8,
+      maxValue: 12,
+      count: 3,
+    }];
+    const errors = validateBackupPayload(payload, cat);
+    expect(errors.filter((e) =>
+      e.field.startsWith("data.sessionExercises[0].setBlocksSnapshot")
+    )).toEqual([]);
+  });
+
+  it("accepts a fully-valid exact block", () => {
+    const cat = new Set([catalogId]);
+    const payload = makeMinimalValidPayload();
+    payload.data.sessionExercises[0]!.setBlocksSnapshot = [{
+      targetKind: "duration",
+      exactValue: 30,
+      count: 2,
+    }];
+    const errors = validateBackupPayload(payload, cat);
+    expect(errors.filter((e) =>
+      e.field.startsWith("data.sessionExercises[0].setBlocksSnapshot")
+    )).toEqual([]);
+  });
+});
+
 describe("export -> import round-trip", () => {
   it("round-trips all persisted user data", async () => {
     // Populate data
@@ -898,5 +1097,215 @@ describe("export -> import round-trip", () => {
     const settings = await db.settings.get("user");
     expect(settings!.units).toBe("lbs");
     expect(settings!.activeRoutineId).toBe("r1");
+  });
+});
+
+describe("validator hardening — Sprint 2 — Settings onboarding fields", () => {
+  it("rejects userName as a number", () => {
+    const cat = new Set([catalogId]);
+    const payload = makeMinimalValidPayload();
+    (payload.data.settings as Record<string, unknown>).userName = 42;
+    const errors = validateBackupPayload(payload, cat);
+    expect(errors.some((e) =>
+      e.field === "data.settings.userName" && /string or null/i.test(e.message)
+    )).toBe(true);
+  });
+
+  it("rejects userName longer than 40 codepoints", () => {
+    const cat = new Set([catalogId]);
+    const payload = makeMinimalValidPayload();
+    (payload.data.settings as Record<string, unknown>).userName = "a".repeat(41);
+    const errors = validateBackupPayload(payload, cat);
+    expect(errors.some((e) =>
+      e.field === "data.settings.userName" && /40/.test(e.message)
+    )).toBe(true);
+  });
+
+  it("counts emoji as single codepoints (40-emoji name accepted)", () => {
+    const cat = new Set([catalogId]);
+    const payload = makeMinimalValidPayload();
+    // 40 grinning-face emoji codepoints; each is one Array.from element but two UTF-16 code units.
+    (payload.data.settings as Record<string, unknown>).userName = "😀".repeat(40);
+    const errors = validateBackupPayload(payload, cat);
+    expect(errors.filter((e) => e.field === "data.settings.userName")).toEqual([]);
+  });
+
+  it("rejects onboardingCompletedAt as a number", () => {
+    const cat = new Set([catalogId]);
+    const payload = makeMinimalValidPayload();
+    (payload.data.settings as Record<string, unknown>).onboardingCompletedAt = 0;
+    const errors = validateBackupPayload(payload, cat);
+    expect(errors.some((e) =>
+      e.field === "data.settings.onboardingCompletedAt" && /string or null/i.test(e.message)
+    )).toBe(true);
+  });
+
+  it("accepts all six onboarding fields as null", () => {
+    const cat = new Set([catalogId]);
+    const payload = makeMinimalValidPayload();
+    // settings already has them as null in makeMinimalValidPayload; assert no errors come back
+    // for these specific fields.
+    const errors = validateBackupPayload(payload, cat);
+    const onboardingFields = [
+      "userName",
+      "onboardingCompletedAt",
+      "onboardingSkippedAt",
+      "lastGeneratedPrompt",
+      "lastGeneratedPromptAt",
+      "onboardingBannerDismissedAt",
+    ];
+    for (const f of onboardingFields) {
+      expect(errors.filter((e) => e.field === `data.settings.${f}`)).toEqual([]);
+    }
+  });
+
+  it("accepts ISO-shaped strings for the five timestamp fields", () => {
+    const cat = new Set([catalogId]);
+    const payload = makeMinimalValidPayload();
+    const stamp = "2026-04-23T00:00:00.000Z";
+    Object.assign(payload.data.settings, {
+      userName: "Alice",
+      onboardingCompletedAt: stamp,
+      onboardingSkippedAt: null,
+      lastGeneratedPrompt: "some prompt",
+      lastGeneratedPromptAt: stamp,
+      onboardingBannerDismissedAt: null,
+    });
+    const errors = validateBackupPayload(payload, cat);
+    expect(errors.filter((e) => e.field.startsWith("data.settings."))).toEqual([]);
+  });
+});
+
+describe("validator hardening — Sprint 2 — legacy backup round-trip", () => {
+  it("a backup produced by today's exportBackup validates and re-imports cleanly", async () => {
+    // Build a non-trivial state: one routine, two finished sessions, multiple
+    // session exercises, multiple logged sets across blocks.
+    const exercise = makeExercise(catalogId);
+    const routine = makeRoutine("r1");
+    const session1 = makeSession("s1", { finishedAt: "2026-04-20T11:00:00.000Z" });
+    const session2 = makeSession("s2", {
+      id: "s2",
+      startedAt: "2026-04-22T10:00:00.000Z",
+      finishedAt: "2026-04-22T11:00:00.000Z",
+    });
+    const se1 = makeSessionExercise("se1", "s1", catalogId);
+    const se2 = makeSessionExercise("se2", "s2", catalogId);
+    const sets = [
+      makeLoggedSet("ls1", "s1", "se1", catalogId),
+      makeLoggedSet("ls2", "s1", "se1", catalogId, { setIndex: 1 }),
+      makeLoggedSet("ls3", "s1", "se1", catalogId, { setIndex: 2 }),
+      makeLoggedSet("ls4", "s2", "se2", catalogId),
+    ];
+
+    // Seed the DB (exercises already in db from beforeEach, but put is idempotent).
+    await db.exercises.put(exercise);
+    await db.routines.put(routine);
+    await db.sessions.bulkAdd([session1, session2]);
+    await db.sessionExercises.bulkAdd([se1, se2]);
+    await db.loggedSets.bulkAdd(sets);
+    await db.settings.put({
+      ...DEFAULT_SETTINGS,
+      activeRoutineId: "r1",
+      userName: "Alice",
+      onboardingCompletedAt: "2026-04-19T09:00:00.000Z",
+    });
+
+    // Export.
+    const envelope = await exportBackup(db);
+
+    // Validate against the live catalog.
+    const cat = new Set((await db.exercises.toArray()).map((e) => e.id));
+    const errors = validateBackupPayload(envelope, cat);
+    expect(errors).toEqual([]);
+
+    // Wipe user data (mimic fresh-DB import target; keep exercises as catalog).
+    await db.routines.clear();
+    await db.sessions.clear();
+    await db.sessionExercises.clear();
+    await db.loggedSets.clear();
+    await db.settings.put(DEFAULT_SETTINGS);
+
+    // Import.
+    await importBackup(db, envelope);
+
+    // Confirm tables match.
+    const r2 = await db.routines.toArray();
+    const s2 = await db.sessions.toArray();
+    const se2x = await db.sessionExercises.toArray();
+    const ls2 = await db.loggedSets.toArray();
+    const set2 = await db.settings.get("user");
+
+    expect(r2).toHaveLength(1);
+    expect(s2).toHaveLength(2);
+    expect(se2x).toHaveLength(2);
+    expect(ls2).toHaveLength(4);
+    expect(set2?.userName).toBe("Alice");
+    expect(set2?.activeRoutineId).toBe("r1");
+    expect(set2?.onboardingCompletedAt).toBe("2026-04-19T09:00:00.000Z");
+  });
+});
+
+describe("validator hardening — Sprint 2 — duplicate slot check", () => {
+  it("rejects two LoggedSets sharing (sessionExerciseId, blockIndex, setIndex)", () => {
+    const cat = new Set([catalogId]);
+    const payload = makeMinimalValidPayload();
+    const original = payload.data.loggedSets[0]!;
+    const dup: LoggedSet = {
+      ...original,
+      id: "ls2",
+      // same sessionExerciseId, blockIndex, setIndex — distinct id only
+    };
+    payload.data.loggedSets.push(dup);
+    const errors = validateBackupPayload(payload, cat);
+    expect(errors.some((e) =>
+      /duplicate.*slot/i.test(e.message)
+    )).toBe(true);
+  });
+
+  it("accepts two LoggedSets in the same block but different setIndex", () => {
+    const cat = new Set([catalogId]);
+    const payload = makeMinimalValidPayload();
+    const original = payload.data.loggedSets[0]!;
+    payload.data.loggedSets.push({
+      ...original,
+      id: "ls2",
+      setIndex: 1,
+    });
+    const errors = validateBackupPayload(payload, cat);
+    expect(errors.filter((e) => /duplicate.*slot/i.test(e.message))).toEqual([]);
+  });
+});
+
+describe("validator hardening — Sprint 2 — extended referential integrity", () => {
+  it("rejects a LoggedSet whose sessionId disagrees with its parent SessionExercise.sessionId", () => {
+    const cat = new Set([catalogId]);
+    const payload = makeMinimalValidPayload();
+    // Make the LoggedSet point at the right parent SE but a different session.
+    payload.data.sessions.push(makeSession("s2", { id: "s2" }));
+    payload.data.loggedSets[0]!.sessionId = "s2"; // parent SE is in "s1"
+    const errors = validateBackupPayload(payload, cat);
+    expect(errors.some((e) =>
+      e.field === "data.loggedSets[0].sessionId" &&
+      /parent sessionExercise/i.test(e.message)
+    )).toBe(true);
+  });
+
+  it("rejects a Session.routineId that doesn't reference an imported routine", () => {
+    const cat = new Set([catalogId]);
+    const payload = makeMinimalValidPayload();
+    payload.data.sessions[0]!.routineId = "ghost-routine";
+    const errors = validateBackupPayload(payload, cat);
+    expect(errors.some((e) =>
+      e.field === "data.sessions[0].routineId" &&
+      /not in the imported routines/i.test(e.message)
+    )).toBe(true);
+  });
+
+  it("accepts Session.routineId === null (history survives routine deletion)", () => {
+    const cat = new Set([catalogId]);
+    const payload = makeMinimalValidPayload();
+    payload.data.sessions[0]!.routineId = null;
+    const errors = validateBackupPayload(payload, cat);
+    expect(errors.filter((e) => e.field === "data.sessions[0].routineId")).toEqual([]);
   });
 });

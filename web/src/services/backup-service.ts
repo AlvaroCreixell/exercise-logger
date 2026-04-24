@@ -210,6 +210,21 @@ function isArrayOf<T>(v: unknown, guard: (item: unknown) => item is T): v is T[]
   return Array.isArray(v) && v.every(guard);
 }
 
+/** Strict numeric check — rejects NaN, Infinity, -Infinity. */
+function isFiniteNumber(v: unknown): v is number {
+  return typeof v === "number" && Number.isFinite(v);
+}
+
+/** Finite number > 0. */
+function isFinitePositive(v: unknown): v is number {
+  return isFiniteNumber(v) && v > 0;
+}
+
+/** Finite number or null. Used for performance fields on LoggedSet. */
+function isFiniteNumberOrNull(v: unknown): v is number | null {
+  return v === null || isFiniteNumber(v);
+}
+
 // ---------------------------------------------------------------------------
 // Structural validators for each record type
 // ---------------------------------------------------------------------------
@@ -232,19 +247,65 @@ function validateSetBlock(
     });
   }
 
-  if (b.minValue !== undefined && !isNumber(b.minValue)) {
-    errors.push({ field: `${path}.minValue`, message: "must be a number" });
+  // Exactly-one-of: either {minValue, maxValue} together, or exactValue alone.
+  const hasMin = b.minValue !== undefined;
+  const hasMax = b.maxValue !== undefined;
+  const hasExact = b.exactValue !== undefined;
+  const hasRange = hasMin || hasMax; // partial range counts as "trying to use range"
+
+  if (hasRange === hasExact) {
+    // Either both or neither — both are invalid.
+    errors.push({
+      field: path,
+      message:
+        "must define exactly one of: a {minValue, maxValue} range OR an exactValue",
+    });
+  } else if (hasRange) {
+    // Range path: require both min AND max as finite positive numbers, with min < max.
+    if (!isFinitePositive(b.minValue)) {
+      errors.push({
+        field: `${path}.minValue`,
+        message: "must be a finite positive number",
+      });
+    }
+    if (!isFinitePositive(b.maxValue)) {
+      errors.push({
+        field: `${path}.maxValue`,
+        message: "must be a finite positive number",
+      });
+    }
+    if (
+      isFinitePositive(b.minValue) &&
+      isFinitePositive(b.maxValue) &&
+      (b.minValue as number) >= (b.maxValue as number)
+    ) {
+      errors.push({
+        field: path,
+        message: `minValue (${b.minValue}) must be less than maxValue (${b.maxValue})`,
+      });
+    }
+  } else {
+    // Exact path: require finite positive number.
+    if (!isFinitePositive(b.exactValue)) {
+      errors.push({
+        field: `${path}.exactValue`,
+        message: "must be a finite positive number",
+      });
+    }
   }
-  if (b.maxValue !== undefined && !isNumber(b.maxValue)) {
-    errors.push({ field: `${path}.maxValue`, message: "must be a number" });
+
+  if (
+    !isFiniteNumber(b.count) ||
+    !Number.isInteger(b.count) ||
+    (b.count as number) < 1
+  ) {
+    errors.push({
+      field: `${path}.count`,
+      message: "must be a finite integer >= 1",
+    });
   }
-  if (b.exactValue !== undefined && !isNumber(b.exactValue)) {
-    errors.push({ field: `${path}.exactValue`, message: "must be a number" });
-  }
-  if (!isNumber(b.count) || b.count < 1) {
-    errors.push({ field: `${path}.count`, message: "must be an integer >= 1" });
-  }
-  if (b.tag !== undefined && !VALID_TAGS.includes(b.tag as SetTag)) {
+
+  if (b.tag !== undefined && b.tag !== null && !VALID_TAGS.includes(b.tag as SetTag)) {
     errors.push({
       field: `${path}.tag`,
       message: `must be one of: ${VALID_TAGS.join(", ")}`,
@@ -727,28 +788,28 @@ function validateLoggedSet(
       message: `must be one of: ${VALID_TAGS.join(", ")}, or null`,
     });
   }
-  if (!isNumberOrNull(s.performedWeightKg)) {
+  if (!isFiniteNumberOrNull(s.performedWeightKg)) {
     errors.push({
       field: `${path}.performedWeightKg`,
-      message: "must be a number or null",
+      message: "must be a finite number or null",
     });
   }
-  if (!isNumberOrNull(s.performedReps)) {
+  if (!isFiniteNumberOrNull(s.performedReps)) {
     errors.push({
       field: `${path}.performedReps`,
-      message: "must be a number or null",
+      message: "must be a finite number or null",
     });
   }
-  if (!isNumberOrNull(s.performedDurationSec)) {
+  if (!isFiniteNumberOrNull(s.performedDurationSec)) {
     errors.push({
       field: `${path}.performedDurationSec`,
-      message: "must be a number or null",
+      message: "must be a finite number or null",
     });
   }
-  if (!isNumberOrNull(s.performedDistanceM)) {
+  if (!isFiniteNumberOrNull(s.performedDistanceM)) {
     errors.push({
       field: `${path}.performedDistanceM`,
-      message: "must be a number or null",
+      message: "must be a finite number or null",
     });
   }
   if (!isString(s.loggedAt)) {
@@ -774,10 +835,7 @@ function validateSettings(
   const s = settings as Record<string, unknown>;
 
   if (s.id !== "user") {
-    errors.push({
-      field: `${path}.id`,
-      message: 'must be "user"',
-    });
+    errors.push({ field: `${path}.id`, message: 'must be "user"' });
   }
   if (!isStringOrNull(s.activeRoutineId)) {
     errors.push({
@@ -790,6 +848,38 @@ function validateSettings(
       field: `${path}.units`,
       message: `must be one of: ${VALID_UNITS.join(", ")}`,
     });
+  }
+
+  // userName: string-or-null; codepoint length <= 40 (mirrors setUserName).
+  if (!isStringOrNull(s.userName)) {
+    errors.push({
+      field: `${path}.userName`,
+      message: "must be a string or null",
+    });
+  } else if (typeof s.userName === "string" && Array.from(s.userName).length > 40) {
+    errors.push({
+      field: `${path}.userName`,
+      message: "must be 40 codepoints or fewer",
+    });
+  }
+
+  // Five timestamp fields: each string-or-null. We do not enforce ISO format
+  // here — the live setters call nowISO() which guarantees ISO 8601, and
+  // validating format on read would risk rejecting backups from minor format
+  // drift. Match live-service strictness: type only.
+  for (const field of [
+    "onboardingCompletedAt",
+    "onboardingSkippedAt",
+    "lastGeneratedPrompt",
+    "lastGeneratedPromptAt",
+    "onboardingBannerDismissedAt",
+  ] as const) {
+    if (!isStringOrNull(s[field])) {
+      errors.push({
+        field: `${path}.${field}`,
+        message: "must be a string or null",
+      });
+    }
   }
   // Pre-v3 backups may include a `theme` field; accept but ignore it.
   // It gets stripped in importBackup() before persisting.
@@ -962,6 +1052,74 @@ export function validateBackupPayload(
           message: `references sessionExercise "${lsObj.sessionExerciseId}" which is not in the imported sessionExercises`,
         });
       }
+    }
+  });
+
+  // Sprint 2: duplicate slot check.
+  // Dexie has a unique compound index on [sessionExerciseId+blockIndex+setIndex]
+  // for loggedSets. Catch duplicates here so the failure mode is a clean
+  // BackupValidationError instead of a Dexie ConstraintError mid-transaction.
+  const slotKeys = new Set<string>();
+  loggedSets.forEach((ls, i) => {
+    if (typeof ls !== "object" || ls === null) return;
+    const lsObj = ls as Record<string, unknown>;
+    const seId = lsObj.sessionExerciseId;
+    const bIdx = lsObj.blockIndex;
+    const sIdx = lsObj.setIndex;
+    if (
+      typeof seId === "string" &&
+      typeof bIdx === "number" &&
+      typeof sIdx === "number"
+    ) {
+      const key = `${seId}::${bIdx}::${sIdx}`;
+      if (slotKeys.has(key)) {
+        errors.push({
+          field: `data.loggedSets[${i}]`,
+          message: `duplicate slot: another LoggedSet already targets sessionExerciseId="${seId}", blockIndex=${bIdx}, setIndex=${sIdx}`,
+        });
+      } else {
+        slotKeys.add(key);
+      }
+    }
+  });
+
+  // Sprint 2: loggedSets.sessionId must equal the parent SessionExercise's sessionId.
+  // Build a lookup: sessionExercise.id -> sessionExercise.sessionId.
+  const seSessionByIdLookup = new Map<string, string>();
+  sessionExercises.forEach((se) => {
+    if (typeof se === "object" && se !== null) {
+      const seObj = se as Record<string, unknown>;
+      if (isString(seObj.id) && isString(seObj.sessionId)) {
+        seSessionByIdLookup.set(seObj.id as string, seObj.sessionId as string);
+      }
+    }
+  });
+  loggedSets.forEach((ls, i) => {
+    if (typeof ls !== "object" || ls === null) return;
+    const lsObj = ls as Record<string, unknown>;
+    const lsSeId = lsObj.sessionExerciseId;
+    const lsSessionId = lsObj.sessionId;
+    if (typeof lsSeId === "string" && typeof lsSessionId === "string") {
+      const parentSessionId = seSessionByIdLookup.get(lsSeId);
+      if (parentSessionId !== undefined && parentSessionId !== lsSessionId) {
+        errors.push({
+          field: `data.loggedSets[${i}].sessionId`,
+          message: `disagrees with parent sessionExercise: LoggedSet.sessionId="${lsSessionId}" but SessionExercise.sessionId="${parentSessionId}"`,
+        });
+      }
+    }
+  });
+
+  // Sprint 2: Session.routineId, when non-null, must reference an imported routine.
+  sessions.forEach((s, i) => {
+    if (typeof s !== "object" || s === null) return;
+    const sObj = s as Record<string, unknown>;
+    const rId = sObj.routineId;
+    if (isString(rId) && !routineIds.has(rId)) {
+      errors.push({
+        field: `data.sessions[${i}].routineId`,
+        message: `references routine "${rId}" which is not in the imported routines`,
+      });
     }
   });
 
