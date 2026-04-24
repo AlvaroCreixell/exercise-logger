@@ -39,7 +39,7 @@ describe("SessionDetailExerciseCard", () => {
     expect(screen.getByText("Dumbbell Romanian Deadlift")).toBeVisible();
   });
 
-  it("renders each set as a pill with 'weight×reps'", () => {
+  it("renders each set as a pill with 'weight kg × reps'", () => {
     const sets = [
       makeSet({ id: "a", setIndex: 0, performedWeightKg: 30, performedReps: 14 }),
       makeSet({ id: "b", setIndex: 1, performedWeightKg: 32, performedReps: 11 }),
@@ -52,8 +52,8 @@ describe("SessionDetailExerciseCard", () => {
         onSetTap={() => {}}
       />,
     );
-    expect(screen.getByText("30×14")).toBeVisible();
-    expect(screen.getByText("32×11")).toBeVisible();
+    expect(screen.getByText("30kg × 14")).toBeVisible();
+    expect(screen.getByText("32kg × 11")).toBeVisible();
   });
 
   it("renders '—' for sets missing weight or reps", () => {
@@ -83,7 +83,7 @@ describe("SessionDetailExerciseCard", () => {
       />,
     );
     const user = userEvent.setup();
-    await user.click(screen.getByRole("button", { name: /30×14/ }));
+    await user.click(screen.getByRole("button", { name: /30kg × 14/ }));
     expect(spy).toHaveBeenCalledWith(0, 2);
   });
 
@@ -97,7 +97,7 @@ describe("SessionDetailExerciseCard", () => {
         onSetTap={() => {}}
       />,
     );
-    expect(screen.getByText(/50×10/)).toBeVisible();
+    expect(screen.getByText(/50lbs × 10/)).toBeVisible();
   });
 
   it("preserves fractional kg without rounding (82.5×5, not 83×5)", () => {
@@ -110,8 +110,8 @@ describe("SessionDetailExerciseCard", () => {
         onSetTap={() => {}}
       />,
     );
-    expect(screen.getByText("82.5×5")).toBeVisible();
-    expect(screen.queryByText("83×5")).toBeNull();
+    expect(screen.getByText("82.5kg × 5")).toBeVisible();
+    expect(screen.queryByText("83kg × 5")).toBeNull();
   });
 
   it("preserves fractional lbs conversion without rounding", () => {
@@ -125,8 +125,8 @@ describe("SessionDetailExerciseCard", () => {
         onSetTap={() => {}}
       />,
     );
-    expect(screen.getByText(/^181\.\d+×5$/)).toBeVisible();
-    expect(screen.queryByText("182×5")).toBeNull();
+    expect(screen.getByText(/^181\.\d+lbs × 5$/)).toBeVisible();
+    expect(screen.queryByText("182lbs × 5")).toBeNull();
   });
 
   it("renders no pills when loggedSets is empty", () => {
@@ -139,5 +139,93 @@ describe("SessionDetailExerciseCard", () => {
       />,
     );
     expect(screen.queryByRole("button")).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// New tests covering all 5 value combinations via formatLoggedSet (Task 4 fix)
+// ---------------------------------------------------------------------------
+
+function makeLoggedSet(overrides: Partial<LoggedSet>): LoggedSet {
+  return {
+    id: "ls-test",
+    sessionId: "s1",
+    sessionExerciseId: "se1",
+    exerciseId: "test-ex",
+    instanceLabel: "",
+    origin: "routine",
+    blockIndex: 0,
+    blockSignature: "reps:8-12:count3:tagnormal",
+    setIndex: 0,
+    tag: null,
+    performedWeightKg: null,
+    performedReps: null,
+    performedDurationSec: null,
+    performedDistanceM: null,
+    loggedAt: "2026-04-23T10:00:00.000Z",
+    updatedAt: "2026-04-23T10:00:00.000Z",
+    ...overrides,
+  };
+}
+
+describe("SessionDetailExerciseCard — formatLoggedSet migration (Task 4)", () => {
+  it("renders weight + reps as 'Wkg × R'", () => {
+    render(
+      <SessionDetailExerciseCard
+        exerciseName="Squat"
+        loggedSets={[makeLoggedSet({ performedWeightKg: 80, performedReps: 10 })]}
+        units="kg"
+        onSetTap={vi.fn()}
+      />
+    );
+    expect(screen.getByRole("button", { name: /80kg × 10/ })).toBeInTheDocument();
+  });
+
+  it("renders reps-only as 'R reps' (was '—' pre-fix)", () => {
+    render(
+      <SessionDetailExerciseCard
+        exerciseName="Push-up"
+        loggedSets={[makeLoggedSet({ performedReps: 12 })]}
+        units="kg"
+        onSetTap={vi.fn()}
+      />
+    );
+    expect(screen.getByRole("button", { name: /12 reps/ })).toBeInTheDocument();
+  });
+
+  it("renders duration-only as 'Ds' (was '—' pre-fix)", () => {
+    render(
+      <SessionDetailExerciseCard
+        exerciseName="Plank"
+        loggedSets={[makeLoggedSet({ performedDurationSec: 60 })]}
+        units="kg"
+        onSetTap={vi.fn()}
+      />
+    );
+    expect(screen.getByRole("button", { name: /60s/ })).toBeInTheDocument();
+  });
+
+  it("renders distance-only as 'Dm' (was '—' pre-fix)", () => {
+    render(
+      <SessionDetailExerciseCard
+        exerciseName="Run"
+        loggedSets={[makeLoggedSet({ performedDistanceM: 500 })]}
+        units="kg"
+        onSetTap={vi.fn()}
+      />
+    );
+    expect(screen.getByRole("button", { name: /500m/ })).toBeInTheDocument();
+  });
+
+  it("renders the dash for a truly empty set", () => {
+    render(
+      <SessionDetailExerciseCard
+        exerciseName="Empty"
+        loggedSets={[makeLoggedSet({})]}
+        units="kg"
+        onSetTap={vi.fn()}
+      />
+    );
+    expect(screen.getByRole("button", { name: /—/ })).toBeInTheDocument();
   });
 });
