@@ -28,6 +28,10 @@ Browse past sessions and drill down into set-level detail. Routes:
 
 `useFinishedSessionSummaries`, `useHistoryStats`, `useSessionDetail`, `useExerciseHistory`, `useExerciseHistoryGroups`, `useSettings` — from `@/shared/hooks/`.
 
+## Shared utilities used
+
+- `formatLoggedSet` — `@/shared/lib/formatLoggedSet` — single source of truth for rendering a `LoggedSet`. Used by `SessionDetailExerciseCard` pills and `ExerciseHistoryScreen` inline values. The compact string form (`"80kg × 10"`, `"12 reps"`, `"30s"`, `"500m"`) is canonical across every screen that shows logged sets.
+
 ## Services called
 
 - `editSet`, `deleteSet` — `@/services/set-service` — used when tapping a set pill on a finished session.
