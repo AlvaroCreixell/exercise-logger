@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { SessionExercise, LoggedSet } from "@/domain/types";
 import type { UnitSystem } from "@/domain/enums";
 import type { ExerciseHistoryData, ExtraExerciseHistory } from "@/services/progression-service";
@@ -51,6 +52,32 @@ export function ExerciseCard({
   const se = sessionExercise;
   const blocks = se.setBlocksSnapshot;
   const isExtra = se.origin === "extra";
+
+  // Sprint 4 (D3b): per-block in-session "Add extra set" tap counter.
+  // Source of truth on rehydrate is loggedSets (extras logged in a prior
+  // mount restore via loggedExtras below). The local counter only needs
+  // to remember unconsumed taps in the current session.
+  const [extraTaps, setExtraTaps] = useState<Record<number, number>>({});
+
+  // Logged-driven extras: for each block, the highest setIndex among its
+  // loggedSets, minus block.count + 1 (clamped to >= 0).
+  const loggedExtras: Record<number, number> = {};
+  for (const ls of loggedSets) {
+    const block = blocks[ls.blockIndex];
+    if (!block) continue;
+    const overrun = ls.setIndex - block.count + 1;
+    if (overrun > 0) {
+      loggedExtras[ls.blockIndex] = Math.max(loggedExtras[ls.blockIndex] ?? 0, overrun);
+    }
+  }
+
+  function getExtraCount(bi: number): number {
+    return Math.max(loggedExtras[bi] ?? 0, extraTaps[bi] ?? 0);
+  }
+
+  function addExtraSet(bi: number) {
+    setExtraTaps((prev) => ({ ...prev, [bi]: getExtraCount(bi) + 1 }));
+  }
 
   // Build lookup: "{blockIndex}:{setIndex}" → LoggedSet
   const setLookup = new Map<string, LoggedSet>();
@@ -117,14 +144,16 @@ export function ExerciseCard({
           <p className="text-meta line-clamp-1">{se.notesSnapshot}</p>
         )}
 
-        {/* Set rows — continuous numbering across blocks */}
+        {/* Set rows — continuous numbering across blocks; extras render after each block's prescribed rows. */}
         {blocks.length > 0 && (
           <div className="space-y-1.5">
             {(() => {
               const rows: React.ReactNode[] = [];
               let runningIndex = 0;
               blocks.forEach((block, bi) => {
-                for (let si = 0; si < block.count; si++) {
+                const extras = getExtraCount(bi);
+                const total = block.count + extras;
+                for (let si = 0; si < total; si++) {
                   runningIndex += 1;
                   const setKey = `${bi}:${si}`;
                   const logged = setLookup.get(setKey);
@@ -134,12 +163,24 @@ export function ExerciseCard({
                       setNumber={runningIndex}
                       loggedSet={logged}
                       units={units}
-                      isTopBlock={block.tag === "top"}
-                      lastHint={emptyHintForBlock(bi)}
+                      // Extras are not "top" sets; only prescribed rows in a top-tagged block carry the badge.
+                      isTopBlock={block.tag === "top" && si < block.count}
+                      lastHint={si < block.count ? emptyHintForBlock(bi) : undefined}
                       onClick={() => onSetTap(bi, si)}
                     />,
                   );
                 }
+                // "+ Add extra set" button below this block.
+                rows.push(
+                  <button
+                    key={`add-extra-${bi}`}
+                    type="button"
+                    onClick={() => addExtraSet(bi)}
+                    className="ml-9 self-start text-[11px] font-semibold uppercase tracking-widest text-ink-3 hover:text-sage-deep transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage/40 rounded-sm py-1"
+                  >
+                    + Add extra set
+                  </button>,
+                );
               });
               return rows;
             })()}
