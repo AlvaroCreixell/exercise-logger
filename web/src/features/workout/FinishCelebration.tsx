@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import type { UnitSystem } from "@/domain/enums";
-import { formatVolume } from "@/features/history/lib/sessionStats";
+import { formatVolume } from "@/shared/lib/sessionStats";
 import { Sparkle } from "@/shared/icons";
 
 interface FinishCelebrationStats {

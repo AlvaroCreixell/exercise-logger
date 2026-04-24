@@ -1,7 +1,7 @@
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/db/database";
 import type { Session, LoggedSet } from "@/domain/types";
-import { computeSessionVolumeKg } from "@/features/history/lib/sessionStats";
+import { computeSessionVolumeKg } from "@/shared/lib/sessionStats";
 
 export interface FinishedSessionSummary {
   session: Session;

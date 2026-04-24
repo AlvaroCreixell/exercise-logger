@@ -3,7 +3,7 @@ import {
   computeSessionVolumeKg,
   formatVolume,
   formatShortDuration,
-} from "@/features/history/lib/sessionStats";
+} from "@/shared/lib/sessionStats";
 import type { LoggedSet } from "@/domain/types";
 
 function makeSet(overrides: Partial<LoggedSet>): LoggedSet {

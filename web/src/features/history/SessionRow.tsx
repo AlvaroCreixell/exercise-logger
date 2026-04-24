@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/shared/ui/card";
 import { Chevron } from "@/shared/icons";
 import type { FinishedSessionSummary } from "@/shared/hooks/useFinishedSessionSummaries";
 import type { UnitSystem } from "@/domain/enums";
-import { formatShortDuration, formatVolume } from "./lib/sessionStats";
+import { formatShortDuration, formatVolume } from "@/shared/lib/sessionStats";
 
 interface SessionRowProps {
   summary: FinishedSessionSummary;
