@@ -24,6 +24,9 @@ export default function OnboardingWelcomeScreen() {
   const exercises = useLiveQuery(() => db.exercises.toArray());
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
+  // Snapshot at mount. Wizard state only changes via navigation away from this
+  // screen (or via Start over below), so stale reads across tabs are accepted
+  // over a storage-event listener.
   const [hasWizardState, setHasWizardState] = useState(
     () => loadWizardState() !== null
   );
@@ -36,7 +39,8 @@ export default function OnboardingWelcomeScreen() {
   // Pre-fill name from settings if a value was already saved (defensive — first-run normally has null).
   useEffect(() => {
     if (settings?.userName && name === "") setName(settings.userName);
-  }, [settings?.userName, name]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings?.userName]);
 
   const exercisesById = useMemo(() => {
     const m = new Map<string, Exercise>();
@@ -52,16 +56,26 @@ export default function OnboardingWelcomeScreen() {
   async function handleUseStarter() {
     if (busy) return;
     setBusy(true);
-    await persistName();
-    await markOnboardingSkipped(db);
-    navigate("/", { replace: true });
+    try {
+      await persistName();
+      await markOnboardingSkipped(db);
+      navigate("/", { replace: true });
+    } catch (err) {
+      console.error("Use starter routine failed", err);
+      setBusy(false);
+    }
   }
 
   async function handleBuildOrContinue() {
     if (busy) return;
     setBusy(true);
-    await persistName();
-    navigate("/onboarding/questionnaire", { replace: true });
+    try {
+      await persistName();
+      navigate("/onboarding/questionnaire", { replace: true });
+    } catch (err) {
+      console.error("Build personalized routine failed", err);
+      setBusy(false);
+    }
   }
 
   function handleStartOver() {
@@ -104,7 +118,6 @@ export default function OnboardingWelcomeScreen() {
         </label>
         <Input
           id="welcome-name"
-          aria-label="Your name"
           maxLength={40}
           value={name}
           onChange={(e) => setName(e.target.value)}

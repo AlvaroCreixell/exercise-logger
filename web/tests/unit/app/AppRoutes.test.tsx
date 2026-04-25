@@ -78,7 +78,7 @@ describe("AppRoutes first-run gate", () => {
     expect(
       await screen.findByRole(
         "heading",
-        { name: /what should we call you|your starter routine is ready/i },
+        { name: /your starter routine is ready/i },
         { timeout: WAIT_TIMEOUT }
       )
     ).toBeInTheDocument();
@@ -95,7 +95,7 @@ describe("AppRoutes first-run gate", () => {
     await waitFor(
       () => {
         expect(
-          screen.queryByRole("heading", { name: /what should we call you|your starter routine is ready/i })
+          screen.queryByRole("heading", { name: /your starter routine is ready/i })
         ).not.toBeInTheDocument();
       },
       { timeout: WAIT_TIMEOUT }
@@ -112,7 +112,7 @@ describe("AppRoutes first-run gate", () => {
     await waitFor(
       () => {
         expect(
-          screen.queryByRole("heading", { name: /what should we call you|your starter routine is ready/i })
+          screen.queryByRole("heading", { name: /your starter routine is ready/i })
         ).not.toBeInTheDocument();
       },
       { timeout: WAIT_TIMEOUT }
@@ -129,7 +129,7 @@ describe("AppRoutes first-run gate", () => {
     await waitFor(
       () => {
         expect(
-          screen.queryByRole("heading", { name: /what should we call you|your starter routine is ready/i })
+          screen.queryByRole("heading", { name: /your starter routine is ready/i })
         ).not.toBeInTheDocument();
       },
       { timeout: WAIT_TIMEOUT }
@@ -146,7 +146,7 @@ describe("AppRoutes first-run gate", () => {
     await waitFor(
       () => {
         expect(
-          screen.queryByRole("heading", { name: /what should we call you|your starter routine is ready/i })
+          screen.queryByRole("heading", { name: /your starter routine is ready/i })
         ).not.toBeInTheDocument();
       },
       { timeout: WAIT_TIMEOUT }
@@ -168,7 +168,7 @@ describe("AppRoutes layout split", () => {
     );
     await screen.findByRole(
       "heading",
-      { name: /what should we call you|your starter routine is ready/i },
+      { name: /your starter routine is ready/i },
       { timeout: WAIT_TIMEOUT }
     );
     expect(
