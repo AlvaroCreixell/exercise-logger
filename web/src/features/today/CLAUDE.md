@@ -4,7 +4,7 @@ The default route (`/`). Shows the active routine's current day, a "Start workou
 
 ## Screens
 
-- `TodayScreen.tsx` — Main layout. Composes the hero card, day selector, last session card, and streak pill. If there's an active session, redirects to `/workout` (honoring invariant 2: resume takes priority over start).
+- `TodayScreen.tsx` — Main layout. Composes the hero card, day selector, last session card, and streak pill. If there's an active session, renders a Resume Workout link card in place of the normal layout (honoring invariant 2: resume takes priority over start).
 
 ## Components
 
