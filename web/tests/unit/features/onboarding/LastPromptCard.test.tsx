@@ -1,8 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import "fake-indexeddb/auto";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
+import { toast } from "sonner";
 import { LastPromptCard } from "@/features/onboarding/components/LastPromptCard";
 import type { Settings } from "@/domain/types";
 import { ExerciseLoggerDB, initializeSettings } from "@/db/database";
@@ -91,20 +92,26 @@ describe("LastPromptCard", () => {
     ).toBeInTheDocument();
   });
 
-  it("copy failure expands the prompt and shows manual-copy hint", async () => {
+  it("copy failure surfaces the manual-copy toast", async () => {
+    const user = userEvent.setup();
     Object.defineProperty(navigator, "clipboard", {
       value: { writeText: vi.fn().mockRejectedValue(new Error("blocked")) },
       configurable: true,
     });
-    const user = userEvent.setup();
+    const errorSpy = vi.spyOn(toast, "error").mockImplementation(() => "id");
     render(
       <WithRouter>
         <LastPromptCard settings={makeSettings()} />
       </WithRouter>
     );
     await user.click(screen.getByRole("button", { name: /^copy$/i }));
+    await waitFor(() => {
+      expect(errorSpy).toHaveBeenCalledWith(
+        expect.stringMatching(/clipboard blocked/i)
+      );
+    });
     expect(
-      await screen.findByRole("textbox", { name: /generated prompt/i })
+      screen.getByRole("textbox", { name: /generated prompt/i })
     ).toBeInTheDocument();
   });
 });
