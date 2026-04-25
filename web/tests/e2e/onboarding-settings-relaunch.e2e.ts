@@ -108,19 +108,13 @@ test.describe("Onboarding relaunch from Settings", () => {
     // Step 11 — Cardio: "No cardio" (value "No").
     await page.locator('label[for="cardio-No"]').click();
 
-    // Stage 1 arrives.
+    // Single-screen handoff arrives.
     await expect(
-      page.getByRole("heading", { name: /ready to build your routine/i })
+      page.getByRole("heading", { name: /copy your prompt/i })
     ).toBeVisible({ timeout: 10_000 });
-    await page
-      .getByRole("button", { name: /copy prompt & open gpt/i })
-      .click();
 
-    // Stage 2 paste + Import.
-    await expect(
-      page.getByRole("heading", { name: /paste your routine/i })
-    ).toBeVisible();
-    await page.getByRole("textbox", { name: /yaml/i }).fill(E2E_ROUTINE_YAML);
+    // Paste YAML and import (no separate Stage 1 button).
+    await page.getByRole("textbox", { name: /^yaml$/i }).fill(E2E_ROUTINE_YAML);
     await page.getByRole("button", { name: /import routine/i }).click();
 
     // Today: default "Hello." because this user didn't set a name.

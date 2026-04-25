@@ -1,10 +1,13 @@
 import { test, expect } from "@playwright/test";
+import { resetAppState, skipOnboardingIfShown } from "./helpers/onboarding-helpers";
 
 test.describe("Keyboard navigation", () => {
   test("bottom nav exposes all four tabs as keyboard-reachable links", async ({
     page,
   }) => {
+    await resetAppState(page);
     await page.goto("/exercise-logger/");
+    await skipOnboardingIfShown(page);
     const tabs = ["Today", "Workout", "History", "Settings"];
     for (const name of tabs) {
       const link = page.getByRole("link", { name });
@@ -36,7 +39,9 @@ test.describe("Keyboard navigation", () => {
   test("settings screen is keyboard-reachable from the bottom nav", async ({
     page,
   }) => {
+    await resetAppState(page);
     await page.goto("/exercise-logger/");
+    await skipOnboardingIfShown(page);
     await page.getByRole("link", { name: "Settings" }).click();
     await expect(page.getByRole("heading", { name: /settings/i })).toBeVisible();
     // The Units toggle is a central Settings control — confirm keyboard focus
