@@ -32,7 +32,7 @@ features/onboarding/
     FavoritesAvoidStep.tsx       # step 9 — two stacked StepTextAreas
     SupersetsStep.tsx            # step 10 — value/label divergence for "No"
     CardioStep.tsx               # step 11 — value/label divergence for "No cardio"
-  HandoffScreen.tsx              # route /onboarding/handoff (Stage 1 / Stage 2 state machine)
+  HandoffScreen.tsx              # route /onboarding/handoff (single recoverable screen)
   components/LastPromptCard.tsx  # Settings card when lastGeneratedPrompt !== null
 ```
 
@@ -55,15 +55,15 @@ features/onboarding/
 
 - `setUserName` from `@/services/settings-service` (welcome screen).
 - `markOnboardingCompleted`, `markOnboardingSkipped`, `saveGeneratedPrompt`, `clearLastPrompt`, `dismissOnboardingBanner` from `@/services/onboarding-service`.
-- `buildPrompt` from `./lib/prompt-builder` (HandoffScreen Stage 1).
-- `importAndActivateRoutine`, `validateAndNormalizeRoutine` from `@/services/routine-service` (HandoffScreen Stage 2).
+- `buildPrompt` from `./lib/prompt-builder` (HandoffScreen — builds prompt from sessionStorage when justCompleted).
+- `importAndActivateRoutine`, `validateAndNormalizeRoutine` from `@/services/routine-service` (HandoffScreen YAML import).
 
 ## Shared primitives reused
 
 - `ConfirmDialog` from `@/shared/components/ConfirmDialog` — wizard exit confirm, "Start over" confirm.
 - `Button`, `Textarea` from `@/shared/ui/*`.
 - `cn()` from `@/shared/lib/utils` for conditional class composition.
-- `GPT_URL` from `@/shared/lib/gpt-url` (HandoffScreen window.open target).
+- `GPT_URL` from `@/shared/lib/gpt-url` (HandoffScreen "Open GPT" anchor href).
 
 ## First-run gate
 
@@ -71,9 +71,15 @@ Wired in `@/app/App.tsx:AppRoutes`. Three guards:
 
 1. `/` with `onboardingCompletedAt === null && onboardingSkippedAt === null` → redirect to `/onboarding`.
 2. `/onboarding` with `onboardingCompletedAt !== null` → redirect to `/`.
-3. `/onboarding/handoff` with `lastGeneratedPrompt === null` AND no `location.state.justCompleted === true` → redirect to `/onboarding/questionnaire`.
+3. `/onboarding/handoff` with `lastGeneratedPrompt === null` AND no `location.state.justCompleted === true` → redirect to `/onboarding/questionnaire`. The screen also re-checks this in a `useEffect` so it stays correct in isolation. The effect short-circuits when `onboardingCompletedAt !== null` so a successful import does not bounce back during the brief render between the settings write and `navigate("/")`.
 
-The `HandoffScreen` component has a defensive `useEffect` redirect that matches guard 3 — it's a no-op once `AppRoutes` short-circuits first, but keeps the screen correct in isolation (e.g., in component tests). That effect also short-circuits when `onboardingCompletedAt !== null`, so a successful Stage-2 import does not bounce back to the questionnaire during the brief re-render window between the settings write and the navigation.
+## Saved-prompt lifecycle
+
+The `lastGeneratedPrompt` field is the single source of truth for what the user copied to GPT. Three rules:
+
+1. **Generate-time write** is centralized in `saveGeneratedPrompt(db, prompt)`. The HandoffScreen calls it from a `useEffect` once the prompt is built — it must NOT also reset `onboardingBannerDismissedAt`; the service does that.
+2. **Skipping to starter from the Welcome screen does NOT clear** the saved prompt. The Today banner (dismissable) and Settings → LastPromptCard remain available for resumption.
+3. **Explicit clears**: HandoffScreen "Start over", HandoffScreen successful import (Stage 2 success), Welcome screen "Start over" (only when wizard state exists). All three are user-initiated.
 
 ## Design tokens
 
