@@ -48,7 +48,7 @@ test.describe("Onboarding a11y — axe-core", () => {
     await resetAppState(page);
     await page.goto("/exercise-logger/onboarding");
     await expect(
-      page.getByRole("heading", { name: /What should we call you/i })
+      page.getByRole("heading", { name: /your starter routine is ready/i })
     ).toBeVisible({ timeout: 15_000 });
     await assertNoCriticalOrSerious(page);
   });
@@ -59,10 +59,10 @@ test.describe("Onboarding a11y — axe-core", () => {
     await resetAppState(page);
     await page.goto("/exercise-logger/");
     await expect(
-      page.getByRole("heading", { name: /What should we call you/i })
+      page.getByRole("heading", { name: /your starter routine is ready/i })
     ).toBeVisible({ timeout: 15_000 });
-    // Tap Start with an empty name (allowed) to land on step 1.
-    await page.getByRole("button", { name: /^start$/i }).click();
+    // Tap Build personalized routine to land on step 1.
+    await page.getByRole("button", { name: /build personalized routine/i }).click();
     await expect(
       page.getByRole("heading", { name: /What's your main goal/i })
     ).toBeVisible({ timeout: 10_000 });
@@ -100,7 +100,7 @@ test.describe("Onboarding a11y — axe-core", () => {
     // Boot once so useAppInit creates the settings row.
     await page.goto("/exercise-logger/");
     await expect(
-      page.getByRole("heading", { name: /What should we call you/i })
+      page.getByRole("heading", { name: /your starter routine is ready/i })
     ).toBeVisible({ timeout: 15_000 });
 
     // Lock the DB so subsequent navigations keep our seeded state.

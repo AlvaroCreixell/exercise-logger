@@ -17,12 +17,12 @@ test.describe("Onboarding first-run happy path", () => {
     // Fresh install — first-run gate redirects to /onboarding.
     await page.goto("/");
     await expect(
-      page.getByRole("heading", { name: /What should we call you/i })
+      page.getByRole("heading", { name: /your starter routine is ready/i })
     ).toBeVisible({ timeout: 15_000 });
 
-    // Type name + Start.
-    await page.getByRole("textbox", { name: /your name/i }).fill("Alvaro");
-    await page.getByRole("button", { name: /^start$/i }).click();
+    // Type name + Build personalized routine.
+    await page.getByLabel(/your name/i).fill("Alvaro");
+    await page.getByRole("button", { name: /build personalized routine/i }).click();
 
     // Step 1 — Goal. GoalStep uses ChipRow >5 → aria-pressed buttons.
     await page.getByRole("button", { name: /^Build muscle$/i }).click();

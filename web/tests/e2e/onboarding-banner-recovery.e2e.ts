@@ -39,7 +39,7 @@ test.describe("Onboarding banner recovery", () => {
     // overwrite the settings row below.
     await page.goto("/");
     await expect(
-      page.getByRole("heading", { name: /What should we call you/i }),
+      page.getByRole("heading", { name: /your starter routine is ready/i }),
     ).toBeVisible({ timeout: 15_000 });
 
     // Lock the DB: subsequent reloads must NOT wipe our seeded state.

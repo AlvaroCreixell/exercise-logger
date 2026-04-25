@@ -5,17 +5,17 @@ import {
 } from "./helpers/onboarding-helpers";
 
 test.describe("Onboarding skip flow", () => {
-  test("Maybe later → Today with default greeting + starter routine", async ({
+  test("Use starter routine → Today with default greeting + starter routine", async ({
     page,
   }) => {
     await resetAppState(page);
 
     await page.goto("/");
     await expect(
-      page.getByRole("heading", { name: /What should we call you/i })
+      page.getByRole("heading", { name: /your starter routine is ready/i })
     ).toBeVisible({ timeout: 15_000 });
 
-    await page.getByRole("button", { name: /maybe later/i }).click();
+    await page.getByRole("button", { name: /use starter routine/i }).click();
 
     // Lands on Today with default "Hello." greeting.
     await expect(page.getByRole("heading", { name: "Hello." })).toBeVisible({
