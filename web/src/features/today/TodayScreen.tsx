@@ -17,44 +17,10 @@ import { DaySelector } from "./DaySelector";
 import { LastSessionCard } from "./LastSessionCard";
 import { OnboardingBanner } from "./OnboardingBanner";
 import { dismissOnboardingBanner } from "@/services/onboarding-service";
-import { deriveDayMuscleGroups } from "./lib/muscleGroups";
 import { formatTodayEyebrow } from "./lib/formatDate";
-import type { Exercise, RoutineDay } from "@/domain/types";
+import { summarizeRoutineDay } from "./lib/routineSummary";
+import type { Exercise } from "@/domain/types";
 
-function firstExerciseFromDay(
-  day: RoutineDay,
-  exerciseNames: Map<string, string>,
-): string | null {
-  for (const entry of day.entries) {
-    if (entry.kind === "exercise") {
-      return exerciseNames.get(entry.exerciseId) ?? entry.exerciseId;
-    }
-    const first = entry.items[0];
-    if (first) return exerciseNames.get(first.exerciseId) ?? first.exerciseId;
-  }
-  return null;
-}
-
-function countSets(day: RoutineDay): number {
-  let total = 0;
-  for (const entry of day.entries) {
-    if (entry.kind === "exercise") {
-      total += entry.setBlocks.reduce((s, b) => s + b.count, 0);
-    } else {
-      for (const item of entry.items) {
-        total += item.setBlocks.reduce((s, b) => s + b.count, 0);
-      }
-    }
-  }
-  return total;
-}
-
-function countExercises(day: RoutineDay): number {
-  return day.entries.reduce(
-    (n, e) => n + (e.kind === "exercise" ? 1 : e.items.length),
-    0,
-  );
-}
 
 export default function TodayScreen() {
   const settings = useSettings();
@@ -72,12 +38,6 @@ export default function TodayScreen() {
     if (exercises) for (const ex of exercises) m.set(ex.id, ex);
     return m;
   }, [exercises]);
-  const exerciseNames = useMemo(() => {
-    const m = new Map<string, string>();
-    for (const [id, ex] of exercisesById) m.set(id, ex.name);
-    return m;
-  }, [exercisesById]);
-
   // Live elapsed time for active session
   const [elapsed, setElapsed] = useState(() =>
     activeSession
@@ -125,7 +85,7 @@ export default function TodayScreen() {
                   aria-hidden="true"
                   className="inline-block size-1.5 rounded-full bg-sage"
                 />
-                {elapsed} min · {activeSession.session.dayLabelSnapshot}
+                {elapsed} min · {activeSession.session.routineNameSnapshot} · {activeSession.session.dayLabelSnapshot}
               </p>
             </CardContent>
           </Card>
@@ -150,10 +110,13 @@ export default function TodayScreen() {
     }
   }
 
-  const muscleGroups = selectedDay ? deriveDayMuscleGroups(selectedDay, exercisesById) : [];
-  const exerciseCount = selectedDay ? countExercises(selectedDay) : 0;
-  const setCount = selectedDay ? countSets(selectedDay) : 0;
-  const firstExerciseName = selectedDay ? firstExerciseFromDay(selectedDay, exerciseNames) : null;
+  const summary = selectedDay
+    ? summarizeRoutineDay(selectedDay, exercisesById)
+    : null;
+  const muscleGroups = summary?.muscleGroups ?? [];
+  const exerciseCount = summary?.exerciseCount ?? 0;
+  const setCount = summary?.setCount ?? 0;
+  const firstExerciseName = summary?.firstExerciseName ?? null;
   const dayTitle = selectedDay?.label ?? selectedId;
   const eyebrow = isToday ? `TODAY · DAY ${selectedId.toUpperCase()}` : `DAY ${selectedId.toUpperCase()}`;
   const streakCount = cadence?.sessionsLast7Days ?? 0;
@@ -179,6 +142,7 @@ export default function TodayScreen() {
         <StreakPill count={streakCount} />
 
         <TodayHeroCard
+          routineName={routine.name}
           dayLabelEyebrow={eyebrow}
           dayTitle={dayTitle}
           muscleGroups={muscleGroups}
