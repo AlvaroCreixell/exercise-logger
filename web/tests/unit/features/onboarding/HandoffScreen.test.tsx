@@ -300,4 +300,11 @@ describe("HandoffScreen — recovery and just-completed", () => {
     expect(sessionStorage.getItem(STORAGE_KEY)).not.toBeNull();
     await db.close();
   });
+
+  it("just-completed but wizard state lost: redirects to questionnaire instead of blank screen", async () => {
+    await seedSettings();
+    // Note: NO saveWizardState call — sessionStorage is empty.
+    render(<WithRouter initialState={{ justCompleted: true }} />);
+    expect(await screen.findByText("QUESTIONNAIRE")).toBeInTheDocument();
+  });
 });

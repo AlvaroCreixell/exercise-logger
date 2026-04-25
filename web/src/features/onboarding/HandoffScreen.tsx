@@ -74,13 +74,20 @@ export default function HandoffScreen() {
   useEffect(() => {
     if (!settings) return;
     if (settings.onboardingCompletedAt !== null) return;
-    if (
-      (settings.lastGeneratedPrompt == null || settings.lastGeneratedPrompt === "") &&
-      !justCompleted
-    ) {
+    const hasPrompt =
+      settings.lastGeneratedPrompt != null && settings.lastGeneratedPrompt !== "";
+    // No prompt and no just-completed flag → user is on the wrong screen.
+    if (!hasPrompt && !justCompleted) {
+      navigate("/onboarding/questionnaire", { replace: true });
+      return;
+    }
+    // justCompleted=true but `prompt` resolved to null — wizard state was lost
+    // (private browsing, storage clear) or buildPrompt threw. Redirect rather
+    // than render a blank screen.
+    if (justCompleted && prompt === null) {
       navigate("/onboarding/questionnaire", { replace: true });
     }
-  }, [settings, justCompleted, navigate]);
+  }, [settings, justCompleted, prompt, navigate]);
 
   if (!settings) return null;
   if (prompt === null) return null;
@@ -199,7 +206,7 @@ export default function HandoffScreen() {
 
         {copyState === "blocked" && (
           <p
-            role="status"
+            role="alert"
             className="rounded-[var(--radius-card)] border border-[var(--line)] bg-paper px-3 py-2 text-sm text-ink-2"
           >
             Clipboard access was blocked. Select and copy the prompt above
