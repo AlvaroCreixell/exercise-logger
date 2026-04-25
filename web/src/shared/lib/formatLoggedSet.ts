@@ -22,6 +22,11 @@ export interface LoggedSetSubset {
  * `tertiary` is present only for the combined cardio case (duration AND
  * distance both set). It carries the second value so consumers can join it
  * with " · " rather than conflating it with the weight×reps secondary slot.
+ *
+ * `secondary` is a bare string because it is always rendered as a
+ * dimensionless count (reps) with no per-slot unit variance. `tertiary`
+ * carries its own unit because distance and duration use different units
+ * that must be rendered separately.
  */
 export interface LoggedSetParts {
   primary: string;

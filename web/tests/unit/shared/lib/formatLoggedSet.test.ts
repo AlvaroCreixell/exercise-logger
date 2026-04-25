@@ -59,6 +59,23 @@ describe("formatLoggedSet (compact)", () => {
   it("returns a custom fallback when provided", () => {
     expect(formatLoggedSet(baseSet, "kg", { fallback: "✓" })).toBe("✓");
   });
+
+  it("weight without reps falls through to combined cardio when duration+distance are set", () => {
+    // Type-system reachable but UI-unreachable shape. Locks the formatter's
+    // contract: weight is silently dropped when reps is null and cardio fields
+    // are populated, because branch 1 (weight+reps) requires reps to be set.
+    expect(
+      formatLoggedSet(
+        {
+          performedWeightKg: 80,
+          performedReps: null,
+          performedDurationSec: 600,
+          performedDistanceM: 1500,
+        },
+        "kg",
+      ),
+    ).toBe("600s · 1500m");
+  });
 });
 
 describe("formatLoggedSetParts (structured for custom layouts)", () => {

@@ -38,7 +38,7 @@ export function SetRow({
     const showPR = loggedSet.isPersonalRecord === true;
 
     const ariaSecondary = secondary ? ` × ${secondary}` : "";
-    const ariaTertiary = tertiary ? ` · ${tertiary.value}${tertiary.unit}` : "";
+    const ariaTertiary = tertiary ? ` and ${tertiary.value}${tertiary.unit}` : "";
 
     return (
       <button
