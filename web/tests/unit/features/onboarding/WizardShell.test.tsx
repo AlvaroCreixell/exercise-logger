@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { WizardShell } from "@/features/onboarding/components/WizardShell";
 
@@ -44,8 +44,8 @@ describe("WizardShell", () => {
     expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /exit questionnaire/i }));
     expect(screen.getByRole("alertdialog")).toBeInTheDocument();
-    // Click the confirm "Exit" button inside the dialog.
-    await user.click(screen.getByRole("button", { name: /^exit$/i }));
+    // Click the confirm "Save and exit" button inside the dialog.
+    await user.click(screen.getByRole("button", { name: /save and exit/i }));
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
@@ -53,5 +53,29 @@ describe("WizardShell", () => {
     renderShell({ title: "Focus me" });
     const heading = screen.getByRole("heading", { name: "Focus me" });
     expect(heading).toHaveFocus();
+  });
+
+  it("exit dialog uses 'Save and exit?' copy", async () => {
+    const user = userEvent.setup();
+    render(
+      <WizardShell
+        stepIndex={0}
+        totalSteps={11}
+        category="Goal"
+        title="What's your primary goal?"
+        onBack={() => {}}
+        onNext={() => {}}
+        onClose={() => {}}
+      >
+        <div />
+      </WizardShell>
+    );
+    await user.click(screen.getByRole("button", { name: /exit questionnaire/i }));
+    const dialog = await screen.findByRole("alertdialog");
+    expect(within(dialog).getByText(/save and exit\?/i)).toBeInTheDocument();
+    expect(
+      within(dialog).getByText(/your answers stay on this device/i)
+    ).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: /save and exit/i })).toBeInTheDocument();
   });
 });

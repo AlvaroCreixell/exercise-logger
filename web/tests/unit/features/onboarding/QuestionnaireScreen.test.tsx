@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 import QuestionnaireScreen from "@/features/onboarding/QuestionnaireScreen";
@@ -134,5 +134,38 @@ describe("QuestionnaireScreen", () => {
     expect(await screen.findByTestId("loc-state")).toHaveTextContent(
       "justCompleted:true"
     );
+  });
+});
+
+describe("QuestionnaireScreen exit preserves wizard state", () => {
+  beforeEach(() => {
+    sessionStorage.clear();
+  });
+
+  it("close → confirm exit does NOT clear sessionStorage", async () => {
+    const user = userEvent.setup();
+    saveWizardState({
+      stepIndex: 2,
+      answers: {
+        goal: { kind: "chip-with-other", value: "Build muscle" },
+        experience: { kind: "chip", value: "Intermediate" },
+      },
+    });
+    render(
+      <MemoryRouter initialEntries={["/onboarding/questionnaire"]}>
+        <Routes>
+          <Route path="/onboarding/questionnaire" element={<QuestionnaireScreen />} />
+          <Route path="/onboarding" element={<div>HOME</div>} />
+          <Route path="/" element={<div>ROOT</div>} />
+        </Routes>
+      </MemoryRouter>
+    );
+    await user.click(
+      await screen.findByRole("button", { name: /exit questionnaire/i })
+    );
+    const dialog = await screen.findByRole("alertdialog");
+    await user.click(within(dialog).getByRole("button", { name: /save and exit/i }));
+    expect(await screen.findByText("HOME")).toBeInTheDocument();
+    expect(sessionStorage.getItem(STORAGE_KEY)).not.toBeNull();
   });
 });

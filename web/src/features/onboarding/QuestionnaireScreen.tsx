@@ -1,8 +1,10 @@
 // Orchestrator binds reducer ↔ sessionStorage. Persistence of the generated
-// prompt happens in HandoffScreen (Sprint D), not here. Clearing the wizard's
-// sessionStorage also happens there (on Stage-1 success) per spec §Mid-wizard
-// resume. This screen only clears sessionStorage on explicit exit (close
-// dialog confirm).
+// prompt happens in HandoffScreen. Wizard sessionStorage clearing happens in:
+//   1. HandoffScreen "Start over" (intentional reset).
+//   2. HandoffScreen successful import (Stage-2 success).
+//   3. Welcome screen "Start over" (the only first-run reset).
+// This screen NEVER clears sessionStorage on exit — exit returns to the
+// welcome screen so the user can resume later.
 
 import { useEffect, useReducer } from "react";
 import { useNavigate } from "react-router";
@@ -15,7 +17,6 @@ import {
 import {
   loadWizardState,
   saveWizardState,
-  clearWizardState,
 } from "@/features/onboarding/lib/session-storage";
 import type { Answer, StepId } from "@/features/onboarding/lib/types";
 import { GoalStep } from "@/features/onboarding/steps/GoalStep";
@@ -80,9 +81,7 @@ export default function QuestionnaireScreen() {
   };
 
   const onClose = () => {
-    clearWizardState();
-    dispatch({ type: "restart" });
-    navigate("/", { replace: true });
+    navigate("/onboarding", { replace: true });
   };
 
   const stepProps = {
