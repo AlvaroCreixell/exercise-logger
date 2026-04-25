@@ -26,6 +26,9 @@ import type { Settings } from "@/domain/types";
 // See docs/superpowers/plans/2026-04-23-sprint-1-test-harness-stabilization.md
 // for the investigation.
 beforeAll(async () => {
+  // Every route this suite renders directly or via a first-run-gate redirect
+  // must be pre-warmed: onboarding routes for the layout-split nav-absence
+  // assertions, Today/Settings for the gate-redirect cases.
   await Promise.all([
     import("@/features/onboarding/OnboardingWelcomeScreen"),
     import("@/features/onboarding/QuestionnaireScreen"),
