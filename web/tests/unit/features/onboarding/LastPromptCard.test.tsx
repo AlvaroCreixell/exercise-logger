@@ -79,4 +79,32 @@ describe("LastPromptCard", () => {
     await user.click(screen.getByRole("button", { name: /paste yaml/i }));
     expect(await screen.findByText("HANDOFF")).toBeInTheDocument();
   });
+
+  it("renders the prompt textarea visible by default", () => {
+    render(
+      <WithRouter>
+        <LastPromptCard settings={makeSettings()} />
+      </WithRouter>
+    );
+    expect(
+      screen.getByRole("textbox", { name: /generated prompt/i })
+    ).toBeInTheDocument();
+  });
+
+  it("copy failure expands the prompt and shows manual-copy hint", async () => {
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText: vi.fn().mockRejectedValue(new Error("blocked")) },
+      configurable: true,
+    });
+    const user = userEvent.setup();
+    render(
+      <WithRouter>
+        <LastPromptCard settings={makeSettings()} />
+      </WithRouter>
+    );
+    await user.click(screen.getByRole("button", { name: /^copy$/i }));
+    expect(
+      await screen.findByRole("textbox", { name: /generated prompt/i })
+    ).toBeInTheDocument();
+  });
 });
