@@ -44,6 +44,14 @@ describe("formatLoggedSet (compact)", () => {
       .toBe("12 reps");
   });
 
+  it("renders both duration and distance joined with ' · ' for cardio combined sets", () => {
+    const out = formatLoggedSet(
+      { ...baseSet, performedDurationSec: 600, performedDistanceM: 1500 },
+      "kg",
+    );
+    expect(out).toBe("600s · 1500m");
+  });
+
   it("returns the default fallback for an empty set", () => {
     expect(formatLoggedSet(baseSet, "kg")).toBe("—");
   });
@@ -76,5 +84,19 @@ describe("formatLoggedSetParts (structured for custom layouts)", () => {
 
   it("returns null for an empty set (caller handles fallback)", () => {
     expect(formatLoggedSetParts(baseSet, "kg")).toBeNull();
+  });
+
+  it("returns tertiary for combined duration+distance cardio sets", () => {
+    expect(
+      formatLoggedSetParts(
+        { ...baseSet, performedDurationSec: 600, performedDistanceM: 1500 },
+        "kg",
+      ),
+    ).toEqual({
+      primary: "600",
+      unit: "s",
+      secondary: null,
+      tertiary: { value: "1500", unit: "m" },
+    });
   });
 });

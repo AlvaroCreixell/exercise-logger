@@ -18,21 +18,29 @@ export interface LoggedSetSubset {
  * SetRow renders primary/unit/secondary in separate spans with distinct
  * styling). Returns `null` when the set is empty (no performance fields
  * are non-null) — callers decide how to render empty.
+ *
+ * `tertiary` is present only for the combined cardio case (duration AND
+ * distance both set). It carries the second value so consumers can join it
+ * with " · " rather than conflating it with the weight×reps secondary slot.
  */
 export interface LoggedSetParts {
   primary: string;
   unit: string | null;
   secondary: string | null;
+  tertiary?: { value: string; unit: string };
 }
 
 /**
- * Render a logged set into its structured parts. Precedence (matches the
- * existing SetRow logic):
- * 1. weight + reps  → display weight, unit = kg/lbs, secondary = reps
- * 2. reps only      → primary = reps,  unit = "reps"
- * 3. duration only  → primary = sec,   unit = "s"
- * 4. distance only  → primary = m,     unit = "m"
- * 5. otherwise      → null
+ * Render a logged set into its structured parts. Precedence:
+ * 1. weight + reps       → display weight, unit = kg/lbs, secondary = reps
+ * 2. reps only           → primary = reps,  unit = "reps"
+ * 3. duration + distance → primary = sec, unit = "s", tertiary = { value: m, unit: "m" }
+ * 4. duration only       → primary = sec,   unit = "s"
+ * 5. distance only       → primary = m,     unit = "m"
+ * 6. otherwise           → null
+ *
+ * The combined-cardio branch (3) MUST precede duration-only (4) so both
+ * fields are rendered instead of silently dropping distance.
  */
 export function formatLoggedSetParts(
   set: LoggedSetSubset,
@@ -47,6 +55,14 @@ export function formatLoggedSetParts(
   }
   if (set.performedReps !== null) {
     return { primary: String(set.performedReps), unit: "reps", secondary: null };
+  }
+  if (set.performedDurationSec !== null && set.performedDistanceM !== null) {
+    return {
+      primary: String(set.performedDurationSec),
+      unit: "s",
+      secondary: null,
+      tertiary: { value: String(set.performedDistanceM), unit: "m" },
+    };
   }
   if (set.performedDurationSec !== null) {
     return { primary: String(set.performedDurationSec), unit: "s", secondary: null };
@@ -85,6 +101,9 @@ export function formatLoggedSet(
   }
   if (parts.secondary !== null) {
     result += " × " + parts.secondary;
+  }
+  if (parts.tertiary !== undefined) {
+    result += " · " + parts.tertiary.value + parts.tertiary.unit;
   }
   return result;
 }
