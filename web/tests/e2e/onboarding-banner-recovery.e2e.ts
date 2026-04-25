@@ -76,8 +76,10 @@ test.describe("Onboarding banner recovery", () => {
       page.getByRole("heading", { name: /copy your prompt/i }),
     ).toBeVisible({ timeout: 10_000 });
 
-    // Back to Today, dismiss the banner.
-    await page.getByRole("link", { name: "Today" }).click();
+    // Back to Today, dismiss the banner. The Today nav link is no longer
+    // available from /onboarding/handoff (onboarding routes render under a
+    // chrome-free OnboardingLayout — see App.tsx), so navigate explicitly.
+    await page.goto("/exercise-logger/");
     await expect(page.getByRole("status")).toBeVisible();
     await page.getByRole("button", { name: /dismiss banner/i }).click();
     await expect(page.getByRole("status")).toBeHidden();
