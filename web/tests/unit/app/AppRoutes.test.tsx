@@ -28,11 +28,10 @@ import type { Settings } from "@/domain/types";
 beforeAll(async () => {
   await Promise.all([
     import("@/features/onboarding/OnboardingWelcomeScreen"),
-    // TodayScreen is not directly asserted by these tests, but the four
-    // "stay on Today" cases redirect into it via the first-run gate; the
-    // Suspense fallback there contributes to the same race. Keep both
-    // chunks warmed so any gate-logic change can't reintroduce the flake.
+    import("@/features/onboarding/QuestionnaireScreen"),
+    import("@/features/onboarding/HandoffScreen"),
     import("@/features/today/TodayScreen"),
+    import("@/features/settings/SettingsScreen"),
   ]);
 });
 
@@ -149,5 +148,91 @@ describe("AppRoutes first-run gate", () => {
       },
       { timeout: WAIT_TIMEOUT }
     );
+  });
+});
+
+describe("AppRoutes layout split", () => {
+  beforeEach(() => {
+    sessionStorage.clear();
+  });
+
+  it("/onboarding has no Main navigation in the DOM", async () => {
+    await seedSettings();
+    render(
+      <MemoryRouter initialEntries={["/onboarding"]}>
+        <AppRoutes />
+      </MemoryRouter>
+    );
+    await screen.findByRole(
+      "heading",
+      { name: /what should we call you|your starter routine is ready/i },
+      { timeout: WAIT_TIMEOUT }
+    );
+    expect(
+      screen.queryByRole("navigation", { name: /main navigation/i })
+    ).not.toBeInTheDocument();
+  });
+
+  it("/onboarding/questionnaire has no Main navigation in the DOM", async () => {
+    await seedSettings();
+    render(
+      <MemoryRouter initialEntries={["/onboarding/questionnaire"]}>
+        <AppRoutes />
+      </MemoryRouter>
+    );
+    await screen.findByRole("progressbar", undefined, { timeout: WAIT_TIMEOUT });
+    expect(
+      screen.queryByRole("navigation", { name: /main navigation/i })
+    ).not.toBeInTheDocument();
+  });
+
+  it("/onboarding/handoff has no Main navigation when a saved prompt exists", async () => {
+    await seedSettings({
+      lastGeneratedPrompt: "SAVED",
+      lastGeneratedPromptAt: new Date().toISOString(),
+      onboardingSkippedAt: new Date().toISOString(),
+    });
+    render(
+      <MemoryRouter initialEntries={["/onboarding/handoff"]}>
+        <AppRoutes />
+      </MemoryRouter>
+    );
+    // Wait for any onboarding heading.
+    await screen.findByRole("heading", undefined, { timeout: WAIT_TIMEOUT });
+    expect(
+      screen.queryByRole("navigation", { name: /main navigation/i })
+    ).not.toBeInTheDocument();
+  });
+
+  it("/ has Main navigation present", async () => {
+    await seedSettings({ onboardingSkippedAt: new Date().toISOString() });
+    render(
+      <MemoryRouter initialEntries={["/"]}>
+        <AppRoutes />
+      </MemoryRouter>
+    );
+    expect(
+      await screen.findByRole(
+        "navigation",
+        { name: /main navigation/i },
+        { timeout: WAIT_TIMEOUT }
+      )
+    ).toBeInTheDocument();
+  });
+
+  it("/settings has Main navigation present", async () => {
+    await seedSettings({ onboardingSkippedAt: new Date().toISOString() });
+    render(
+      <MemoryRouter initialEntries={["/settings"]}>
+        <AppRoutes />
+      </MemoryRouter>
+    );
+    expect(
+      await screen.findByRole(
+        "navigation",
+        { name: /main navigation/i },
+        { timeout: WAIT_TIMEOUT }
+      )
+    ).toBeInTheDocument();
   });
 });

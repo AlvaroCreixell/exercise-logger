@@ -70,7 +70,7 @@ function FadeRoute({ children }: { children: ReactNode }) {
   );
 }
 
-function Shell() {
+function AppShell() {
   return (
     <div className="flex h-dvh flex-col bg-background text-foreground">
       <main className="flex-1 overflow-y-auto">
@@ -119,6 +119,20 @@ function Shell() {
           ))}
         </div>
       </nav>
+    </div>
+  );
+}
+
+function OnboardingLayout() {
+  return (
+    <div className="flex h-dvh flex-col bg-background text-foreground">
+      <main className="flex-1 overflow-y-auto">
+        <FadeRoute>
+          <Suspense fallback={<LoadingState />}>
+            <Outlet />
+          </Suspense>
+        </FadeRoute>
+      </main>
     </div>
   );
 }
@@ -175,7 +189,7 @@ export function AppRoutes() {
   return (
     <Suspense fallback={<LoadingState fullscreen />}>
       <Routes>
-        <Route element={<Shell />}>
+        <Route element={<AppShell />}>
           <Route path="/" element={<TodayScreen />} />
           <Route path="/workout" element={<WorkoutScreen />} />
           <Route path="/history" element={<HistoryScreen />} />
@@ -186,14 +200,16 @@ export function AppRoutes() {
           />
           <Route path="/settings" element={<SettingsScreen />} />
           <Route path="/settings/import" element={<RoutineImportScreen />} />
+        </Route>
+        <Route element={<OnboardingLayout />}>
           <Route path="/onboarding" element={<OnboardingWelcomeScreen />} />
           <Route
             path="/onboarding/questionnaire"
             element={<QuestionnaireScreen />}
           />
           <Route path="/onboarding/handoff" element={<HandoffScreen />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Suspense>
   );
