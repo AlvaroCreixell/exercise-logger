@@ -21,7 +21,6 @@ import { formatTodayEyebrow } from "./lib/formatDate";
 import { summarizeRoutineDay } from "./lib/routineSummary";
 import type { Exercise } from "@/domain/types";
 
-
 export default function TodayScreen() {
   const settings = useSettings();
   const routine = useRoutine(settings?.activeRoutineId);
