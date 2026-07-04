@@ -8,6 +8,11 @@ import {
   importAndActivateRoutine,
   type ValidationError,
 } from "@/services/routine-service";
+import {
+  markOnboardingCompleted,
+  clearLastPrompt,
+} from "@/services/onboarding-service";
+import { clearWizardState } from "@/features/onboarding/lib/session-storage";
 import { YamlErrorList } from "./YamlErrorList";
 import { GPT_URL } from "@/shared/lib/gpt-url";
 import { extractSharedYaml } from "@/shared/lib/extractSharedYaml";
@@ -50,6 +55,23 @@ export default function RoutineImportScreen() {
         setErrors([{ path: "", message: activation.message }]);
         return false;
       }
+      // A successful import fulfills the GPT round-trip regardless of entry
+      // path (share sheet, clipboard, file, manual paste). Mirror the handoff
+      // success side effects so the first-run gate never bounces the user
+      // back into onboarding and stale prompt/wizard artifacts don't linger.
+      const current = await db.settings.get("user");
+      if (current) {
+        if (
+          current.onboardingCompletedAt === null &&
+          current.onboardingSkippedAt === null
+        ) {
+          await markOnboardingCompleted(db);
+        }
+        if (current.lastGeneratedPrompt !== null) {
+          await clearLastPrompt(db);
+        }
+      }
+      clearWizardState();
       toast.success(`Routine "${result.routine.name}" imported and activated`);
       navigate("/settings");
       return true;
