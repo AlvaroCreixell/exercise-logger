@@ -110,15 +110,41 @@ describe("getSlotOrdinal", () => {
     expect(getSlotOrdinal(se, 0, 4)).toBe(5); // second overrun
   });
 
-  it("places multi-block overruns after ALL prescribed slots", () => {
+  it("places multi-block overruns after ALL prescribed slots with unique ordinals per block", () => {
     const se = makeSessionExercise({
       setBlocksSnapshot: [
         { targetKind: "reps", minValue: 8, maxValue: 12, count: 2 } as SetBlock,
         { targetKind: "reps", exactValue: 15, count: 1 } as SetBlock,
       ],
     });
-    // 3 prescribed total; overrun of block 1 (setIndex 1) is ordinal 4.
-    expect(getSlotOrdinal(se, 1, 1)).toBe(4);
+    // 3 prescribed total, 2 blocks. First overrun of block 0 (setIndex 2) and
+    // first overrun of block 1 (setIndex 1) must NOT collide — otherwise the
+    // rail merges two real sets into one chip and round pairing can misfire.
+    expect(getSlotOrdinal(se, 0, 2)).toBe(4); // 3 + 0*2 + 0 + 1
+    expect(getSlotOrdinal(se, 1, 1)).toBe(5); // 3 + 0*2 + 1 + 1
+    // Second overrun of block 0 continues past both first overruns.
+    expect(getSlotOrdinal(se, 0, 3)).toBe(6); // 3 + 1*2 + 0 + 1
+  });
+
+  it("does not complete a round by pairing extras from different blocks", () => {
+    const twoBlocks = [
+      { targetKind: "reps", minValue: 8, maxValue: 12, count: 2 } as SetBlock,
+      { targetKind: "reps", exactValue: 15, count: 2 } as SetBlock,
+    ];
+    const a = makeSessionExercise({ id: "se-a", setBlocksSnapshot: twoBlocks });
+    const b = makeSessionExercise({ id: "se-b", setBlocksSnapshot: twoBlocks });
+    // A logs an extra in block 0; B logs an extra in block 1. These are
+    // different overrun rounds and must not complete each other.
+    const setsByExercise = new Map([
+      ["se-a", [makeLoggedSet({ sessionExerciseId: "se-a", blockIndex: 0, setIndex: 2 })]],
+      ["se-b", [makeLoggedSet({ sessionExerciseId: "se-b", blockIndex: 1, setIndex: 2 })]],
+    ]);
+    const aOrdinal = getSlotOrdinal(a, 0, 2);
+    const bOrdinal = getSlotOrdinal(b, 1, 2);
+    expect(aOrdinal).not.toBe(bOrdinal);
+    expect(
+      isRoundComplete({ exercises: [a, b], setsByExercise, ordinal: aOrdinal }),
+    ).toBe(false);
   });
 
   it("handles blockless (extra-origin) exercises gracefully", () => {

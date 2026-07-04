@@ -39,6 +39,12 @@ export function flattenPrescribedSlots(se: SessionExercise): SupersetSlot[] {
  * Overrun slots (setIndex >= block.count, or a blockIndex with no prescribed
  * block) continue the sequence after ALL prescribed slots, so an overrun
  * round can still pair with the partner's matching overrun.
+ *
+ * Overrun ordinals interleave by (overrunIndex, blockIndex) so that extras in
+ * DIFFERENT blocks of a multi-block exercise never collide onto one ordinal —
+ * a collision would merge two real sets into one rail chip and let
+ * isRoundComplete pair mismatched extras. Single-block exercises reduce to
+ * the plain totalPrescribed + overrunIndex + 1 sequence.
  */
 export function getSlotOrdinal(
   se: SessionExercise,
@@ -55,8 +61,9 @@ export function getSlotOrdinal(
   }
 
   const totalPrescribed = blocks.reduce((sum, b) => sum + b.count, 0);
+  const blockCount = Math.max(1, blocks.length);
   const overrunIndex = block ? setIndex - block.count : setIndex;
-  return totalPrescribed + overrunIndex + 1;
+  return totalPrescribed + overrunIndex * blockCount + blockIndex + 1;
 }
 
 /** Ordinals that have a logged set, per exercise, in exercises order. */
