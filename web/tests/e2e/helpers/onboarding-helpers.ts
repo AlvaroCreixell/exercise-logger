@@ -151,7 +151,14 @@ export async function skipOnboardingIfShown(page: Page): Promise<void> {
     .catch(() => {
       /* Loading may never have been visible */
     });
-  if (await welcomeHeading.isVisible({ timeout: 5_000 }).catch(() => false)) {
+  // NOTE: locator.isVisible() ignores its timeout option (returns immediately),
+  // which raced the welcome render and randomly skipped the click. waitFor
+  // actually waits.
+  const welcomeShown = await welcomeHeading
+    .waitFor({ state: "visible", timeout: 5_000 })
+    .then(() => true)
+    .catch(() => false);
+  if (welcomeShown) {
     await page.getByRole("button", { name: /use starter routine/i }).click();
     // Wait until the welcome screen is gone. The guard should redirect to /
     // once the skip flag propagates through useLiveQuery.
