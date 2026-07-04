@@ -18,6 +18,13 @@ import { WorkoutFooter } from "./WorkoutFooter";
 import { SessionHeader } from "./SessionHeader";
 import { SessionProgress } from "./SessionProgress";
 import { FinishCelebration } from "./FinishCelebration";
+import { RestTimerBar } from "./RestTimerBar";
+import {
+  getRestTimerStartAfterNewSet,
+  getRestRemainingSec,
+  type ActiveRestTimer,
+} from "./lib/rest-timer";
+import { getSlotOrdinal, isRoundComplete } from "./lib/superset-rhythm";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { Dumbbell } from "@/shared/icons";
 import { toast } from "sonner";
@@ -53,6 +60,11 @@ export default function WorkoutScreen() {
   const [sheetSetIndex, setSheetSetIndex] = useState(0);
   const [sheetExistingSet, setSheetExistingSet] = useState<LoggedSet | undefined>();
 
+  // Rest timer — ephemeral UI state (never persisted, resets on reload).
+  // Stored as "running"; the effective status is derived at render time from
+  // the shared 1-second tick below, flipping to "done" when remaining <= 0.
+  const [restTimer, setRestTimer] = useState<ActiveRestTimer | null>(null);
+
   // Ticking elapsed seconds for the header. `tick` exists solely to drive
   // re-renders every second; `elapsedSec` is derived from `startedAt` at render
   // time so it's always accurate the moment the session arrives.
@@ -66,6 +78,21 @@ export default function WorkoutScreen() {
     return () => window.clearInterval(id);
   }, [startedAt]);
   const elapsedSec = startedAt ? computeElapsedSec(startedAt) : 0;
+
+  // Derived rest timer state — same tick, same derive-at-render pattern as
+  // elapsedSec. Once remaining hits zero the timer renders as "done" until
+  // dismissed or replaced by the next new-set save.
+  const restRemainingSec = restTimer ? getRestRemainingSec(restTimer, Date.now()) : 0;
+  const restTimerForRender: ActiveRestTimer | null =
+    restTimer && restRemainingSec <= 0 ? { ...restTimer, status: "done" } : restTimer;
+
+  function handleRestSkip() {
+    setRestTimer(null);
+  }
+
+  function handleRestAddSeconds(seconds: number) {
+    setRestTimer((t) => (t ? { ...t, durationSec: t.durationSec + seconds } : t));
+  }
 
   function handleCelebrationDismiss() {
     setCelebration({ open: false, stats: null });
@@ -133,9 +160,67 @@ export default function WorkoutScreen() {
   }) {
     if (!sheetExercise) return;
     if (sheetExistingSet) {
+      // Edit path — never starts or restarts the rest timer.
       await editSet(db, sheetExistingSet.id, input);
-    } else {
-      await logSet(db, sheetExercise.id, sheetBlockIndex, sheetSetIndex, input);
+      return;
+    }
+
+    // Stale-sheet guard: the sheet may have been opened before this slot was
+    // logged elsewhere (logSet upserts). If the slot already exists in the
+    // current loggedSets snapshot, this save is really an update — no timer.
+    const slotAlreadyLogged = (setsByExercise.get(sheetExercise.id) ?? []).some(
+      (ls) => ls.blockIndex === sheetBlockIndex && ls.setIndex === sheetSetIndex,
+    );
+
+    const savedSet = await logSet(
+      db,
+      sheetExercise.id,
+      sheetBlockIndex,
+      sheetSetIndex,
+      input,
+    );
+    if (slotAlreadyLogged) return;
+
+    // Genuinely new set — decide whether to start rest. Timers start ONLY
+    // here (never from effects observing loggedSets) so live-query re-renders,
+    // edits, and deletes can never restart one.
+    const partner =
+      sheetExercise.groupType === "superset" && sheetExercise.supersetGroupId !== null
+        ? sessionExercises.find(
+            (other) =>
+              other.id !== sheetExercise.id &&
+              other.supersetGroupId === sheetExercise.supersetGroupId,
+          )
+        : undefined;
+
+    let supersetRoundJustCompleted = false;
+    let supersetRoundOrdinal: number | null = null;
+    if (partner) {
+      // The loggedSets snapshot predates this save — include the saved set so
+      // the round check sees our side of the pair.
+      const augmented = new Map(setsByExercise);
+      augmented.set(sheetExercise.id, [
+        ...(setsByExercise.get(sheetExercise.id) ?? []),
+        savedSet,
+      ]);
+      const ordinal = getSlotOrdinal(sheetExercise, sheetBlockIndex, sheetSetIndex);
+      supersetRoundOrdinal = ordinal;
+      supersetRoundJustCompleted = isRoundComplete({
+        exercises: [sheetExercise, partner],
+        setsByExercise: augmented,
+        ordinal,
+      });
+    }
+
+    const start = getRestTimerStartAfterNewSet({
+      session,
+      exerciseName: sheetExercise.exerciseNameSnapshot,
+      isSupersetMember: partner !== undefined,
+      supersetRoundJustCompleted,
+      supersetRoundOrdinal,
+    });
+    if (start) {
+      setRestTimer({ status: "running", startedAtMs: Date.now(), ...start });
     }
   }
 
@@ -225,6 +310,15 @@ export default function WorkoutScreen() {
       />
       <SessionProgress totalSets={totalPrescribed} loggedSets={loggedRoutine} />
 
+      {restTimerForRender && (
+        <RestTimerBar
+          timer={restTimerForRender}
+          remainingSec={restRemainingSec}
+          onSkip={handleRestSkip}
+          onAddSeconds={handleRestAddSeconds}
+        />
+      )}
+
       <div className="flex-1 space-y-3 overflow-y-auto p-5">
         {renderGroups.map((group, i) => {
           if (group.type === "single") {
@@ -240,7 +334,11 @@ export default function WorkoutScreen() {
             );
           }
           return (
-            <SupersetGroup key={i}>
+            <SupersetGroup
+              key={i}
+              exercises={group.exercises}
+              setsByExercise={setsByExercise}
+            >
               {group.exercises.map((se) => (
                 <ExerciseCardWithHistory
                   key={se.id}
