@@ -89,6 +89,16 @@ export function ExerciseCard({
     setLookup.set(`${ls.blockIndex}:${ls.setIndex}`, ls);
   }
 
+  // A block is complete when every prescribed slot has a logged set.
+  function isBlockComplete(bi: number): boolean {
+    const block = blocks[bi];
+    if (!block) return false;
+    for (let si = 0; si < block.count; si++) {
+      if (!setLookup.has(`${bi}:${si}`)) return false;
+    }
+    return true;
+  }
+
   const totalPrescribed = blocks.reduce((s, b) => s + b.count, 0);
   // The N/X badge counts only prescribed-slot completion. Extra sets logged
   // via "+ Add extra set" don't push the numerator past the denominator —
@@ -182,25 +192,31 @@ export function ExerciseCard({
                     />,
                   );
                 }
-                // "+ Add extra set" button below this block.
-                // Multi-block exercises render one button per block; the
+                // Contextual "Extra set" control below this block (Sprint 2
+                // delta 3): hidden on untouched incomplete blocks; appears once
+                // every prescribed slot is logged, or while extra rows exist
+                // (persisted overruns via loggedExtras, pending local taps via
+                // extraTaps — both folded into getExtraCount). Multi-block
+                // exercises render one independent control per block; the
                 // aria-label disambiguates them so screen-reader users know
                 // which block they're extending.
-                rows.push(
-                  <button
-                    key={`add-extra-${bi}`}
-                    type="button"
-                    aria-label={
-                      blocks.length > 1
-                        ? `Add extra set to set block ${bi + 1}`
-                        : "Add extra set"
-                    }
-                    onClick={() => addExtraSet(bi)}
-                    className="ml-9 text-[11px] font-semibold uppercase tracking-widest text-ink-3 hover:text-sage-deep transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage/40 rounded-sm py-1"
-                  >
-                    + Add extra set
-                  </button>,
-                );
+                if (isBlockComplete(bi) || extras > 0) {
+                  rows.push(
+                    <button
+                      key={`add-extra-${bi}`}
+                      type="button"
+                      aria-label={
+                        blocks.length > 1
+                          ? `Add extra set to set block ${bi + 1}`
+                          : "Add extra set"
+                      }
+                      onClick={() => addExtraSet(bi)}
+                      className="ml-9 text-meta hover:text-sage-deep transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage/40 rounded-sm py-1"
+                    >
+                      Extra set
+                    </button>,
+                  );
+                }
               });
               return rows;
             })()}

@@ -411,12 +411,19 @@ describe("ExerciseCard — extras", () => {
   });
 });
 
+/** Logged sets covering every prescribed slot of a block (default: block 0, 3 sets). */
+function makeCompletedBlockSets(count = 3, blockIndex = 0): LoggedSet[] {
+  return Array.from({ length: count }, (_, si) =>
+    makeLoggedSet({ id: `ls-b${blockIndex}-s${si}`, blockIndex, setIndex: si }),
+  );
+}
+
 describe("ExerciseCard — Add extra set (Sprint 4 D3b)", () => {
-  it("renders an '+ Add extra set' button for each block on a routine card", () => {
+  it("renders the extra-set button once the block's prescribed sets are complete", () => {
     render(
       <ExerciseCard
         sessionExercise={makeSessionExercise()}
-        loggedSets={[]}
+        loggedSets={makeCompletedBlockSets()}
         units="kg"
         historyData={undefined}
         extraHistory={undefined}
@@ -441,19 +448,19 @@ describe("ExerciseCard — Add extra set (Sprint 4 D3b)", () => {
     expect(screen.queryByRole("button", { name: /add extra set/i })).toBeNull();
   });
 
-  it("tapping '+ Add extra set' renders an additional empty SetRow below the prescribed rows", async () => {
+  it("tapping the extra-set button renders an additional empty SetRow below the prescribed rows", async () => {
     const user = userEvent.setup();
     render(
       <ExerciseCard
         sessionExercise={makeSessionExercise()}
-        loggedSets={[]}
+        loggedSets={makeCompletedBlockSets()}
         units="kg"
         historyData={undefined}
         extraHistory={undefined}
         onSetTap={vi.fn()}
       />,
     );
-    // Block prescribes 3 sets → 3 empty SetRows initially.
+    // Block prescribes 3 sets → 3 SetRows initially.
     expect(screen.getAllByRole("button", { name: /^Set \d+/ })).toHaveLength(3);
     await user.click(screen.getByRole("button", { name: /add extra set/i }));
     // Now 4 SetRows (3 prescribed + 1 extra)
@@ -483,7 +490,7 @@ describe("ExerciseCard — Add extra set (Sprint 4 D3b)", () => {
     render(
       <ExerciseCard
         sessionExercise={makeSessionExercise()}
-        loggedSets={[]}
+        loggedSets={makeCompletedBlockSets()}
         units="kg"
         historyData={undefined}
         extraHistory={undefined}
@@ -496,12 +503,12 @@ describe("ExerciseCard — Add extra set (Sprint 4 D3b)", () => {
     expect(onSetTap).toHaveBeenCalledWith(0, 3);
   });
 
-  it("tapping '+ Add extra set' twice adds two extras (counter is per-block, additive)", async () => {
+  it("tapping the extra-set button twice adds two extras (counter is per-block, additive)", async () => {
     const user = userEvent.setup();
     render(
       <ExerciseCard
         sessionExercise={makeSessionExercise()}
-        loggedSets={[]}
+        loggedSets={makeCompletedBlockSets()}
         units="kg"
         historyData={undefined}
         extraHistory={undefined}
@@ -514,13 +521,16 @@ describe("ExerciseCard — Add extra set (Sprint 4 D3b)", () => {
     expect(screen.getAllByRole("button", { name: /^Set \d+/ })).toHaveLength(5);
   });
 
-  it("two-block exercise gets two independent + Add extra set buttons with disambiguating aria-labels", () => {
+  it("two-block exercise gets two independent extra-set buttons with disambiguating aria-labels", () => {
     const blockA: SetBlock = { targetKind: "reps", minValue: 6, maxValue: 8, count: 2, tag: "top" };
     const blockB: SetBlock = { targetKind: "reps", minValue: 8, maxValue: 12, count: 3 };
     render(
       <ExerciseCard
         sessionExercise={makeSessionExercise({ setBlocksSnapshot: [blockA, blockB] })}
-        loggedSets={[]}
+        loggedSets={[
+          ...makeCompletedBlockSets(2, 0),
+          ...makeCompletedBlockSets(3, 1),
+        ]}
         units="kg"
         historyData={undefined}
         extraHistory={undefined}
@@ -537,7 +547,7 @@ describe("ExerciseCard — Add extra set (Sprint 4 D3b)", () => {
     render(
       <ExerciseCard
         sessionExercise={makeSessionExercise()}
-        loggedSets={[]}
+        loggedSets={makeCompletedBlockSets()}
         units="kg"
         historyData={undefined}
         extraHistory={undefined}
@@ -593,5 +603,167 @@ describe("ExerciseCard — Add extra set (Sprint 4 D3b)", () => {
     // Set 1 carries TOP somewhere in its descendants.
     const topMarkers = screen.getAllByText("TOP");
     expect(topMarkers).toHaveLength(1); // only one TOP across both rows
+  });
+});
+
+describe("ExerciseCard — contextual extra-set visibility (Sprint 2 delta 3)", () => {
+  it("hides the extra-set control on an untouched incomplete block", () => {
+    render(
+      <ExerciseCard
+        sessionExercise={makeSessionExercise()}
+        loggedSets={[]}
+        units="kg"
+        historyData={undefined}
+        extraHistory={undefined}
+        onSetTap={vi.fn()}
+      />,
+    );
+    expect(screen.queryByRole("button", { name: /add extra set/i })).toBeNull();
+  });
+
+  it("hides the control while the block is only partially complete", () => {
+    // 3 prescribed, only 2 logged.
+    render(
+      <ExerciseCard
+        sessionExercise={makeSessionExercise()}
+        loggedSets={makeCompletedBlockSets(2)}
+        units="kg"
+        historyData={undefined}
+        extraHistory={undefined}
+        onSetTap={vi.fn()}
+      />,
+    );
+    expect(screen.queryByRole("button", { name: /add extra set/i })).toBeNull();
+  });
+
+  it("shows the control when every prescribed slot in the block is logged", () => {
+    render(
+      <ExerciseCard
+        sessionExercise={makeSessionExercise()}
+        loggedSets={makeCompletedBlockSets(3)}
+        units="kg"
+        historyData={undefined}
+        extraHistory={undefined}
+        onSetTap={vi.fn()}
+      />,
+    );
+    expect(screen.getByRole("button", { name: "Add extra set" })).toBeVisible();
+  });
+
+  it("uses the quieter visible copy 'Extra set' (aria-label unchanged)", () => {
+    render(
+      <ExerciseCard
+        sessionExercise={makeSessionExercise()}
+        loggedSets={makeCompletedBlockSets(3)}
+        units="kg"
+        historyData={undefined}
+        extraHistory={undefined}
+        onSetTap={vi.fn()}
+      />,
+    );
+    const control = screen.getByRole("button", { name: "Add extra set" });
+    expect(control).toHaveTextContent(/^Extra set$/);
+    expect(screen.queryByText("+ Add extra set")).toBeNull();
+  });
+
+  it("shows the control when persisted extra rows exist even if prescribed slots are incomplete", () => {
+    // Only an overrun set at setIndex=3 (block.count=3) — prescribed slots empty.
+    const logged = [makeLoggedSet({ id: "ls-extra", blockIndex: 0, setIndex: 3 })];
+    render(
+      <ExerciseCard
+        sessionExercise={makeSessionExercise()}
+        loggedSets={logged}
+        units="kg"
+        historyData={undefined}
+        extraHistory={undefined}
+        onSetTap={vi.fn()}
+      />,
+    );
+    expect(screen.getByRole("button", { name: "Add extra set" })).toBeVisible();
+  });
+
+  it("keeps the control visible after a local tap even if the block later becomes incomplete", async () => {
+    const user = userEvent.setup();
+    const complete = makeCompletedBlockSets(3);
+    const { rerender } = render(
+      <ExerciseCard
+        sessionExercise={makeSessionExercise()}
+        loggedSets={complete}
+        units="kg"
+        historyData={undefined}
+        extraHistory={undefined}
+        onSetTap={vi.fn()}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: "Add extra set" }));
+    // A prescribed set gets deleted → block no longer complete, but the
+    // pending extra tap keeps the control (and the extra row) visible.
+    rerender(
+      <ExerciseCard
+        sessionExercise={makeSessionExercise()}
+        loggedSets={complete.slice(0, 2)}
+        units="kg"
+        historyData={undefined}
+        extraHistory={undefined}
+        onSetTap={vi.fn()}
+      />,
+    );
+    expect(screen.getByRole("button", { name: "Add extra set" })).toBeVisible();
+    // 3 prescribed rows + 1 pending extra row still render.
+    expect(screen.getAllByRole("button", { name: /^Set \d+/ })).toHaveLength(4);
+  });
+
+  it("multi-block: only the complete block shows its control", () => {
+    const blockA: SetBlock = { targetKind: "reps", minValue: 6, maxValue: 8, count: 2, tag: "top" };
+    const blockB: SetBlock = { targetKind: "reps", minValue: 8, maxValue: 12, count: 3 };
+    render(
+      <ExerciseCard
+        sessionExercise={makeSessionExercise({ setBlocksSnapshot: [blockA, blockB] })}
+        loggedSets={makeCompletedBlockSets(2, 0)} // block 0 complete, block 1 untouched
+        units="kg"
+        historyData={undefined}
+        extraHistory={undefined}
+        onSetTap={vi.fn()}
+      />,
+    );
+    expect(screen.getAllByRole("button", { name: /add extra set/i })).toHaveLength(1);
+    expect(screen.getByRole("button", { name: "Add extra set to set block 1" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Add extra set to set block 2" })).toBeNull();
+  });
+
+  it("extra rows still never count toward routine progress (badge stays 3/3)", () => {
+    const sets = [...makeCompletedBlockSets(3), makeLoggedSet({ id: "l-extra", setIndex: 3 })];
+    render(
+      <ExerciseCard
+        sessionExercise={makeSessionExercise()}
+        loggedSets={sets}
+        units="kg"
+        historyData={undefined}
+        extraHistory={undefined}
+        onSetTap={vi.fn()}
+      />,
+    );
+    expect(screen.getByLabelText("3 of 3 sets logged")).toBeInTheDocument();
+  });
+
+  it("extra-origin exercise behavior is unchanged: no control, next empty row still renders", () => {
+    const se = makeSessionExercise({ id: "se-extra", origin: "extra", setBlocksSnapshot: [] });
+    const logged = [
+      makeLoggedSet({ id: "ls-x", sessionExerciseId: "se-extra", origin: "extra", setIndex: 0 }),
+    ];
+    render(
+      <ExerciseCard
+        sessionExercise={se}
+        loggedSets={logged}
+        units="kg"
+        historyData={undefined}
+        extraHistory={undefined}
+        onSetTap={vi.fn()}
+      />,
+    );
+    expect(screen.queryByRole("button", { name: /add extra set/i })).toBeNull();
+    expect(screen.queryByText(/extra set/i)).toBeNull();
+    // Logged row + next empty add-row.
+    expect(screen.getAllByRole("button", { name: /^Set \d+/ })).toHaveLength(2);
   });
 });
