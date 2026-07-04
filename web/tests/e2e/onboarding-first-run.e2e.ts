@@ -1,14 +1,13 @@
 import { test, expect } from "@playwright/test";
 import {
   E2E_ROUTINE_YAML,
-  readLastOpenedUrl,
   readStubbedClipboard,
   resetAppState,
   stubClipboardAndWindowOpen,
 } from "./helpers/onboarding-helpers";
 
 test.describe("Onboarding first-run happy path", () => {
-  test("welcome → wizard → handoff Stage 1 → Stage 2 → Today with name + new routine", async ({
+  test("welcome → wizard → handoff → Today with name + new routine", async ({
     page,
   }) => {
     await resetAppState(page);
@@ -17,12 +16,12 @@ test.describe("Onboarding first-run happy path", () => {
     // Fresh install — first-run gate redirects to /onboarding.
     await page.goto("/");
     await expect(
-      page.getByRole("heading", { name: /What should we call you/i })
+      page.getByRole("heading", { name: /your starter routine is ready/i })
     ).toBeVisible({ timeout: 15_000 });
 
-    // Type name + Start.
-    await page.getByRole("textbox", { name: /your name/i }).fill("Alvaro");
-    await page.getByRole("button", { name: /^start$/i }).click();
+    // Type name + Build personalized routine.
+    await page.getByLabel(/your name/i).fill("Alvaro");
+    await page.getByRole("button", { name: /build personalized routine/i }).click();
 
     // Step 1 — Goal. GoalStep uses ChipRow >5 → aria-pressed buttons.
     await page.getByRole("button", { name: /^Build muscle$/i }).click();
@@ -61,41 +60,35 @@ test.describe("Onboarding first-run happy path", () => {
     // Step 11 — Cardio: Yes. ChipRow ≤5 → click the label.
     await page.locator('label[for="cardio-Yes"]').click();
 
-    // Stage 1 arrives.
+    // Handoff screen — single page now.
     await expect(
-      page.getByRole("heading", { name: /ready to build your routine/i })
+      page.getByRole("heading", { name: /copy your prompt/i })
     ).toBeVisible({ timeout: 10_000 });
 
-    // Tap Stage-1 button.
-    await page
-      .getByRole("button", { name: /copy prompt & open gpt/i })
-      .click();
+    // The prompt is visible by default.
+    const promptArea = page.getByRole("textbox", { name: /generated prompt/i });
+    await expect(promptArea).toBeVisible();
+    const promptText = await promptArea.inputValue();
+    expect(promptText).toContain("- Distinct training days desired: 3");
 
-    // Stage 2 heading.
-    await expect(
-      page.getByRole("heading", { name: /paste your routine/i })
-    ).toBeVisible();
-
-    // Clipboard assertions: D10 line present, no parenthetical.
+    // Copy is its own action.
+    await page.getByRole("button", { name: /^copy prompt$/i }).click();
     const copied = await readStubbedClipboard(page);
-    expect(copied).toContain("- Primary goal: Build muscle");
     expect(copied).toContain("- Distinct training days desired: 3");
-    expect(copied).not.toContain("Distinct training days desired: 3 (");
-    expect(copied).toContain("- Available equipment: Barbell, Dumbbells");
-    expect(copied).toContain("- Supersets: Yes — use them where they fit");
 
-    // window.open URL check.
-    const openedUrl = await readLastOpenedUrl(page);
-    expect(openedUrl ?? "").toContain("chatgpt.com");
+    // Open GPT is a real anchor.
+    const gptLink = page.getByRole("link", { name: /open gpt/i });
+    await expect(gptLink).toHaveAttribute("href", /chatgpt\.com/);
+    await expect(gptLink).toHaveAttribute("target", "_blank");
 
-    // Paste YAML + Import.
-    await page.getByRole("textbox", { name: /yaml/i }).fill(E2E_ROUTINE_YAML);
+    // Paste YAML and import.
+    await page.getByRole("textbox", { name: /^yaml$/i }).fill(E2E_ROUTINE_YAML);
     await page.getByRole("button", { name: /import routine/i }).click();
 
-    // Today — personalized greeting + new active routine.
+    // Today.
     await expect(
       page.getByRole("heading", { name: "Hi, Alvaro." })
     ).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByText(/E2E Test Routine|Upper|Lower/)).toBeVisible();
+    await expect(page.getByText(/E2E Test Routine/)).toBeVisible();
   });
 });

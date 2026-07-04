@@ -44,12 +44,37 @@ describe("formatLoggedSet (compact)", () => {
       .toBe("12 reps");
   });
 
+  it("renders both duration and distance joined with ' · ' for cardio combined sets", () => {
+    const out = formatLoggedSet(
+      { ...baseSet, performedDurationSec: 600, performedDistanceM: 1500 },
+      "kg",
+    );
+    expect(out).toBe("600s · 1500m");
+  });
+
   it("returns the default fallback for an empty set", () => {
     expect(formatLoggedSet(baseSet, "kg")).toBe("—");
   });
 
   it("returns a custom fallback when provided", () => {
     expect(formatLoggedSet(baseSet, "kg", { fallback: "✓" })).toBe("✓");
+  });
+
+  it("weight without reps falls through to combined cardio when duration+distance are set", () => {
+    // Type-system reachable but UI-unreachable shape. Locks the formatter's
+    // contract: weight is silently dropped when reps is null and cardio fields
+    // are populated, because branch 1 (weight+reps) requires reps to be set.
+    expect(
+      formatLoggedSet(
+        {
+          performedWeightKg: 80,
+          performedReps: null,
+          performedDurationSec: 600,
+          performedDistanceM: 1500,
+        },
+        "kg",
+      ),
+    ).toBe("600s · 1500m");
   });
 });
 
@@ -76,5 +101,19 @@ describe("formatLoggedSetParts (structured for custom layouts)", () => {
 
   it("returns null for an empty set (caller handles fallback)", () => {
     expect(formatLoggedSetParts(baseSet, "kg")).toBeNull();
+  });
+
+  it("returns tertiary for combined duration+distance cardio sets", () => {
+    expect(
+      formatLoggedSetParts(
+        { ...baseSet, performedDurationSec: 600, performedDistanceM: 1500 },
+        "kg",
+      ),
+    ).toEqual({
+      primary: "600",
+      unit: "s",
+      secondary: null,
+      tertiary: { value: "1500", unit: "m" },
+    });
   });
 });

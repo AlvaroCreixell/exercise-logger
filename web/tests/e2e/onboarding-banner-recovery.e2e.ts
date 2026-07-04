@@ -39,7 +39,7 @@ test.describe("Onboarding banner recovery", () => {
     // overwrite the settings row below.
     await page.goto("/");
     await expect(
-      page.getByRole("heading", { name: /What should we call you/i }),
+      page.getByRole("heading", { name: /your starter routine is ready/i }),
     ).toBeVisible({ timeout: 15_000 });
 
     // Lock the DB: subsequent reloads must NOT wipe our seeded state.
@@ -58,22 +58,28 @@ test.describe("Onboarding banner recovery", () => {
     // Today — banner visible.
     await expect(page.getByRole("status")).toBeVisible({ timeout: 15_000 });
 
-    // Tap the banner body → Stage 2.
+    // Tap the banner body → handoff screen.
     await page
       .getByRole("button", { name: /paste your routine yaml/i })
       .click();
     await expect(
-      page.getByRole("heading", { name: /paste your routine/i }),
+      page.getByRole("heading", { name: /copy your prompt/i }),
     ).toBeVisible({ timeout: 10_000 });
+    // On the recovered handoff screen, the saved prompt body is visible.
+    await expect(
+      page.getByRole("textbox", { name: /generated prompt/i })
+    ).toHaveValue(/SAVED PROMPT CONTENT/);
 
-    // Reload on Stage 2 — persists because lastGeneratedPrompt !== null.
+    // Reload — persists because lastGeneratedPrompt !== null.
     await page.reload();
     await expect(
-      page.getByRole("heading", { name: /paste your routine/i }),
+      page.getByRole("heading", { name: /copy your prompt/i }),
     ).toBeVisible({ timeout: 10_000 });
 
-    // Back to Today, dismiss the banner.
-    await page.getByRole("link", { name: "Today" }).click();
+    // Back to Today, dismiss the banner. The Today nav link is no longer
+    // available from /onboarding/handoff (onboarding routes render under a
+    // chrome-free OnboardingLayout — see App.tsx), so navigate explicitly.
+    await page.goto("/exercise-logger/");
     await expect(page.getByRole("status")).toBeVisible();
     await page.getByRole("button", { name: /dismiss banner/i }).click();
     await expect(page.getByRole("status")).toBeHidden();

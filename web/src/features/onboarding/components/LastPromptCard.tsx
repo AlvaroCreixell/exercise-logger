@@ -29,7 +29,7 @@ function relativeTime(iso: string | null): string {
 
 export function LastPromptCard({ settings }: LastPromptCardProps) {
   const navigate = useNavigate();
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(true);
   const [clearOpen, setClearOpen] = useState(false);
 
   if (settings.lastGeneratedPrompt === null) return null;
@@ -95,6 +95,7 @@ export function LastPromptCard({ settings }: LastPromptCardProps) {
       </div>
       {expanded && (
         <Textarea
+          aria-label="Generated prompt"
           value={prompt}
           readOnly
           onFocus={(e) => e.currentTarget.select()}

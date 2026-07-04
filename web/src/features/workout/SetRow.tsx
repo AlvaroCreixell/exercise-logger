@@ -33,14 +33,18 @@ export function SetRow({
     const primary = parts?.primary ?? "✓";
     const unit = parts?.unit ?? null;
     const secondary = parts?.secondary ?? null;
+    const tertiary = parts?.tertiary ?? null;
     const showTop = isTopBlock;
     const showPR = loggedSet.isPersonalRecord === true;
+
+    const ariaSecondary = secondary ? ` × ${secondary}` : "";
+    const ariaTertiary = tertiary ? ` and ${tertiary.value}${tertiary.unit}` : "";
 
     return (
       <button
         type="button"
         onClick={onClick}
-        aria-label={`Set ${setNumber}: ${primary}${unit ?? ""}${secondary ? ` × ${secondary}` : ""}`}
+        aria-label={`Set ${setNumber}: ${primary}${unit ?? ""}${ariaSecondary}${ariaTertiary}`}
         className="flex w-full items-center gap-3 rounded-[var(--radius-set-logged)] bg-sage-soft px-3 py-2.5 text-left transition-colors hover:bg-sage-soft/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage/40"
       >
         <span
@@ -56,6 +60,13 @@ export function SetRow({
             <>
               <span className="text-xs text-ink-3">×</span>
               <span className="text-value">{secondary}</span>
+            </>
+          )}
+          {tertiary && (
+            <>
+              <span className="text-xs text-ink-3">·</span>
+              <span className="text-value">{tertiary.value}</span>
+              <span className="text-xs text-ink-3">{tertiary.unit}</span>
             </>
           )}
         </span>

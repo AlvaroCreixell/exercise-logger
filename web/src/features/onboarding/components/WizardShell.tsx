@@ -110,9 +110,9 @@ export function WizardShell({
       <ConfirmDialog
         open={confirmOpen}
         onOpenChange={setConfirmOpen}
-        title="Exit questionnaire?"
-        description="Your answers won't be saved."
-        confirmText="Exit"
+        title="Save and exit?"
+        description="Your answers stay on this device — continue from the welcome screen any time."
+        confirmText="Save and exit"
         onConfirm={onClose}
       />
     </div>

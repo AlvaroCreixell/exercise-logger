@@ -326,6 +326,12 @@ export function SetLogSheet({
                         return `${toDisplayWeight(s.weightKg, units)}${units} × ${s.reps}`;
                       }
                       if (s.reps != null) return `${s.reps} reps`;
+                      // Combined cardio: render both fields to match formatLoggedSet output.
+                      // NOTE: this formatter uses LastTimeSet field names (weightKg, reps,
+                      // durationSec, distanceM) which differ from LoggedSetSubset
+                      // (performedWeightKg, etc.), so formatLoggedSet cannot be called
+                      // directly here.
+                      if (s.durationSec != null && s.distanceM != null) return `${s.durationSec}s · ${s.distanceM}m`;
                       if (s.durationSec != null) return `${s.durationSec}s`;
                       if (s.distanceM != null) return `${s.distanceM}m`;
                       return "—";

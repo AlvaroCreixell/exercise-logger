@@ -50,4 +50,18 @@ describe("TodayHeroCard", () => {
     const btn = screen.getByRole("button", { name: /Start workout/i });
     expect(btn.hasAttribute("disabled") || btn.getAttribute("aria-disabled") === "true").toBe(true);
   });
+
+  it("renders the routine name caption when routineName is provided", () => {
+    render(<TodayHeroCard {...baseProps} routineName="Full Body 3-Day Rotation" />);
+    expect(
+      screen.getByText(/active routine: full body 3-day rotation/i)
+    ).toBeInTheDocument();
+  });
+
+  it("omits the routine name caption when routineName is undefined", () => {
+    render(<TodayHeroCard {...baseProps} />);
+    expect(
+      screen.queryByText(/active routine:/i)
+    ).not.toBeInTheDocument();
+  });
 });

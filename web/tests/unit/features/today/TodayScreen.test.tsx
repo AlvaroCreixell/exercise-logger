@@ -181,6 +181,42 @@ describe("TodayScreen", () => {
     expect(screen.getByText(/Push/)).toBeVisible();
   });
 
+  it("State B — renders 'Active routine' caption with routine.name", async () => {
+    const routine = await seedRoutine();
+    await seedExercises();
+    await setActiveRoutine(routine.id);
+    renderAt();
+    await waitFor(() => {
+      expect(
+        screen.getByText(/active routine: test routine/i)
+      ).toBeVisible();
+    });
+  });
+
+  it("State C — resume card includes routineNameSnapshot", async () => {
+    const routine = await seedRoutine();
+    await seedExercises();
+    await setActiveRoutine(routine.id);
+    const session: Session = {
+      id: "s1",
+      routineId: routine.id,
+      routineNameSnapshot: routine.name,
+      dayId: "A",
+      dayLabelSnapshot: "Push",
+      dayOrderSnapshot: routine.dayOrder,
+      restDefaultSecSnapshot: routine.restDefaultSec,
+      restSupersetSecSnapshot: routine.restSupersetSec,
+      status: "active",
+      startedAt: new Date(Date.now() - 5 * 60_000).toISOString(),
+      finishedAt: null,
+    };
+    await db.sessions.put(session);
+    renderAt();
+    await waitFor(() => {
+      expect(screen.getByText(/Test Routine/)).toBeVisible();
+    });
+  });
+
   it("Start Workout button transitions to loading state when pressed", async () => {
     const routine = await seedRoutine();
     await seedExercises();

@@ -4,11 +4,11 @@ The default route (`/`). Shows the active routine's current day, a "Start workou
 
 ## Screens
 
-- `TodayScreen.tsx` — Main layout. Composes the hero card, day selector, last session card, and streak pill. If there's an active session, redirects to `/workout` (honoring invariant 2: resume takes priority over start).
+- `TodayScreen.tsx` — Main layout. Composes the hero card, day selector, last session card, and streak pill. If there's an active session, renders a Resume Workout link card in place of the normal layout (honoring invariant 2: resume takes priority over start).
 
 ## Components
 
-- `TodayHeroCard.tsx` — The large "today" card with day label, muscle groups, set count, and start button.
+- `TodayHeroCard.tsx` — The large "today" card with day label, muscle groups, set count, and start button. Accepts an optional `routineName` prop; when set, renders a small 'Active routine: X' caption row above the day eyebrow. The active-session resume card also includes `session.routineNameSnapshot` for the same context.
 - `DaySelector.tsx` — Lets the user pick a non-default day without advancing rotation.
 - `LastSessionCard.tsx` — Summary of the most recent finished session.
 - `StreakPill.tsx` — Training cadence badge (e.g., "3-day streak").
@@ -17,6 +17,7 @@ The default route (`/`). Shows the active routine's current day, a "Start workou
 
 - `formatDate.ts` — `formatTodayEyebrow()` for the "FRIDAY · APRIL 21" eyebrow.
 - `muscleGroups.ts` — `deriveDayMuscleGroups()` aggregates muscle groups from a `RoutineDay`'s exercises.
+- `routineSummary.ts` — `summarizeRoutineDay(day, exercisesById)` returns `RoutineDaySummary` with `exerciseCount`, `setCount`, `firstExerciseName`, and `muscleGroups`. Used by `TodayScreen` to replace three former local helpers.
 
 ## Hooks used
 

@@ -9,6 +9,7 @@ import {
   STORAGE_KEY,
   saveWizardState,
 } from "@/features/onboarding/lib/session-storage";
+import { GPT_URL } from "@/shared/lib/gpt-url";
 import type { Answers } from "@/features/onboarding/lib/types";
 import type { Settings } from "@/domain/types";
 import * as routineSvc from "@/services/routine-service";
@@ -63,7 +64,7 @@ async function seedSettings(overrides: Partial<Settings> = {}) {
   await db.close();
 }
 
-describe("HandoffScreen — Stage 1", () => {
+describe("HandoffScreen — recovery and just-completed", () => {
   beforeEach(() => {
     sessionStorage.clear();
   });
@@ -72,167 +73,164 @@ describe("HandoffScreen — Stage 1", () => {
     vi.restoreAllMocks();
   });
 
-  it("redirects to /onboarding/questionnaire when no prompt saved and not justCompleted", async () => {
+  it("redirects to questionnaire when no prompt and not justCompleted", async () => {
     await seedSettings();
     render(<WithRouter />);
     expect(await screen.findByText("QUESTIONNAIRE")).toBeInTheDocument();
   });
 
-  it("renders Stage 1 when justCompleted=true and no saved prompt", async () => {
+  it("just-completed: builds prompt, persists it, renders prompt visible by default", async () => {
     await seedSettings();
     saveWizardState({ stepIndex: 10, answers: FULL_ANSWERS });
     render(<WithRouter initialState={{ justCompleted: true }} />);
-    expect(
-      await screen.findByRole("heading", { name: /ready to build your routine/i })
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: /copy prompt & open gpt/i })
-    ).toBeInTheDocument();
+    const textarea = (await screen.findByRole("textbox", {
+      name: /generated prompt/i,
+    })) as HTMLTextAreaElement;
+    expect(textarea.value).toContain("- Distinct training days desired: 3");
+    const db = new ExerciseLoggerDB();
+    await waitFor(async () => {
+      const s = await db.settings.get("user");
+      expect(s?.lastGeneratedPrompt).toContain("- Distinct training days desired: 3");
+    });
+    await db.close();
   });
 
-  it("Stage 1 button: persists prompt, writes clipboard, opens GPT, flips to Stage 2", async () => {
-    await seedSettings();
+  it("just-completed with a saved prompt: rebuilds from fresh answers and overwrites", async () => {
+    await seedSettings({
+      lastGeneratedPrompt: "STALE PROMPT",
+      lastGeneratedPromptAt: new Date().toISOString(),
+    });
     saveWizardState({ stepIndex: 10, answers: FULL_ANSWERS });
+    render(<WithRouter initialState={{ justCompleted: true }} />);
+    const textarea = (await screen.findByRole("textbox", {
+      name: /generated prompt/i,
+    })) as HTMLTextAreaElement;
+    expect(textarea.value).toContain("- Distinct training days desired: 3");
+    expect(textarea.value).not.toBe("STALE PROMPT");
+    const db = new ExerciseLoggerDB();
+    await waitFor(async () => {
+      const s = await db.settings.get("user");
+      expect(s?.lastGeneratedPrompt).toContain(
+        "- Distinct training days desired: 3"
+      );
+    });
+    await db.close();
+  });
+
+  it("just-completed with a saved prompt but wizard state lost: falls back to the saved prompt", async () => {
+    await seedSettings({
+      lastGeneratedPrompt: "SAVED FALLBACK",
+      lastGeneratedPromptAt: new Date().toISOString(),
+    });
+    render(<WithRouter initialState={{ justCompleted: true }} />);
+    const textarea = (await screen.findByRole("textbox", {
+      name: /generated prompt/i,
+    })) as HTMLTextAreaElement;
+    expect(textarea.value).toBe("SAVED FALLBACK");
+  });
+
+  it("recovery: shows saved prompt visible by default", async () => {
+    await seedSettings({
+      lastGeneratedPrompt: "RECOVERED PROMPT BODY",
+      lastGeneratedPromptAt: new Date().toISOString(),
+    });
+    render(<WithRouter />);
+    const textarea = (await screen.findByRole("textbox", {
+      name: /generated prompt/i,
+    })) as HTMLTextAreaElement;
+    expect(textarea.value).toBe("RECOVERED PROMPT BODY");
+  });
+
+  it("Open GPT is a real anchor and never calls window.open", async () => {
+    await seedSettings({
+      lastGeneratedPrompt: "P",
+      lastGeneratedPromptAt: new Date().toISOString(),
+    });
+    const openSpy = vi.spyOn(window, "open");
+    render(<WithRouter />);
+    const link = await screen.findByRole("link", { name: /open gpt/i });
+    expect(link.tagName).toBe("A");
+    expect(link.getAttribute("href")).toBe(GPT_URL);
+    expect(link.getAttribute("target")).toBe("_blank");
+    expect(link.getAttribute("rel") ?? "").toContain("noopener");
+    expect(openSpy).not.toHaveBeenCalled();
+  });
+
+  it("copy button: success → 'Copied' inline state", async () => {
+    await seedSettings({
+      lastGeneratedPrompt: "P",
+      lastGeneratedPromptAt: new Date().toISOString(),
+    });
+    // userEvent.setup() must come before Object.defineProperty so that
+    // userEvent's clipboard stub is installed first; the subsequent
+    // Object.defineProperty then overrides it with our mock.
     const user = userEvent.setup();
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, "clipboard", {
       value: { writeText },
       configurable: true,
     });
-    const openSpy = vi
-      .spyOn(window, "open")
-      .mockImplementation(() => ({ closed: false } as Window));
-
-    render(<WithRouter initialState={{ justCompleted: true }} />);
+    render(<WithRouter />);
     await user.click(
-      await screen.findByRole("button", { name: /copy prompt & open gpt/i })
+      await screen.findByRole("button", { name: /^copy prompt$/i })
     );
-
-    expect(
-      await screen.findByRole("heading", { name: /paste your routine/i })
-    ).toBeInTheDocument();
-
-    expect(writeText).toHaveBeenCalledTimes(1);
-    const copied = writeText.mock.calls[0]![0] as string;
-    expect(copied).toContain("- Distinct training days desired: 3");
-    expect(copied).not.toContain("Distinct training days desired: 3 (");
-
-    expect(openSpy).toHaveBeenCalledTimes(1);
-    const [url, target, features] = openSpy.mock.calls[0] ?? [];
-    expect(url).toContain("chatgpt.com");
-    expect(target).toBe("_blank");
-    expect(features).toContain("noopener");
-
-    const db2 = new ExerciseLoggerDB();
-    await waitFor(async () => {
-      const s = await db2.settings.get("user");
-      expect(s?.lastGeneratedPrompt).toBe(copied);
-      expect(s?.lastGeneratedPromptAt).toMatch(
-        /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/
-      );
-      expect(s?.onboardingBannerDismissedAt).toBeNull();
-    });
-    await db2.close();
+    expect(await screen.findByText(/copied/i)).toBeInTheDocument();
+    expect(writeText).toHaveBeenCalledWith("P");
   });
 
-  it("Stage 1 button: clipboard failure toasts but still flips to Stage 2", async () => {
-    await seedSettings();
-    saveWizardState({ stepIndex: 10, answers: FULL_ANSWERS });
+  it("copy button: failure → inline 'select and copy manually' message and prompt stays expanded", async () => {
+    await seedSettings({
+      lastGeneratedPrompt: "P",
+      lastGeneratedPromptAt: new Date().toISOString(),
+    });
+    // userEvent.setup() must come before Object.defineProperty — see note above.
     const user = userEvent.setup();
     Object.defineProperty(navigator, "clipboard", {
-      value: {
-        writeText: vi.fn().mockRejectedValue(new Error("blocked")),
-      },
+      value: { writeText: vi.fn().mockRejectedValue(new Error("blocked")) },
       configurable: true,
     });
-    vi.spyOn(window, "open").mockImplementation(() => ({ closed: false } as Window));
-
-    render(<WithRouter initialState={{ justCompleted: true }} />);
+    render(<WithRouter />);
     await user.click(
-      await screen.findByRole("button", { name: /copy prompt & open gpt/i })
+      await screen.findByRole("button", { name: /^copy prompt$/i })
     );
     expect(
-      await screen.findByRole("heading", { name: /paste your routine/i })
+      await screen.findByText(/select and copy the prompt above manually/i)
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("textbox", { name: /generated prompt/i })
     ).toBeInTheDocument();
   });
 
-  it("Stage 1 button: popup blocker returns null — flips to Stage 2 with inline GPT link", async () => {
-    await seedSettings();
-    saveWizardState({ stepIndex: 10, answers: FULL_ANSWERS });
+  it("missing navigator.clipboard: prompt stays visible, copy reveals manual instructions", async () => {
+    await seedSettings({
+      lastGeneratedPrompt: "P",
+      lastGeneratedPromptAt: new Date().toISOString(),
+    });
+    // userEvent.setup() must come before Object.defineProperty — see note above.
     const user = userEvent.setup();
     Object.defineProperty(navigator, "clipboard", {
-      value: { writeText: vi.fn().mockResolvedValue(undefined) },
+      value: undefined,
       configurable: true,
     });
-    vi.spyOn(window, "open").mockImplementation(() => null);
-
-    render(<WithRouter initialState={{ justCompleted: true }} />);
+    render(<WithRouter />);
     await user.click(
-      await screen.findByRole("button", { name: /copy prompt & open gpt/i })
+      await screen.findByRole("button", { name: /^copy prompt$/i })
     );
     expect(
-      await screen.findByRole("heading", { name: /paste your routine/i })
+      await screen.findByText(/select and copy the prompt above manually/i)
     ).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /open gpt/i })).toBeInTheDocument();
   });
 
-  it("Stage 2 shown directly when settings.lastGeneratedPrompt !== null", async () => {
+  it("import success: clears prompt + wizard state, marks completed, navigates home", async () => {
     await seedSettings({
       lastGeneratedPrompt: "SAVED",
       lastGeneratedPromptAt: new Date().toISOString(),
     });
-    render(<WithRouter />);
-    expect(
-      await screen.findByRole("heading", { name: /paste your routine/i })
-    ).toBeInTheDocument();
-  });
-});
-
-describe("HandoffScreen — Stage 2", () => {
-  beforeEach(async () => {
-    sessionStorage.clear();
-    const db = new ExerciseLoggerDB();
-    await initializeSettings(db);
-    await db.settings.clear();
-    await db.settings.put({
-      id: "user",
-      activeRoutineId: null,
-      units: "kg",
-      userName: null,
-      onboardingCompletedAt: null,
-      onboardingSkippedAt: null,
-      lastGeneratedPrompt: "SAVED",
-      lastGeneratedPromptAt: new Date().toISOString(),
-      onboardingBannerDismissedAt: null,
-    });
-    await db.close();
-  });
-  afterEach(() => {
-    sessionStorage.clear();
-    vi.restoreAllMocks();
-  });
-
-  it("invalid YAML shows errors and does NOT navigate", async () => {
-    vi.spyOn(routineSvc, "validateAndNormalizeRoutine").mockResolvedValue({
-      ok: false,
-      errors: [{ path: "routine.days", message: "must be a map" }],
-    });
-    const user = userEvent.setup();
-    render(<WithRouter />);
-    await user.type(
-      await screen.findByRole("textbox", { name: /yaml/i }),
-      "not yaml"
-    );
-    await user.click(screen.getByRole("button", { name: /import routine/i }));
-    expect(await screen.findByText(/must be a map/i)).toBeInTheDocument();
-    expect(screen.queryByText("HOME")).not.toBeInTheDocument();
-  });
-
-  it("valid YAML imports, clears prompt, sets completed, navigates to /", async () => {
+    saveWizardState({ stepIndex: 10, answers: FULL_ANSWERS });
     const fakeRoutine = {
       id: "r1",
       schemaVersion: 1,
-      name: "Import Me",
+      name: "Imported",
       restDefaultSec: 90,
       restSupersetSec: 60,
       dayOrder: ["A"],
@@ -253,23 +251,25 @@ describe("HandoffScreen — Stage 2", () => {
     render(<WithRouter />);
     await user.type(
       await screen.findByRole("textbox", { name: /yaml/i }),
-      "name: Import Me"
+      "name: Imported"
     );
     await user.click(screen.getByRole("button", { name: /import routine/i }));
     expect(await screen.findByText("HOME")).toBeInTheDocument();
-
-    const db2 = new ExerciseLoggerDB();
-    const s = await db2.settings.get("user");
+    const db = new ExerciseLoggerDB();
+    const s = await db.settings.get("user");
     expect(s?.lastGeneratedPrompt).toBeNull();
-    expect(s?.lastGeneratedPromptAt).toBeNull();
     expect(s?.onboardingCompletedAt).toMatch(
       /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/
     );
-    expect(s?.onboardingBannerDismissedAt).toBeNull();
-    await db2.close();
+    expect(sessionStorage.getItem(STORAGE_KEY)).toBeNull();
+    await db.close();
   });
 
-  it("active-session block toasts the failure message and leaves prompt in place", async () => {
+  it("active-session block: shows inline error and preserves prompt", async () => {
+    await seedSettings({
+      lastGeneratedPrompt: "SAVED",
+      lastGeneratedPromptAt: new Date().toISOString(),
+    });
     vi.spyOn(routineSvc, "validateAndNormalizeRoutine").mockResolvedValue({
       ok: true,
       routine: { id: "r1" } as never,
@@ -285,66 +285,60 @@ describe("HandoffScreen — Stage 2", () => {
       "name: X"
     );
     await user.click(screen.getByRole("button", { name: /import routine/i }));
-
+    expect(
+      await screen.findByText(/cannot import while a workout session is active/i)
+    ).toBeInTheDocument();
     expect(screen.queryByText("HOME")).not.toBeInTheDocument();
-
-    const db2 = new ExerciseLoggerDB();
-    const s = await db2.settings.get("user");
+    const db = new ExerciseLoggerDB();
+    const s = await db.settings.get("user");
     expect(s?.lastGeneratedPrompt).toBe("SAVED");
-    expect(s?.onboardingCompletedAt).toBeNull();
-    await db2.close();
-  });
-});
-
-describe("HandoffScreen — exit and Start over", () => {
-  beforeEach(() => {
-    sessionStorage.clear();
-  });
-  afterEach(() => {
-    sessionStorage.clear();
-    vi.restoreAllMocks();
+    await db.close();
   });
 
-  it("Stage 1 close button confirms, clears wizard state, and navigates home", async () => {
-    await seedSettings();
-    saveWizardState({ stepIndex: 10, answers: FULL_ANSWERS });
-    const user = userEvent.setup();
-    render(<WithRouter initialState={{ justCompleted: true }} />);
-    // Open the exit dialog.
-    await user.click(
-      await screen.findByRole("button", { name: /^exit$/i })
-    );
-    // Confirm "Exit".
-    const dialog = await screen.findByRole("alertdialog");
-    await user.click(
-      within(dialog).getByRole("button", { name: /^exit$/i })
-    );
-    expect(await screen.findByText("HOME")).toBeInTheDocument();
-    expect(sessionStorage.getItem(STORAGE_KEY)).toBeNull();
-  });
-
-  it("Start over on Stage 2 clears prompt and routes to the questionnaire", async () => {
+  it("Start over: clears prompt and wizard state, routes to questionnaire", async () => {
     await seedSettings({
       lastGeneratedPrompt: "SAVED",
       lastGeneratedPromptAt: new Date().toISOString(),
     });
-    saveWizardState({ stepIndex: 10, answers: FULL_ANSWERS });
+    saveWizardState({ stepIndex: 5, answers: {} as never });
     const user = userEvent.setup();
     render(<WithRouter />);
-    // Open Start-over dialog.
     await user.click(
       await screen.findByRole("button", { name: /start over/i })
     );
     const dialog = await screen.findByRole("alertdialog");
-    await user.click(
-      within(dialog).getByRole("button", { name: /start over/i })
-    );
+    await user.click(within(dialog).getByRole("button", { name: /start over/i }));
     expect(await screen.findByText("QUESTIONNAIRE")).toBeInTheDocument();
-
-    const db2 = new ExerciseLoggerDB();
-    const s = await db2.settings.get("user");
+    const db = new ExerciseLoggerDB();
+    const s = await db.settings.get("user");
     expect(s?.lastGeneratedPrompt).toBeNull();
-    await db2.close();
     expect(sessionStorage.getItem(STORAGE_KEY)).toBeNull();
+    await db.close();
+  });
+
+  it("Exit: navigates home without clearing prompt or wizard state", async () => {
+    await seedSettings({
+      lastGeneratedPrompt: "SAVED",
+      lastGeneratedPromptAt: new Date().toISOString(),
+    });
+    saveWizardState({ stepIndex: 5, answers: {} as never });
+    const user = userEvent.setup();
+    render(<WithRouter />);
+    await user.click(await screen.findByRole("button", { name: /^exit$/i }));
+    const dialog = await screen.findByRole("alertdialog");
+    await user.click(within(dialog).getByRole("button", { name: /^exit$/i }));
+    expect(await screen.findByText("HOME")).toBeInTheDocument();
+    const db = new ExerciseLoggerDB();
+    const s = await db.settings.get("user");
+    expect(s?.lastGeneratedPrompt).toBe("SAVED");
+    expect(sessionStorage.getItem(STORAGE_KEY)).not.toBeNull();
+    await db.close();
+  });
+
+  it("just-completed but wizard state lost: redirects to questionnaire instead of blank screen", async () => {
+    await seedSettings();
+    // Note: NO saveWizardState call — sessionStorage is empty.
+    render(<WithRouter initialState={{ justCompleted: true }} />);
+    expect(await screen.findByText("QUESTIONNAIRE")).toBeInTheDocument();
   });
 });

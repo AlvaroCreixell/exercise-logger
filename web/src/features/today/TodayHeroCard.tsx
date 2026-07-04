@@ -11,6 +11,8 @@ interface TodayHeroCardProps {
   ctaLabel: string;
   onCtaClick: () => void;
   ctaDisabled: boolean;
+  /** Optional. Renders a small "Active routine: X" caption above the day eyebrow. */
+  routineName?: string;
 }
 
 export function TodayHeroCard({
@@ -23,6 +25,7 @@ export function TodayHeroCard({
   ctaLabel,
   onCtaClick,
   ctaDisabled,
+  routineName,
 }: TodayHeroCardProps) {
   const exerciseCopy = [
     `${exerciseCount} ${exerciseCount === 1 ? "exercise" : "exercises"}`,
@@ -35,6 +38,11 @@ export function TodayHeroCard({
   return (
     <Card className="py-0">
       <CardContent className="space-y-4 px-5 pb-5 pt-4">
+        {routineName && (
+          <p className="text-meta text-ink-3">
+            Active routine: {routineName}
+          </p>
+        )}
         <p className="text-eyebrow text-ink-3">{dayLabelEyebrow}</p>
 
         <h2 className="font-heading text-3xl font-bold tracking-tight text-foreground">

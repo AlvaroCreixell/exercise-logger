@@ -12,17 +12,17 @@ test.describe("Onboarding relaunch from Settings", () => {
     await resetAppState(page);
     await stubClipboardAndWindowOpen(page);
 
-    // Fresh install lands on the welcome screen; take the real "Maybe later"
+    // Fresh install lands on the welcome screen; take the real "Use starter routine"
     // path so onboardingSkippedAt is set via the app itself. We cannot use
     // the seedSkippedUser helper here because resetAppState's addInitScript
     // fires on every navigation and would wipe the DB on reload.
     await page.goto("/");
     await expect(
-      page.getByRole("heading", { name: /What should we call you/i })
+      page.getByRole("heading", { name: /your starter routine is ready/i })
     ).toBeVisible({ timeout: 15_000 });
-    await page.getByRole("button", { name: /maybe later/i }).click();
+    await page.getByRole("button", { name: /use starter routine/i }).click();
 
-    // The gate at "/" may race with useLiveQuery after Maybe later bounces
+    // The gate at "/" may race with useLiveQuery after Use starter routine bounces
     // through location.pathname === "/". Wait until the DB has persisted
     // onboardingSkippedAt, then land on Today via the nav link.
     await expect
@@ -108,19 +108,13 @@ test.describe("Onboarding relaunch from Settings", () => {
     // Step 11 — Cardio: "No cardio" (value "No").
     await page.locator('label[for="cardio-No"]').click();
 
-    // Stage 1 arrives.
+    // Single-screen handoff arrives.
     await expect(
-      page.getByRole("heading", { name: /ready to build your routine/i })
+      page.getByRole("heading", { name: /copy your prompt/i })
     ).toBeVisible({ timeout: 10_000 });
-    await page
-      .getByRole("button", { name: /copy prompt & open gpt/i })
-      .click();
 
-    // Stage 2 paste + Import.
-    await expect(
-      page.getByRole("heading", { name: /paste your routine/i })
-    ).toBeVisible();
-    await page.getByRole("textbox", { name: /yaml/i }).fill(E2E_ROUTINE_YAML);
+    // Paste YAML and import (no separate Stage 1 button).
+    await page.getByRole("textbox", { name: /^yaml$/i }).fill(E2E_ROUTINE_YAML);
     await page.getByRole("button", { name: /import routine/i }).click();
 
     // Today: default "Hello." because this user didn't set a name.
