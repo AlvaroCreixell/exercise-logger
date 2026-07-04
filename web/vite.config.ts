@@ -92,6 +92,18 @@ export default defineConfig({
             },
           },
         ],
+        // Android share sheet → installed PWA: share the YAML text straight
+        // from ChatGPT, no file download needed. GET puts the payload in the
+        // query string; ShareTargetRedirect unwraps it.
+        share_target: {
+          action: "/exercise-logger/share-target",
+          method: "GET",
+          params: {
+            title: "title",
+            text: "text",
+            url: "url",
+          },
+        },
       },
       workbox: {
         globPatterns: ["**/*.{js,css,html,png,svg,woff2,ico}"],

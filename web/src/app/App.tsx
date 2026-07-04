@@ -29,6 +29,9 @@ const SettingsScreen = lazy(() => import("@/features/settings/SettingsScreen"));
 const RoutineImportScreen = lazy(
   () => import("@/features/settings/RoutineImportScreen"),
 );
+const ShareTargetRedirect = lazy(
+  () => import("@/features/settings/ShareTargetRedirect"),
+);
 const OnboardingWelcomeScreen = lazy(
   () => import("@/features/onboarding/OnboardingWelcomeScreen"),
 );
@@ -200,6 +203,7 @@ export function AppRoutes() {
           />
           <Route path="/settings" element={<SettingsScreen />} />
           <Route path="/settings/import" element={<RoutineImportScreen />} />
+          <Route path="/share-target" element={<ShareTargetRedirect />} />
         </Route>
         <Route element={<OnboardingLayout />}>
           <Route path="/onboarding" element={<OnboardingWelcomeScreen />} />
