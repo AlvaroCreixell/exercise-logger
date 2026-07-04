@@ -168,6 +168,30 @@ describe("OnboardingWelcomeScreen — starter-first choice", () => {
     ).toBeInTheDocument();
   });
 
+  it("Start over: also clears the saved prompt", async () => {
+    const before = (await db.settings.get("user"))!;
+    await db.settings.put({
+      ...before,
+      lastGeneratedPrompt: "SAVED",
+      lastGeneratedPromptAt: new Date().toISOString(),
+    });
+    saveWizardState({
+      stepIndex: 3,
+      answers: { goal: { kind: "chip-with-other", value: "Build muscle" } },
+    });
+    const user = userEvent.setup();
+    render(<WithRouter />);
+    await user.click(
+      await screen.findByRole("button", { name: /start over/i })
+    );
+    const dialog = await screen.findByRole("alertdialog");
+    await user.click(within(dialog).getByRole("button", { name: /start over/i }));
+    await waitFor(async () => {
+      const after = await db.settings.get("user");
+      expect(after?.lastGeneratedPrompt).toBeNull();
+    });
+  });
+
   it("initial focus lands on the heading, not the name input", async () => {
     render(<WithRouter />);
     const heading = await screen.findByRole("heading", {

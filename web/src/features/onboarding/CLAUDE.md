@@ -79,7 +79,7 @@ The `lastGeneratedPrompt` field is the single source of truth for what the user 
 
 1. **Generate-time write** is centralized in `saveGeneratedPrompt(db, prompt)`. The HandoffScreen calls it from a `useEffect` once the prompt is built — it must NOT also reset `onboardingBannerDismissedAt`; the service does that.
 2. **Skipping to starter from the Welcome screen does NOT clear** the saved prompt. The Today banner (dismissable) and Settings → LastPromptCard remain available for resumption.
-3. **Explicit clears**: HandoffScreen "Start over", HandoffScreen successful import (Stage 2 success), Welcome screen "Start over" (only when wizard state exists). All three are user-initiated.
+3. **Explicit clears**: HandoffScreen "Start over", HandoffScreen successful YAML import, Welcome screen "Start over" (only when wizard state exists; clears wizard state AND the saved prompt). All three are user-initiated.
 
 ## Design tokens
 

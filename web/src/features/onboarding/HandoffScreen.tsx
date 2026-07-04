@@ -44,33 +44,40 @@ export default function HandoffScreen() {
   const [exitOpen, setExitOpen] = useState(false);
   const [startOverOpen, setStartOverOpen] = useState(false);
 
-  // Resolve the prompt: prefer settings.lastGeneratedPrompt; otherwise build
-  // from sessionStorage when justCompleted=true.
+  // Resolve the prompt. justCompleted is the moment of intent: rebuild from
+  // the freshest questionnaire answers so a re-completed questionnaire never
+  // shows a previously saved (stale) prompt. The saved prompt is the fallback
+  // for recovery visits and for the edge where wizard state was lost.
   const prompt = useMemo<string | null>(() => {
+    if (justCompleted) {
+      const wiz = loadWizardState();
+      if (wiz !== null) {
+        try {
+          return buildPrompt(wiz.answers);
+        } catch {
+          // fall through to the saved prompt
+        }
+      }
+    }
     if (settings?.lastGeneratedPrompt != null && settings.lastGeneratedPrompt !== "") {
       return settings.lastGeneratedPrompt;
     }
-    if (!justCompleted) return null;
-    const wiz = loadWizardState();
-    if (wiz === null) return null;
-    try {
-      return buildPrompt(wiz.answers);
-    } catch {
-      return null;
-    }
+    return null;
   }, [settings?.lastGeneratedPrompt, justCompleted]);
 
-  // Persist a freshly built prompt exactly once. The service resets
-  // onboardingBannerDismissedAt — do NOT duplicate that here.
+  // Persist the resolved prompt whenever it differs from what's saved —
+  // this is what overwrites a stale prompt after re-completing the
+  // questionnaire. The service resets onboardingBannerDismissedAt — do NOT
+  // duplicate that here.
   useEffect(() => {
     if (!prompt) return;
-    if (settings?.lastGeneratedPrompt != null && settings.lastGeneratedPrompt !== "") return;
+    if (settings?.lastGeneratedPrompt === prompt) return;
     void saveGeneratedPrompt(db, prompt);
   }, [prompt, settings?.lastGeneratedPrompt]);
 
   // Defensive in-component redirect — mirrors the AppRoutes guard so this
   // screen stays correct in isolation. Skip once onboarding is completed
-  // (Stage-2 success nulls the prompt before navigating away).
+  // (a successful import nulls the prompt before navigating away).
   useEffect(() => {
     if (!settings) return;
     if (settings.onboardingCompletedAt !== null) return;

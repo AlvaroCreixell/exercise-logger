@@ -6,7 +6,10 @@ import { Input } from "@/shared/ui/input";
 import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
 import { db } from "@/db/database";
 import { setUserName } from "@/services/settings-service";
-import { markOnboardingSkipped } from "@/services/onboarding-service";
+import {
+  clearLastPrompt,
+  markOnboardingSkipped,
+} from "@/services/onboarding-service";
 import { useSettings } from "@/shared/hooks/useSettings";
 import { useRoutine } from "@/shared/hooks/useRoutine";
 import {
@@ -78,9 +81,16 @@ export default function OnboardingWelcomeScreen() {
     }
   }
 
-  function handleStartOver() {
+  async function handleStartOver() {
     clearWizardState();
     setHasWizardState(false);
+    // Saved-prompt lifecycle rule 3 (features/onboarding/CLAUDE.md): Welcome
+    // "Start over" is an explicit clear of the saved prompt too.
+    try {
+      await clearLastPrompt(db);
+    } catch (err) {
+      console.error("clearLastPrompt failed", err);
+    }
   }
 
   return (
@@ -146,7 +156,7 @@ export default function OnboardingWelcomeScreen() {
         open={startOverOpen}
         onOpenChange={setStartOverOpen}
         title="Start over?"
-        description="This clears your in-progress questionnaire answers. The starter routine stays available."
+        description="This clears your in-progress questionnaire answers and any saved prompt. The starter routine stays available."
         confirmText="Start over"
         onConfirm={handleStartOver}
         variant="destructive"

@@ -95,6 +95,40 @@ describe("HandoffScreen — recovery and just-completed", () => {
     await db.close();
   });
 
+  it("just-completed with a saved prompt: rebuilds from fresh answers and overwrites", async () => {
+    await seedSettings({
+      lastGeneratedPrompt: "STALE PROMPT",
+      lastGeneratedPromptAt: new Date().toISOString(),
+    });
+    saveWizardState({ stepIndex: 10, answers: FULL_ANSWERS });
+    render(<WithRouter initialState={{ justCompleted: true }} />);
+    const textarea = (await screen.findByRole("textbox", {
+      name: /generated prompt/i,
+    })) as HTMLTextAreaElement;
+    expect(textarea.value).toContain("- Distinct training days desired: 3");
+    expect(textarea.value).not.toBe("STALE PROMPT");
+    const db = new ExerciseLoggerDB();
+    await waitFor(async () => {
+      const s = await db.settings.get("user");
+      expect(s?.lastGeneratedPrompt).toContain(
+        "- Distinct training days desired: 3"
+      );
+    });
+    await db.close();
+  });
+
+  it("just-completed with a saved prompt but wizard state lost: falls back to the saved prompt", async () => {
+    await seedSettings({
+      lastGeneratedPrompt: "SAVED FALLBACK",
+      lastGeneratedPromptAt: new Date().toISOString(),
+    });
+    render(<WithRouter initialState={{ justCompleted: true }} />);
+    const textarea = (await screen.findByRole("textbox", {
+      name: /generated prompt/i,
+    })) as HTMLTextAreaElement;
+    expect(textarea.value).toBe("SAVED FALLBACK");
+  });
+
   it("recovery: shows saved prompt visible by default", async () => {
     await seedSettings({
       lastGeneratedPrompt: "RECOVERED PROMPT BODY",
