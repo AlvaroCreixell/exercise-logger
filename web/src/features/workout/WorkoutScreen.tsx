@@ -23,6 +23,7 @@ import {
   getRestTimerStartAfterNewSet,
   getRestRemainingSec,
   type ActiveRestTimer,
+  type RestTimerStart,
 } from "./lib/rest-timer";
 import { getSlotOrdinal, isRoundComplete } from "./lib/superset-rhythm";
 import { EmptyState } from "@/shared/components/EmptyState";
@@ -33,6 +34,14 @@ import type { SessionExercise, LoggedSet } from "@/domain/types";
 
 function computeElapsedSec(startedAt: string): number {
   return Math.max(0, Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000));
+}
+
+function computeRestRemainingSec(timer: ActiveRestTimer): number {
+  return getRestRemainingSec(timer, Date.now());
+}
+
+function makeRunningTimer(start: RestTimerStart): ActiveRestTimer {
+  return { status: "running", startedAtMs: Date.now(), ...start };
 }
 
 export default function WorkoutScreen() {
@@ -82,7 +91,7 @@ export default function WorkoutScreen() {
   // Derived rest timer state — same tick, same derive-at-render pattern as
   // elapsedSec. Once remaining hits zero the timer renders as "done" until
   // dismissed or replaced by the next new-set save.
-  const restRemainingSec = restTimer ? getRestRemainingSec(restTimer, Date.now()) : 0;
+  const restRemainingSec = restTimer ? computeRestRemainingSec(restTimer) : 0;
   const restTimerForRender: ActiveRestTimer | null =
     restTimer && restRemainingSec <= 0 ? { ...restTimer, status: "done" } : restTimer;
 
@@ -220,7 +229,7 @@ export default function WorkoutScreen() {
       supersetRoundOrdinal,
     });
     if (start) {
-      setRestTimer({ status: "running", startedAtMs: Date.now(), ...start });
+      setRestTimer(makeRunningTimer(start));
     }
   }
 
