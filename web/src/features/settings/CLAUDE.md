@@ -1,11 +1,12 @@
 # Settings Feature
 
-Settings screen (`/settings`) and routine import screen (`/settings/import`). Handles units toggle, active routine management, routine import (YAML paste or file), backup export/import, clear-all-data, and the PWA install prompt.
+Settings screen (`/settings`), routine import screen (`/settings/import`), and the share-target landing route (`/share-target`). Handles units toggle, active routine management, routine import (YAML paste, clipboard, share sheet, or file), backup export/import, clear-all-data, and the PWA install prompt.
 
 ## Screens
 
 - `SettingsScreen.tsx` — Main settings list. Composes ActiveRoutineCard, RoutineList, UnitsToggle, backup/restore rows, AboutCard, install prompt.
-- `RoutineImportScreen.tsx` — Import flow. Accepts YAML via paste textarea or file picker, validates, and imports-and-activates in one transaction.
+- `RoutineImportScreen.tsx` — Import flow. Accepts YAML via paste textarea, "Paste from clipboard" button, or file picker; validates and imports-and-activates in one transaction. All input paths run through `extractSharedYaml` (`@/shared/lib/extractSharedYaml`), so ```-fenced blocks and surrounding chat prose are tolerated.
+- `ShareTargetRedirect.tsx` — Landing route for the PWA `share_target` (manifest, GET). Android share sheet → `/share-target?text=…` → unwraps fences → redirects to `/settings/import` with `location.state.launchYaml`. The same `launchYaml` state key is used by `useRoutineLaunchQueue` (file_handlers).
 
 ## Components
 

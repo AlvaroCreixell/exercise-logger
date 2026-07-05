@@ -8,8 +8,14 @@ import {
   importAndActivateRoutine,
   type ValidationError,
 } from "@/services/routine-service";
+import {
+  markOnboardingCompleted,
+  clearLastPrompt,
+} from "@/services/onboarding-service";
+import { clearWizardState } from "@/features/onboarding/lib/session-storage";
 import { YamlErrorList } from "./YamlErrorList";
 import { GPT_URL } from "@/shared/lib/gpt-url";
+import { extractSharedYaml } from "@/shared/lib/extractSharedYaml";
 import { toast } from "sonner";
 
 export default function RoutineImportScreen() {
@@ -26,8 +32,11 @@ export default function RoutineImportScreen() {
     }
   }, [location.state, pastedYaml]);
 
-  async function runImport(yamlText: string): Promise<boolean> {
-    if (!yamlText.trim()) {
+  async function runImport(rawText: string): Promise<boolean> {
+    // Tolerate chat-app shapes: ```yaml fences and surrounding prose from
+    // ChatGPT shares/copies are unwrapped before validation.
+    const yamlText = extractSharedYaml(rawText);
+    if (!yamlText) {
       setErrors([{ path: "", message: "YAML is empty" }]);
       return false;
     }
@@ -46,6 +55,23 @@ export default function RoutineImportScreen() {
         setErrors([{ path: "", message: activation.message }]);
         return false;
       }
+      // A successful import fulfills the GPT round-trip regardless of entry
+      // path (share sheet, clipboard, file, manual paste). Mirror the handoff
+      // success side effects so the first-run gate never bounces the user
+      // back into onboarding and stale prompt/wizard artifacts don't linger.
+      const current = await db.settings.get("user");
+      if (current) {
+        if (
+          current.onboardingCompletedAt === null &&
+          current.onboardingSkippedAt === null
+        ) {
+          await markOnboardingCompleted(db);
+        }
+        if (current.lastGeneratedPrompt !== null) {
+          await clearLastPrompt(db);
+        }
+      }
+      clearWizardState();
       toast.success(`Routine "${result.routine.name}" imported and activated`);
       navigate("/settings");
       return true;
@@ -72,6 +98,24 @@ export default function RoutineImportScreen() {
 
   async function handlePaste() {
     await runImport(pastedYaml);
+  }
+
+  async function handleClipboardPaste() {
+    try {
+      if (!navigator.clipboard?.readText) {
+        toast.error("Clipboard unavailable — long-press the box to paste manually");
+        return;
+      }
+      const text = await navigator.clipboard.readText();
+      const yaml = extractSharedYaml(text);
+      if (!yaml) {
+        toast.error("Clipboard is empty");
+        return;
+      }
+      setPastedYaml(yaml);
+    } catch {
+      toast.error("Clipboard unavailable — long-press the box to paste manually");
+    }
   }
 
   const canImport = !importing && pastedYaml.trim().length > 0;
@@ -106,12 +150,22 @@ export default function RoutineImportScreen() {
       </p>
 
       <div className="space-y-2">
-        <label
-          htmlFor="routine-yaml-paste"
-          className="text-eyebrow text-ink-3"
-        >
-          Paste YAML
-        </label>
+        <div className="flex items-center justify-between">
+          <label
+            htmlFor="routine-yaml-paste"
+            className="text-eyebrow text-ink-3"
+          >
+            Paste YAML
+          </label>
+          <button
+            type="button"
+            onClick={handleClipboardPaste}
+            disabled={importing}
+            className="rounded-[var(--radius-pill)] border border-line px-3 py-1 text-[11px] font-semibold uppercase tracking-widest text-ink-3 transition-colors hover:border-sage hover:text-sage-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage/40 disabled:opacity-50"
+          >
+            Paste from clipboard
+          </button>
+        </div>
         <textarea
           id="routine-yaml-paste"
           rows={10}
