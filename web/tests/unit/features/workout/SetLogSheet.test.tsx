@@ -63,13 +63,15 @@ interface RenderOpts {
   lastTime?: BlockLastTime;
   blockSetsInSession?: LoggedSet[];
   onSave?: ReturnType<typeof vi.fn>;
+  onOpenChange?: ReturnType<typeof vi.fn>;
+  onDelete?: ReturnType<typeof vi.fn>;
 }
 
 function renderSheet(opts: RenderOpts = {}) {
   return render(
     <SetLogSheet
       open={true}
-      onOpenChange={vi.fn()}
+      onOpenChange={opts.onOpenChange ?? vi.fn()}
       sessionExercise={opts.sessionExercise ?? makeSessionExercise()}
       blockIndex={opts.blockIndex ?? 0}
       setIndex={opts.setIndex ?? 0}
@@ -79,6 +81,7 @@ function renderSheet(opts: RenderOpts = {}) {
       blockSetsInSession={opts.blockSetsInSession ?? []}
       units="kg"
       onSave={opts.onSave ?? vi.fn()}
+      onDelete={opts.onDelete}
     />
   );
 }
@@ -947,5 +950,66 @@ describe("SetLogSheet — PR toggle", () => {
     expect(save).toHaveBeenCalledWith(
       expect.objectContaining({ isPersonalRecord: false }),
     );
+  });
+});
+
+describe("SetLogSheet — cancel control", () => {
+  it("shows a visible Cancel control in create mode", () => {
+    renderSheet();
+    expect(screen.getByRole("button", { name: /cancel/i })).toBeVisible();
+  });
+
+  it("shows a visible Cancel control in edit mode", () => {
+    renderSheet({
+      existingSet: makeLoggedSet(),
+      onDelete: vi.fn().mockResolvedValue(undefined),
+    });
+    expect(screen.getByRole("button", { name: /cancel/i })).toBeVisible();
+  });
+
+  it("clicking Cancel closes the sheet via onOpenChange(false)", async () => {
+    const user = userEvent.setup();
+    const onOpenChange = vi.fn();
+    renderSheet({ onOpenChange });
+    await user.click(screen.getByRole("button", { name: /cancel/i }));
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  it("clicking Cancel does not call onSave", async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn().mockResolvedValue(undefined);
+    renderSheet({ onSave });
+    await user.click(screen.getByRole("button", { name: /cancel/i }));
+    expect(onSave).not.toHaveBeenCalled();
+  });
+
+  it("clicking Cancel in edit mode does not call onDelete", async () => {
+    const user = userEvent.setup();
+    const onOpenChange = vi.fn();
+    const onSave = vi.fn().mockResolvedValue(undefined);
+    const onDelete = vi.fn().mockResolvedValue(undefined);
+    renderSheet({
+      existingSet: makeLoggedSet(),
+      onOpenChange,
+      onSave,
+      onDelete,
+    });
+    await user.click(screen.getByRole("button", { name: /cancel/i }));
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+    expect(onSave).not.toHaveBeenCalled();
+    expect(onDelete).not.toHaveBeenCalled();
+  });
+
+  it("Cancel is keyboard-reachable: Enter on the focused control closes without saving", async () => {
+    const user = userEvent.setup();
+    const onOpenChange = vi.fn();
+    const onSave = vi.fn().mockResolvedValue(undefined);
+    renderSheet({ onOpenChange, onSave });
+    const cancel = screen.getByRole("button", { name: /cancel/i });
+    cancel.focus();
+    expect(document.activeElement).toBe(cancel);
+    await user.keyboard("{Enter}");
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+    expect(onSave).not.toHaveBeenCalled();
   });
 });

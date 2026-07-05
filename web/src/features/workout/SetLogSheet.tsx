@@ -305,9 +305,18 @@ export function SetLogSheet({
                 </p>
               )}
             </div>
-            {typeof totalSets === "number" && totalSets > 0 && (
-              <SetDots total={totalSets} current={setIndex} />
-            )}
+            <div className="flex shrink-0 items-center gap-3">
+              {typeof totalSets === "number" && totalSets > 0 && (
+                <SetDots total={totalSets} current={setIndex} />
+              )}
+              <button
+                type="button"
+                className="inline-flex items-center rounded-[var(--radius-pill)] border border-line px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-ink-3 transition-colors hover:border-sage hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage/40"
+                onClick={() => onOpenChange(false)}
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         </SheetHeader>
 
