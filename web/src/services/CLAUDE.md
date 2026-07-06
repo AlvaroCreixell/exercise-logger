@@ -39,6 +39,7 @@ Pure business logic functions. Every function takes `db: ExerciseLoggerDB` as it
 - `setActiveRoutine(db, routineId)` — Blocked during active session (invariant 10, inside transaction).
 - `deleteRoutine(db, routineId)` — Blocked during active session. Auto-activates earliest remaining routine by `importedAt` ASC. All checks inside transaction to prevent TOCTOU races.
 - `setUnitOverride(db, sessionExerciseId, unitOverride)` — Set per-exercise unit override (`UnitSystem | null`) on a `SessionExercise`.
+- `setKeepScreenOn(db, bool)` / `setRestCueHaptic(db, bool)` / `setRestCueSound(db, bool)` — Gym-proofing preference setters (Dexie v4 fields).
 
 ### `onboarding-service.ts` — Onboarding state transitions
 

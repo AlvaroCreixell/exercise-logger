@@ -36,6 +36,16 @@ New fields on `Settings`:
 
 Defaults on fresh v3 installs: all six are `null` (via `DEFAULT_SETTINGS`).
 
+### Schema (version 4)
+
+Adds 3 unindexed gym-proofing booleans to the `settings` record:
+
+- `keepScreenOn: boolean` — hold a screen wake lock during active sessions. Default/backfill `true`.
+- `restCueHaptic: boolean` — vibrate when the rest timer completes. Default/backfill `true`.
+- `restCueSound: boolean` — short beep on rest complete. Default/backfill `false`.
+
+Existing users are backfilled with the same defaults as fresh installs. Backup import normalizes missing fields to these defaults (`backup-service.importBackup`).
+
 ### Key indexes and their consumers
 
 | Index | Used by | Purpose |

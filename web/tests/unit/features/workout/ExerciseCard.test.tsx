@@ -914,7 +914,8 @@ describe("ExerciseCard — primed quick-log row (guided logging)", () => {
       />,
     );
     expect(screen.queryByRole("button", { name: /: log / })).toBeNull();
-    expect(screen.getAllByText(/Tap to log · last 8–12 reps/).length).toBe(3);
+    // Prescription hint has no "last" prefix — it's a target, not history.
+    expect(screen.getAllByText(/Tap to log · 8–12 reps/).length).toBe(3);
   });
 
   it("never primes extra-origin exercises (invariant 7)", () => {

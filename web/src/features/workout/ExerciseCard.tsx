@@ -325,12 +325,12 @@ export function ExerciseCard({
                       units={units}
                       // Extras are not "top" sets; only prescribed rows in a top-tagged block carry the badge.
                       isTopBlock={block.tag === "top" && si < block.count}
-                      // Empty prescribed rows hint last time's set, falling
-                      // back to the prescription itself on day one.
-                      lastHint={
-                        si < block.count
-                          ? emptyHintForBlock(bi) ?? formatBlockTargetHint(block)
-                          : undefined
+                      // Empty prescribed rows hint last time's set; day one
+                      // falls back to the prescription (rendered without the
+                      // "last" prefix — it's a target, not history).
+                      lastHint={si < block.count ? emptyHintForBlock(bi) : undefined}
+                      prescriptionHint={
+                        si < block.count ? formatBlockTargetHint(block) : undefined
                       }
                       primed={
                         isPrimed

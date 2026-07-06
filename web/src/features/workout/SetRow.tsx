@@ -15,6 +15,12 @@ interface SetRowProps {
   /** Optional "Tap to log · last …" hint text for empty rows. */
   lastHint?: string;
   /**
+   * Day-one fallback hint: the block's per-set prescription ("8–12 reps").
+   * Rendered WITHOUT the "last" prefix — it's a target, not history. Only
+   * used when `lastHint` is absent.
+   */
+  prescriptionHint?: string;
+  /**
    * Primed quick-log state (guided logging, spec §3.2). When set on an empty
    * row, the row renders `❯ <target> [LOG]` and its tap LOGS the target;
    * the trailing ✎ button (onEditTap) opens the sheet instead.
@@ -39,6 +45,7 @@ export function SetRow({
   units,
   isTopBlock,
   lastHint,
+  prescriptionHint,
   primed,
   onClick,
   onEditTap,
@@ -136,11 +143,22 @@ export function SetRow({
     );
   }
 
+  const hintSuffix = lastHint
+    ? ` · last ${lastHint}`
+    : prescriptionHint
+      ? ` · ${prescriptionHint}`
+      : "";
+  const ariaHint = lastHint
+    ? `, last ${lastHint}`
+    : prescriptionHint
+      ? `, ${prescriptionHint}`
+      : "";
+
   return (
     <button
       type="button"
       onClick={onClick}
-      aria-label={`Set ${setNumber}: empty, tap to log${lastHint ? `, last ${lastHint}` : ""}`}
+      aria-label={`Set ${setNumber}: empty, tap to log${ariaHint}`}
       className="flex w-full items-center gap-3 rounded-[var(--radius-set-empty)] border border-line bg-background px-3 py-2.5 text-left transition-colors hover:border-accent-cli hover:bg-accent-cli-soft/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-cli/40"
     >
       <span
@@ -150,7 +168,7 @@ export function SetRow({
         {setNumber}
       </span>
       <span className="text-sm text-ink-3">
-        Tap to log{lastHint ? ` · last ${lastHint}` : ""}
+        Tap to log{hintSuffix}
       </span>
     </button>
   );

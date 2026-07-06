@@ -114,13 +114,12 @@ test.describe("Cardio extra — distance-only logging (F5)", () => {
     });
 
     // The workout screen now has two cards: Barbell Back Squat (3 sets) and
-    // Rowing machine (1 extra slot). Both have a "Set 1" empty row.
-    // The second card (Rowing machine) contains the set row we need to click.
-    // Using nth(1) targets the second matching "Set 1" button (0-indexed):
-    // nth(0) = BSQ Set 1, nth(1) = Rowing machine Set 1.
+    // Rowing machine (1 extra slot). Routine rows always carry a hint suffix
+    // (history or the prescription, e.g. "…tap to log, 5–8 reps"), so the
+    // EXACT label "Set 1: empty, tap to log" matches only the extra's row.
     const rowingSetRow = page.getByRole("button", {
       name: /^Set 1: empty, tap to log$/,
-    }).nth(1);
+    });
     await expect(rowingSetRow).toBeVisible({ timeout: 3_000 });
     await rowingSetRow.click();
 
