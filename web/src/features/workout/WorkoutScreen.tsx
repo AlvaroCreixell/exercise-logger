@@ -1,7 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { useActiveSession } from "@/shared/hooks/useActiveSession";
 import { useSettings } from "@/shared/hooks/useSettings";
+import { useWakeLock } from "@/shared/hooks/useWakeLock";
+import { primeAudioCue, playRestCue } from "@/shared/lib/cues";
 import { useExerciseHistory } from "@/shared/hooks/useExerciseHistory";
 import { useExtraHistory } from "@/shared/hooks/useExtraHistory";
 import { db } from "@/db/database";
@@ -77,6 +79,40 @@ export default function WorkoutScreen() {
   // the shared 1-second tick below, flipping to "done" when remaining <= 0.
   const [restTimer, setRestTimer] = useState<ActiveRestTimer | null>(null);
 
+  // Gym-proofing (spec §4.1): keep the screen awake for the whole active
+  // session unless the user turned the setting off.
+  useWakeLock(!!activeSession && settings?.keepScreenOn !== false);
+
+  // Rest-complete cue (spec §4.2). One real timeout per timer identity: a new
+  // timer or a +30s extension replaces it, Skip/Dismiss/unmount cancels it —
+  // it can never double-fire. This observes restTimer STATE only; timers
+  // still start exclusively in saveNewSet (never from loggedSets effects).
+  const restCueHaptic = settings?.restCueHaptic !== false;
+  const restCueSound = settings?.restCueSound === true;
+  const cueTimeoutRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (cueTimeoutRef.current !== null) {
+      window.clearTimeout(cueTimeoutRef.current);
+      cueTimeoutRef.current = null;
+    }
+    if (!restTimer) return;
+    const remainingMs = getRestRemainingSec(restTimer, Date.now()) * 1000;
+    if (remainingMs <= 0) return;
+    cueTimeoutRef.current = window.setTimeout(() => {
+      cueTimeoutRef.current = null;
+      // Hidden pages can't vibrate or beep — the visual done bar is already
+      // correct on return (state derives from startedAtMs).
+      if (document.visibilityState !== "visible") return;
+      playRestCue({ haptic: restCueHaptic, sound: restCueSound });
+    }, remainingMs);
+    return () => {
+      if (cueTimeoutRef.current !== null) {
+        window.clearTimeout(cueTimeoutRef.current);
+        cueTimeoutRef.current = null;
+      }
+    };
+  }, [restTimer, restCueHaptic, restCueSound]);
+
   // Ticking elapsed seconds for the header. `tick` exists solely to drive
   // re-renders every second; `elapsedSec` is derived from `startedAt` at render
   // time so it's always accurate the moment the session arrives.
@@ -103,6 +139,8 @@ export default function WorkoutScreen() {
   }
 
   function handleRestAddSeconds(seconds: number) {
+    // A gesture — keep the audio context primed for the extended countdown.
+    if (restCueSound) primeAudioCue();
     setRestTimer((t) => (t ? { ...t, durationSec: t.durationSec + seconds } : t));
   }
 
@@ -175,6 +213,10 @@ export default function WorkoutScreen() {
     setIndex: number,
     input: SetLogInput,
   ): Promise<{ savedSet: LoggedSet; created: boolean }> {
+    // Every save is a user gesture — the autoplay policy allows priming the
+    // audio context here so the later timer callback may start a sound.
+    if (restCueSound) primeAudioCue();
+
     // Stale-slot guard: the slot may have been logged elsewhere since this
     // interaction started (logSet upserts). If it already exists in the
     // current loggedSets snapshot, this save is really an update — no timer.

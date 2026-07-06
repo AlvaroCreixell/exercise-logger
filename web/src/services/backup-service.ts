@@ -878,6 +878,17 @@ function validateSettings(
       });
     }
   }
+  // Three gym-proofing booleans (Dexie v4): boolean OR undefined for legacy
+  // backups. importBackup normalizes missing fields to their defaults.
+  for (const field of ["keepScreenOn", "restCueHaptic", "restCueSound"] as const) {
+    if (s[field] !== undefined && typeof s[field] !== "boolean") {
+      errors.push({
+        field: `${path}.${field}`,
+        message: "must be a boolean",
+      });
+    }
+  }
+
   // Pre-v3 backups may include a `theme` field; accept but ignore it.
   // It gets stripped in importBackup() before persisting.
 }
@@ -1180,6 +1191,9 @@ export async function importBackup(
         lastGeneratedPrompt: settings.lastGeneratedPrompt ?? null,
         lastGeneratedPromptAt: settings.lastGeneratedPromptAt ?? null,
         onboardingBannerDismissedAt: settings.onboardingBannerDismissedAt ?? null,
+        keepScreenOn: settings.keepScreenOn ?? true,
+        restCueHaptic: settings.restCueHaptic ?? true,
+        restCueSound: settings.restCueSound ?? false,
       };
       await db.settings.put(cleanSettings);
     }

@@ -1375,3 +1375,42 @@ describe("Sprint 2 hotfix — backward-compat", () => {
     expect(errors.filter((e) => e.field === "data.sessions[0].routineId")).toEqual([]);
   });
 });
+
+describe("gym-proofing settings — backup round-trip", () => {
+  it("accepts a legacy backup that omits the three booleans and imports defaults", async () => {
+    const cat = new Set([catalogId]);
+    const payload = makeMinimalValidPayload();
+    const settingsObj = payload.data.settings as Record<string, unknown>;
+    delete settingsObj.keepScreenOn;
+    delete settingsObj.restCueHaptic;
+    delete settingsObj.restCueSound;
+
+    expect(validateBackupPayload(payload, cat)).toEqual([]);
+
+    await importBackup(db, payload);
+    const stored = await db.settings.get("user");
+    expect(stored?.keepScreenOn).toBe(true);
+    expect(stored?.restCueHaptic).toBe(true);
+    expect(stored?.restCueSound).toBe(false);
+  });
+
+  it("rejects non-boolean gym-proofing values", () => {
+    const cat = new Set([catalogId]);
+    const payload = makeMinimalValidPayload();
+    (payload.data.settings as Record<string, unknown>).keepScreenOn = "yes";
+    const errors = validateBackupPayload(payload, cat);
+    expect(errors.some((e) => e.field === "data.settings.keepScreenOn")).toBe(true);
+  });
+
+  it("round-trips explicit false/true values", async () => {
+    const cat = new Set([catalogId]);
+    const payload = makeMinimalValidPayload();
+    payload.data.settings.keepScreenOn = false;
+    payload.data.settings.restCueSound = true;
+    expect(validateBackupPayload(payload, cat)).toEqual([]);
+    await importBackup(db, payload);
+    const stored = await db.settings.get("user");
+    expect(stored?.keepScreenOn).toBe(false);
+    expect(stored?.restCueSound).toBe(true);
+  });
+});

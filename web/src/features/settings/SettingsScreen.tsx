@@ -5,7 +5,14 @@ import { useAllRoutines, useRoutine } from "@/shared/hooks/useRoutine";
 import { useActiveSession } from "@/shared/hooks/useActiveSession";
 import { useInstallPrompt } from "@/shared/hooks/useInstallPrompt";
 import { db } from "@/db/database";
-import { setUnits, deleteRoutine, setUserName } from "@/services/settings-service";
+import {
+  setUnits,
+  deleteRoutine,
+  setUserName,
+  setKeepScreenOn,
+  setRestCueHaptic,
+  setRestCueSound,
+} from "@/services/settings-service";
 import { clearLastPrompt } from "@/services/onboarding-service";
 import { LastPromptCard } from "@/features/onboarding/components/LastPromptCard";
 import { Input } from "@/shared/ui/input";
@@ -30,6 +37,7 @@ import { RoutineList } from "./RoutineList";
 import { RowLink } from "./RowLink";
 import { SettingRow } from "./SettingRow";
 import { UnitsToggle } from "./UnitsToggle";
+import { PrefSwitch } from "./PrefSwitch";
 import { Card } from "@/shared/ui/card";
 import { toast } from "sonner";
 
@@ -207,6 +215,40 @@ export default function SettingsScreen() {
         <Card className="py-0">
           <SettingRow label="Units" sublabel="Weight display">
             <UnitsToggle value={settings.units} onChange={handleUnits} />
+          </SettingRow>
+        </Card>
+      </div>
+
+      {/* Workout (gym-proofing) */}
+      <div className="space-y-3">
+        <SectionHeader>Workout</SectionHeader>
+        <Card className="py-0 divide-y divide-line">
+          <SettingRow label="Keep screen on" sublabel="While a workout is active">
+            <PrefSwitch
+              label="Keep screen on"
+              checked={settings.keepScreenOn !== false}
+              onChange={(next) => void setKeepScreenOn(db, next)}
+            />
+          </SettingRow>
+          <SettingRow
+            label="Rest cue vibration"
+            sublabel="Buzz when the rest timer ends"
+          >
+            <PrefSwitch
+              label="Rest cue vibration"
+              checked={settings.restCueHaptic !== false}
+              onChange={(next) => void setRestCueHaptic(db, next)}
+            />
+          </SettingRow>
+          <SettingRow
+            label="Rest cue sound"
+            sublabel="Short beep — cues need the screen on"
+          >
+            <PrefSwitch
+              label="Rest cue sound"
+              checked={settings.restCueSound === true}
+              onChange={(next) => void setRestCueSound(db, next)}
+            />
           </SettingRow>
         </Card>
       </div>

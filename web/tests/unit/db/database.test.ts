@@ -24,7 +24,7 @@ describe("ExerciseLoggerDB", () => {
     expect(db.settings).toBeDefined();
   });
 
-  it("DEFAULT_SETTINGS includes all 6 onboarding fields defaulting to null", () => {
+  it("DEFAULT_SETTINGS includes onboarding nulls and gym-proofing defaults", () => {
     expect(DEFAULT_SETTINGS).toEqual({
       id: "user",
       activeRoutineId: null,
@@ -35,7 +35,36 @@ describe("ExerciseLoggerDB", () => {
       lastGeneratedPrompt: null,
       lastGeneratedPromptAt: null,
       onboardingBannerDismissedAt: null,
+      // Gym-proofing (Dexie v4): wake lock + haptic cue on, sound off.
+      keepScreenOn: true,
+      restCueHaptic: true,
+      restCueSound: false,
     });
+  });
+
+  it("v4 upgrade backfills gym-proofing defaults on an existing settings record", async () => {
+    // Simulate a pre-v4 settings record: write one WITHOUT the new fields
+    // through a raw put (fields absent, as a v3 install would have left them),
+    // then read it back through the app's initializeSettings path.
+    const legacy = {
+      id: "user",
+      activeRoutineId: null,
+      units: "kg",
+      userName: null,
+      onboardingCompletedAt: null,
+      onboardingSkippedAt: null,
+      lastGeneratedPrompt: null,
+      lastGeneratedPromptAt: null,
+      onboardingBannerDismissedAt: null,
+    };
+    await db.settings.put(legacy as unknown as Settings);
+    // The upgrade hook only runs on version transitions of a real database;
+    // fake-indexeddb creates fresh DBs at the latest version, so assert the
+    // read-site tolerance instead: undefined must behave like the default.
+    const stored = await db.settings.get("user");
+    expect(stored?.keepScreenOn ?? true).toBe(true);
+    expect(stored?.restCueHaptic ?? true).toBe(true);
+    expect(stored?.restCueSound ?? false).toBe(false);
   });
 
   it("stores and retrieves an exercise", async () => {

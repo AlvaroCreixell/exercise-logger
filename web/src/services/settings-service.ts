@@ -135,6 +135,36 @@ export async function setUnitOverride(
 }
 
 /**
+ * Toggle the active-session screen wake lock preference.
+ */
+export async function setKeepScreenOn(
+  db: ExerciseLoggerDB,
+  keepScreenOn: boolean
+): Promise<void> {
+  await db.settings.update("user", { keepScreenOn });
+}
+
+/**
+ * Toggle the rest-complete haptic cue.
+ */
+export async function setRestCueHaptic(
+  db: ExerciseLoggerDB,
+  restCueHaptic: boolean
+): Promise<void> {
+  await db.settings.update("user", { restCueHaptic });
+}
+
+/**
+ * Toggle the rest-complete sound cue.
+ */
+export async function setRestCueSound(
+  db: ExerciseLoggerDB,
+  restCueSound: boolean
+): Promise<void> {
+  await db.settings.update("user", { restCueSound });
+}
+
+/**
  * Set the user's preferred name for the Today greeting.
  *
  * - Trims outer whitespace.

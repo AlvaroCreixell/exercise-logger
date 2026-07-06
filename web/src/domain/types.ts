@@ -280,4 +280,10 @@ export interface Settings {
   lastGeneratedPromptAt: string | null;
   /** ISO UTC timestamp when the user dismissed the Today "Finish importing your routine" banner. Reset to null whenever a new prompt is saved. */
   onboardingBannerDismissedAt: string | null;
+  /** Hold a screen wake lock while a workout session is active. Default true. */
+  keepScreenOn: boolean;
+  /** Vibrate when the rest timer completes (page must be visible). Default true. */
+  restCueHaptic: boolean;
+  /** Play a short beep when the rest timer completes. Default false. */
+  restCueSound: boolean;
 }
