@@ -8,19 +8,19 @@ describe("PWA manifest theme colors", () => {
     "utf8",
   );
 
-  it("theme_color matches the warm-paper meta theme-color in index.html", () => {
+  it("theme_color matches the terminal-dark meta theme-color in index.html", () => {
     const indexHtml = readFileSync(
       resolve(__dirname, "../../../index.html"),
       "utf8",
     );
     const meta = indexHtml.match(/name="theme-color"\s+content="([^"]+)"/);
-    expect(meta?.[1]).toBe("#FCFAF5");
-    expect(source).toMatch(/theme_color:\s*"#FCFAF5"/);
+    expect(meta?.[1]).toBe("#1F1E1B");
+    expect(source).toMatch(/theme_color:\s*"#1F1E1B"/);
   });
 
-  it("background_color matches the paper tone (warm paper)", () => {
+  it("background_color matches the paper tone (terminal dark)", () => {
     // Same hex as theme_color; the OS uses background_color for the splash
     // card under the icon while the PWA boots.
-    expect(source).toMatch(/background_color:\s*"#FCFAF5"/);
+    expect(source).toMatch(/background_color:\s*"#1F1E1B"/);
   });
 });
