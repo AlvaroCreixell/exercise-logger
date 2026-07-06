@@ -33,7 +33,7 @@ export function SessionRow({ summary, units }: SessionRowProps) {
         <CardContent className="flex items-center gap-3 px-3 py-3">
           <div
             aria-hidden="true"
-            className="flex flex-col items-center justify-center rounded-[var(--radius-set-empty)] bg-sage-soft px-2 py-1 text-sage-deep"
+            className="flex flex-col items-center justify-center rounded-[var(--radius-set-empty)] bg-accent-cli-soft px-2 py-1 text-accent-cli-bright"
           >
             <span className="text-[10px] font-semibold tracking-widest">
               {month}

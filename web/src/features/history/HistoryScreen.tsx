@@ -5,6 +5,8 @@ import { useHistoryStats } from "@/shared/hooks/useHistoryStats";
 import { useSettings } from "@/shared/hooks/useSettings";
 import { useExerciseSearchSessionIds } from "@/shared/hooks/useExerciseSearchSessionIds";
 import { EmptyState } from "@/shared/components/EmptyState";
+import { PromptHeading } from "@/shared/components/PromptHeading";
+import { SectionHeader } from "@/shared/components/SectionHeader";
 import { HistoryStatsTile } from "./HistoryStatsTile";
 import { HistoryFilters } from "./HistoryFilters";
 import { SessionRow } from "./SessionRow";
@@ -51,8 +53,8 @@ export default function HistoryScreen() {
   return (
     <div className="space-y-5 p-5">
       <div className="space-y-1">
-        <p className="text-eyebrow text-ink-3">Training Log</p>
-        <h1 className="text-hero-serif italic text-foreground">History</h1>
+        <SectionHeader>Training Log</SectionHeader>
+        <PromptHeading command="History" />
       </div>
 
       <HistoryStatsTile stats={stats} />
@@ -75,7 +77,7 @@ export default function HistoryScreen() {
         <div className="space-y-5">
           {groups.map((group) => (
             <section key={group.monthKey} className="space-y-2">
-              <p className="text-eyebrow text-ink-3">{group.monthLabel}</p>
+              <SectionHeader>{group.monthLabel}</SectionHeader>
               <ul className="space-y-2" aria-label={group.monthLabel}>
                 {group.sessions.map((summary) => (
                   <li key={summary.session.id}>
