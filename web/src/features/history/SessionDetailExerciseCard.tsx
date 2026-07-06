@@ -26,7 +26,9 @@ export function SessionDetailExerciseCard({
       <CardContent className="space-y-3 px-4 py-4">
         <Link
           to={`/history/exercise/${exerciseId}`}
-          className="inline-block text-sm font-semibold text-foreground hover:text-accent-cli-bright focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-cli/40 rounded-sm"
+          // before: pseudo hit-area extension — measured 151×20 px, well under
+          // the 44 px target; visuals unchanged ("themed, not literal").
+          className="relative inline-block text-sm font-semibold text-foreground before:absolute before:-inset-y-3 before:-inset-x-1 before:content-[''] hover:text-accent-cli-bright focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-cli/40 rounded-sm"
         >
           {exerciseName}
         </Link>

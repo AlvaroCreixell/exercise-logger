@@ -272,7 +272,7 @@ export function ExerciseCard({
           {onUnitToggle && (
             <button
               type="button"
-              className="shrink-0 rounded-[var(--radius-pill)] border border-line px-2 py-0.5 text-[11px] font-medium tabular-nums text-ink-3 transition-colors hover:border-accent-cli hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-cli/40"
+              className="relative shrink-0 rounded-[var(--radius-pill)] border border-line px-2 py-0.5 text-[11px] font-medium tabular-nums text-ink-3 transition-colors before:absolute before:-inset-y-3 before:-inset-x-2 before:content-[''] hover:border-accent-cli hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-cli/40"
               onClick={(e) => {
                 e.stopPropagation();
                 onUnitToggle(units === "kg" ? "lbs" : "kg");
@@ -375,7 +375,7 @@ export function ExerciseCard({
                           : "Add extra set"
                       }
                       onClick={() => addExtraSet(bi)}
-                      className="ml-9 text-meta hover:text-accent-cli-bright transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-cli/40 rounded-sm py-1"
+                      className="relative ml-9 self-start text-meta before:absolute before:-inset-y-2.5 before:-inset-x-2 before:content-[''] hover:text-accent-cli-bright transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-cli/40 rounded-sm py-1"
                     >
                       Extra set
                     </button>,

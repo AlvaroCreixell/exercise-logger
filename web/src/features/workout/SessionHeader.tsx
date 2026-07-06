@@ -28,7 +28,7 @@ export function SessionHeader({
           <p className="text-eyebrow text-accent-cli-bright tabular-nums">
             Day {dayId.toUpperCase()} · {formatElapsed(elapsedSec)} elapsed
           </p>
-          <PromptHeading command={dayLabel} detail="--active" />
+          <PromptHeading command={dayLabel} detail="--active" wrapCommand />
         </div>
         <button
           type="button"

@@ -378,12 +378,19 @@ export default function WorkoutScreen() {
     await addExtraExercise(db, session.id, exerciseId);
   }
 
-  // Count prescribed + unlogged
+  // Count prescribed + unlogged. Extra-set overruns (setIndex >= block.count)
+  // are bonus work, not progress against the routine — without the filter the
+  // header can read "21 of 20 sets logged" (mirrors ExerciseCard's badge).
   const totalPrescribed = sessionExercises.reduce(
     (sum, se) => sum + se.setBlocksSnapshot.reduce((s, b) => s + b.count, 0),
     0,
   );
-  const loggedRoutine = loggedSets.filter((ls) => ls.origin === "routine").length;
+  const seById = new Map(sessionExercises.map((se) => [se.id, se]));
+  const loggedRoutine = loggedSets.filter((ls) => {
+    if (ls.origin !== "routine") return false;
+    const block = seById.get(ls.sessionExerciseId)?.setBlocksSnapshot[ls.blockIndex];
+    return block !== undefined && ls.setIndex < block.count;
+  }).length;
   const unloggedCount = totalPrescribed - loggedRoutine;
 
   async function handleFinish() {
