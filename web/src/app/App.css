@@ -23,10 +23,6 @@
     --color-accent-cli: var(--accent-cli);
     --color-accent-cli-bright: var(--accent-bright);
     --color-accent-cli-soft: var(--accent-soft);
-    /* sage → accent migration aliases (removed in cleanup task) */
-    --color-sage: var(--accent-cli);
-    --color-sage-deep: var(--accent-bright);
-    --color-sage-soft: var(--accent-soft);
     --color-warm: var(--warm);
     --color-danger: var(--danger);
     /* Everything is JetBrains Mono. The legacy `serif`/`heading` roles are
@@ -164,10 +160,6 @@
     --sidebar-ring: var(--accent-cli);
     --border-strong: var(--ink-2);
 
-    /* sage → accent migration aliases (removed in cleanup task) */
-    --sage: var(--accent-cli);
-    --sage-deep: var(--accent-bright);
-    --sage-soft: var(--accent-soft);
 }
 
 
