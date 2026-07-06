@@ -266,6 +266,7 @@ function SetLogSheetWithHistoryForDetail({
       existingSet={existingSet}
       suggestion={historyData?.suggestions.find((s) => s.blockIndex === blockIndex)}
       lastTime={historyData?.lastTime[blockIndex]}
+      historyLoaded={historyData !== undefined}
       blockSetsInSession={blockSetsInSession}
       units={effectiveUnits}
       onSave={onSave}

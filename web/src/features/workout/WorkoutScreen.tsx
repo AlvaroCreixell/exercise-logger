@@ -370,9 +370,12 @@ export default function WorkoutScreen() {
         allLogged={totalPrescribed > 0 && unloggedCount === 0}
       />
 
-      {/* Set Log Sheet */}
+      {/* Set Log Sheet — keyed by exercise so field state and history queries
+          can never leak from one exercise's sheet into the next (the
+          cross-exercise prefill/poisoning bug). */}
       {sheetExercise && (
         <SetLogSheetWithHistory
+          key={sheetExercise.id}
           open={sheetOpen}
           onOpenChange={setSheetOpen}
           sessionExercise={sheetExercise}
@@ -522,6 +525,7 @@ function SetLogSheetWithHistory({
       lastTime={lastTime}
       blockSetsInSession={blockSetsInSession}
       personalBests={personalBests}
+      historyLoaded={historyData !== undefined}
       units={effectiveUnits}
       onSave={onSave}
       onDelete={onDelete}

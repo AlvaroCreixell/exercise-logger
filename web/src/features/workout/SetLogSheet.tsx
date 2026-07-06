@@ -12,7 +12,7 @@ import type { SessionExercise, LoggedSet, SetBlock } from "@/domain/types";
 import type { UnitSystem } from "@/domain/enums";
 import type { BlockSuggestion, BlockLastTime } from "@/services/progression-service";
 import { getBlockLabel } from "@/services/progression-service";
-import { toDisplayWeight, toCanonicalKg } from "@/domain/unit-conversion";
+import { toDisplayWeight, toCanonicalKg, getIncrement } from "@/domain/unit-conversion";
 import { isNewPersonalBest, type PersonalBests } from "@/domain/personal-records";
 import { toast } from "sonner";
 import { isSetInputEmpty } from "./set-log-validation";
@@ -56,6 +56,13 @@ interface SetLogSheetProps {
    * Absent = today's behavior (plain manual toggle).
    */
   personalBests?: PersonalBests;
+  /**
+   * False while the parent's history query for THIS exercise is still
+   * resolving. Create-mode prefill waits for it — prefilling from a stale
+   * or absent history is how the cross-exercise poisoning bug happened.
+   * Edit mode ignores it (existingSet needs no history). Default true.
+   */
+  historyLoaded?: boolean;
   units: UnitSystem;
   onSave: (input: {
     performedWeightKg: number | null;
@@ -80,6 +87,7 @@ export function SetLogSheet({
   lastTime,
   blockSetsInSession = [],
   personalBests,
+  historyLoaded = true,
   units,
   onSave,
   onDelete,
@@ -116,21 +124,39 @@ export function SetLogSheet({
     deriveActiveField(showWeight, false, isBodyweight, targetKind),
   );
 
-  // Pre-fill on open transition only. Using a ref to track the prior `open`
-  // value means prefill fires once per false→true edge, not on every re-render
-  // while the sheet is open — which closes a clobber bug where a parent
-  // re-render with new history identity would overwrite in-flight user input.
-  const prevOpenRef = useRef(false);
+  // Pristine keypad fields: a prefilled (or freshly focused) value the user
+  // hasn't typed into yet. The first digit REPLACES a pristine value instead
+  // of appending (see keypad-reducer) — correcting a prefill costs one
+  // keystroke, not backspaces + retype. Backspace and nudges drop to append.
+  const [pristine, setPristine] = useState({ weight: true, reps: true });
+
+  /** Switch the keypad target and re-arm pristine-replace for that field. */
+  function focusField(field: ActiveField) {
+    setActiveField(field);
+    if (field === "weight" || field === "reps") {
+      setPristine((p) => ({ ...p, [field]: true }));
+    }
+  }
+
+  // Pre-fill once per open. The ref means prefill never re-fires on parent
+  // re-renders while open — that would clobber in-flight user input. Create
+  // mode additionally waits for `historyLoaded`: prefilling before this
+  // exercise's history query resolves is how the sheet used to inherit the
+  // PREVIOUS exercise's suggestion/last-time values (and silently save them
+  // on cardio extras). Edit mode prefills from existingSet immediately.
+  const prefilledRef = useRef(false);
   useEffect(() => {
     if (!open) {
-      prevOpenRef.current = false;
+      prefilledRef.current = false;
       return;
     }
-    if (prevOpenRef.current) return; // already open; skip
-    prevOpenRef.current = true;
+    if (prefilledRef.current) return; // already prefilled this open
+    if (!existingSet && !historyLoaded) return; // create mode: wait for history
+    prefilledRef.current = true;
 
     setShowWeightForBodyweight(false);
     setPrOverride(null);
+    setPristine({ weight: true, reps: true });
 
     if (existingSet) {
       // Priority 1: current logged value (edit mode)
@@ -169,10 +195,23 @@ export function SetLogSheet({
     } else if (lastSet?.weightKg != null) {
       setWeight(String(toDisplayWeight(lastSet.weightKg, units)));
     } else {
-      setWeight(showWeight ? "0" : "");
+      // Day one: leave the field genuinely empty ("—"), never a
+      // committed-looking "0" that saves as a 0 kg lift.
+      setWeight("");
     }
 
-    setReps(lastSet?.reps != null ? String(lastSet.reps) : block?.minValue != null && targetKind === "reps" ? String(block.minValue) : "");
+    // Reps: a progression restarts at the range floor — last time's reps were
+    // hit at a LIGHTER weight, so prefilling them invites logging fake reps.
+    // Repeats keep matching last time's per-set reps.
+    setReps(
+      suggestion?.isProgression && block?.minValue != null && targetKind === "reps"
+        ? String(block.minValue)
+        : lastSet?.reps != null
+          ? String(lastSet.reps)
+          : block?.minValue != null && targetKind === "reps"
+            ? String(block.minValue)
+            : "",
+    );
     setDuration(lastSet?.durationSec != null
       ? String(durationInMinutes ? Math.round(lastSet.durationSec / 60 * 100) / 100 : lastSet.durationSec)
       : "");
@@ -180,38 +219,62 @@ export function SetLogSheet({
     setIsPR(false);
     setActiveField(deriveActiveField(showWeight, false, isBodyweight, targetKind));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
+  }, [open, historyLoaded]);
 
   const blockLabel = block
     ? getBlockLabel(block, blockIndex, blocks.length, blocks)
     : "";
 
   function dispatchKey(key: KeypadKey) {
+    // Any user input claims this open: a prefill that hasn't run yet (history
+    // still loading) must never overwrite what the user has typed.
+    prefilledRef.current = true;
     if (activeField === "weight") {
-      setWeight((w) => applyKeypadKey(w, key));
+      const wasPristine = pristine.weight;
+      setWeight((w) => applyKeypadKey(w, key, wasPristine));
+      if (wasPristine) setPristine((p) => ({ ...p, weight: false }));
     } else if (activeField === "reps") {
       // Reps are integer-only. Reject the decimal key so users can't type
       // "10.5" and have parseInt silently truncate it to 10 on save.
       if (key === ".") return;
-      setReps((r) => applyKeypadKey(r, key));
+      const wasPristine = pristine.reps;
+      setReps((r) => applyKeypadKey(r, key, wasPristine));
+      if (wasPristine) setPristine((p) => ({ ...p, reps: false }));
     }
     // duration/distance keep native inputs; keypad is hidden for those.
   }
 
+  // Weight nudges step by the equipment's practical increment (barbell 2.5 kg
+  // / 5 lbs, machine 5 kg / 10 lbs, …) — never a hardcoded 2.5.
+  const weightStep = getIncrement(se.effectiveEquipment, units);
+
   function nudgeWeight(delta: number) {
+    prefilledRef.current = true;
     const n = weight.trim() ? parseFloat(weight) : 0;
     if (!Number.isFinite(n)) return;
     const next = Math.max(0, n + delta);
     setWeight(String(Number.isInteger(next) ? next : Math.round(next * 100) / 100));
+    setPristine((p) => ({ ...p, weight: false }));
   }
 
   function nudgeReps(delta: number) {
+    prefilledRef.current = true;
     const n = reps.trim() ? parseInt(reps, 10) : 0;
     if (!Number.isFinite(n)) return;
     setReps(String(Math.max(0, n + delta)));
+    setPristine((p) => ({ ...p, reps: false }));
   }
 
   const handleSaveRef = useRef<() => Promise<void>>(() => Promise.resolve());
+
+  // Which measures have a rendered input right now. Anything invisible saves
+  // as null — field state left over from prefill or a prior configuration
+  // must never reach the database (this is what let a cardio extra silently
+  // store the previous exercise's weight × reps).
+  const weightFieldVisible = showWeight || (isBodyweight && showWeightForBodyweight);
+  const repsFieldVisible = targetKind === "reps";
+  const durationFieldVisible = targetKind === "duration";
+  const distanceFieldVisible = targetKind === "distance" || isCardioExtra;
 
   /**
    * Parse the current field strings to canonical values — the single source
@@ -219,14 +282,14 @@ export function SetLogSheet({
    * never disagree with what actually gets saved.
    */
   function parseCurrentInput() {
-    const w = weight.trim() ? parseFloat(weight) : null;
+    const w = weightFieldVisible && weight.trim() ? parseFloat(weight) : null;
     return {
       performedWeightKg: w != null ? toCanonicalKg(w, units) : null,
-      performedReps: reps.trim() ? parseInt(reps, 10) : null,
-      performedDurationSec: duration.trim()
+      performedReps: repsFieldVisible && reps.trim() ? parseInt(reps, 10) : null,
+      performedDurationSec: durationFieldVisible && duration.trim()
         ? (durationInMinutes ? Math.round(parseFloat(duration) * 60) : parseInt(duration, 10))
         : null,
-      performedDistanceM: distance.trim() ? parseFloat(distance) : null,
+      performedDistanceM: distanceFieldVisible && distance.trim() ? parseFloat(distance) : null,
     };
   }
 
@@ -311,7 +374,7 @@ export function SetLogSheet({
         const canWeight = showWeight || (isBodyweight && showWeightForBodyweight);
         if (canWeight && canReps) {
           e.preventDefault();
-          setActiveField((cur) => (cur === "weight" ? "reps" : "weight"));
+          focusField(activeField === "weight" ? "reps" : "weight");
         }
         return;
       }
@@ -324,7 +387,7 @@ export function SetLogSheet({
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, activeField, weight, reps, showWeight, isBodyweight, showWeightForBodyweight, targetKind]);
+  }, [open, activeField, weight, reps, pristine, showWeight, isBodyweight, showWeightForBodyweight, targetKind]);
 
   const totalSets = block?.count ?? "?";
 
@@ -392,6 +455,7 @@ export function SetLogSheet({
                         type="button"
                         className="ml-3 inline-flex items-center rounded-[var(--radius-pill)] border border-line px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wider text-ink-3 transition-colors hover:border-accent-cli hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-cli/40"
                         onClick={() => {
+                          prefilledRef.current = true;
                           if (s.weightKg != null) setWeight(String(toDisplayWeight(s.weightKg, units)));
                           if (s.reps != null) setReps(String(s.reps));
                           if (s.durationSec != null) {
@@ -404,6 +468,8 @@ export function SetLogSheet({
                             );
                           }
                           if (s.distanceM != null) setDistance(String(s.distanceM));
+                          // Restored values are "seen" values — re-arm replace.
+                          setPristine({ weight: true, reps: true });
                         }}
                       >
                         Use last
@@ -430,9 +496,9 @@ export function SetLogSheet({
               value={weight}
               unit={units}
               isActive={activeField === "weight"}
-              onFocus={() => setActiveField("weight")}
-              onNudgeDown={() => nudgeWeight(-2.5)}
-              onNudgeUp={() => nudgeWeight(2.5)}
+              onFocus={() => focusField("weight")}
+              onNudgeDown={() => nudgeWeight(-weightStep)}
+              onNudgeUp={() => nudgeWeight(weightStep)}
             />
           )}
 
@@ -441,7 +507,7 @@ export function SetLogSheet({
               className="text-xs text-info hover:underline"
               onClick={() => {
                 setShowWeightForBodyweight(true);
-                setActiveField("weight");
+                focusField("weight");
               }}
             >
               + Add weight (permanent for this session)
@@ -455,9 +521,9 @@ export function SetLogSheet({
                 value={weight}
                 unit={units}
                 isActive={activeField === "weight"}
-                onFocus={() => setActiveField("weight")}
-                onNudgeDown={() => nudgeWeight(-2.5)}
-                onNudgeUp={() => nudgeWeight(2.5)}
+                onFocus={() => focusField("weight")}
+                onNudgeDown={() => nudgeWeight(-weightStep)}
+                onNudgeUp={() => nudgeWeight(weightStep)}
               />
               <p className="text-[11px] text-warning">
                 Adding weight is permanent for this session.
@@ -471,7 +537,7 @@ export function SetLogSheet({
               label="Reps"
               value={reps}
               isActive={activeField === "reps"}
-              onFocus={() => setActiveField("reps")}
+              onFocus={() => focusField("reps")}
               onNudgeDown={() => nudgeReps(-1)}
               onNudgeUp={() => nudgeReps(1)}
             />
@@ -487,7 +553,10 @@ export function SetLogSheet({
                 inputMode={durationInMinutes ? "decimal" : "numeric"}
                 className="text-value h-14 text-center"
                 value={duration}
-                onChange={(e) => setDuration(e.target.value)}
+                onChange={(e) => {
+                  prefilledRef.current = true;
+                  setDuration(e.target.value);
+                }}
               />
             </div>
           )}
@@ -502,7 +571,10 @@ export function SetLogSheet({
                 inputMode="decimal"
                 className="text-value h-14 text-center"
                 value={distance}
-                onChange={(e) => setDistance(e.target.value)}
+                onChange={(e) => {
+                  prefilledRef.current = true;
+                  setDistance(e.target.value);
+                }}
               />
             </div>
           )}
