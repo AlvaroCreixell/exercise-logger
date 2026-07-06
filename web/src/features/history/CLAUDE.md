@@ -9,7 +9,7 @@ Browse past sessions and drill down into set-level detail. Routes:
 
 - `HistoryScreen.tsx` — Monthly-grouped list of finished sessions with a stats tile on top. At ≥6 finished sessions (`FILTERS_MIN_SESSIONS`) it shows `HistoryFilters` — day chips + exercise-name search. The stats tile always shows lifetime totals, never filtered ones.
 - `SessionDetailScreen.tsx` — One session: header, stats tile, per-exercise cards with set pills.
-- `ExerciseHistoryScreen.tsx` — One exercise across sessions, set-block grouped.
+- `ExerciseHistoryScreen.tsx` — One exercise across sessions, set-block grouped. Tops out with a `TrendSparkline` (top-set trend, last 12 sessions, global units) and an All-time / This-month / Last-session best row (per-entry units) when ≥2 sessions carry the chosen measure; PR-flagged sets get a small "PR" marker.
 
 ## Components
 
@@ -24,6 +24,7 @@ Browse past sessions and drill down into set-level detail. Routes:
 
 - `groupByMonth.ts` — `groupSessionsByMonth()` with local-time boundaries.
 - `filterSessions.ts` — pure `filterSummaries()` (day + matching-session-id filters) and `distinctDayIds()`.
+- `trendPoints.ts` — pure `buildTrendSeries()` (measure priority weight → reps → duration → distance, per-session top set, ascending, ≤12 points, null under 2) and `bestLiftSummary()`.
 
 Aggregations (`computeSessionVolumeKg`, `formatVolume`, `formatShortDuration`) live at `@/shared/lib/sessionStats` — the History feature consumes them via that path, and the Workout feature's `FinishCelebration` and `WorkoutScreen` do too. (Moved from `features/history/lib/` in Sprint 5 to fix the `shared → features` import inversion in `useFinishedSessionSummaries`.)
 

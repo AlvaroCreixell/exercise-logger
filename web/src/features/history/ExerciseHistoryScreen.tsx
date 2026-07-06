@@ -2,16 +2,19 @@ import { useParams, useNavigate } from "react-router";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/db/database";
 import { useExerciseHistoryGroups } from "@/shared/hooks/useExerciseHistoryGroups";
+import type { ExerciseHistoryGroup } from "@/shared/hooks/useExerciseHistoryGroups";
 import { useSettings } from "@/shared/hooks/useSettings";
 import { formatLoggedSet } from "@/shared/lib/formatLoggedSet";
 import { getEffectiveUnit } from "@/domain/unit-helpers";
 import type { LoggedSet } from "@/domain/types";
-import type { SetTag } from "@/domain/enums";
+import type { SetTag, UnitSystem } from "@/domain/enums";
 import { Back, Dumbbell } from "@/shared/icons";
 import { buttonVariants } from "@/shared/ui/button";
 import { cn } from "@/shared/lib/utils";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { SectionHeader } from "@/shared/components/SectionHeader";
+import { TrendSparkline } from "./TrendSparkline";
+import { buildTrendSeries, bestLiftSummary } from "./lib/trendPoints";
 
 /** Group a sorted list of logged sets into blocks by blockIndex. */
 function groupSetsByBlock(sets: LoggedSet[]): Array<{ tag: SetTag | null; sets: LoggedSet[] }> {
@@ -26,6 +29,46 @@ function groupSetsByBlock(sets: LoggedSet[]): Array<{ tag: SetTag | null; sets: 
     }
   }
   return blocks;
+}
+
+/**
+ * Map each sessionExerciseId to the effective unit of the entry it belongs
+ * to, so summary sets (raw LoggedSets) can be formatted with the same units
+ * as their session list rows.
+ */
+function buildEntryUnitMap(
+  groups: ExerciseHistoryGroup[],
+  globalUnits: UnitSystem
+): Map<string, UnitSystem> {
+  const map = new Map<string, UnitSystem>();
+  for (const group of groups) {
+    for (const entry of group.entries) {
+      const units = getEffectiveUnit(entry.unitOverride, globalUnits);
+      for (const set of entry.sets) {
+        map.set(set.sessionExerciseId, units);
+      }
+    }
+  }
+  return map;
+}
+
+function SummaryStat({
+  label,
+  set,
+  units,
+}: {
+  label: string;
+  set: LoggedSet | null;
+  units: UnitSystem;
+}) {
+  return (
+    <div className="flex flex-col gap-0.5">
+      <span className="text-sm font-bold tabular-nums text-foreground">
+        {set ? formatLoggedSet(set, units) : "—"}
+      </span>
+      <span className="text-eyebrow text-ink-3">{label}</span>
+    </div>
+  );
 }
 
 export default function ExerciseHistoryScreen() {
@@ -43,6 +86,12 @@ export default function ExerciseHistoryScreen() {
   const units = settings.units;
   const name = exercise?.name ?? exerciseId ?? "Exercise";
 
+  const trend = groups && groups.length > 0 ? buildTrendSeries(groups) : null;
+  const summary = trend && groups ? bestLiftSummary(groups) : null;
+  const entryUnitMap = trend && groups ? buildEntryUnitMap(groups, units) : null;
+  const unitsFor = (set: LoggedSet | null): UnitSystem =>
+    (set && entryUnitMap?.get(set.sessionExerciseId)) || units;
+
   return (
     <div className="p-5 space-y-4 pb-8">
       <button
@@ -53,6 +102,29 @@ export default function ExerciseHistoryScreen() {
       </button>
 
       <h1 className="text-2xl font-extrabold tracking-tight font-heading">{name}</h1>
+
+      {trend && summary && (
+        <div className="space-y-3">
+          <TrendSparkline series={trend} units={units} />
+          <div className="flex flex-wrap items-baseline gap-x-6 gap-y-2">
+            <SummaryStat
+              label="All-time best"
+              set={summary.allTime}
+              units={unitsFor(summary.allTime)}
+            />
+            <SummaryStat
+              label="This month"
+              set={summary.thisMonth}
+              units={unitsFor(summary.thisMonth)}
+            />
+            <SummaryStat
+              label="Last session"
+              set={summary.lastSession}
+              units={unitsFor(summary.lastSession)}
+            />
+          </div>
+        </div>
+      )}
 
       {groups === null || groups === undefined ? null : groups.length === 0 ? (
         <EmptyState
@@ -100,6 +172,11 @@ export default function ExerciseHistoryScreen() {
                               {block.sets.map((ls, si) => (
                                 <span key={si} className="text-sm tabular-nums font-medium">
                                   {formatLoggedSet(ls, entryUnits, { fallback: "" })}
+                                  {ls.isPersonalRecord === true && (
+                                    <span className="ml-1 text-[10px] font-semibold uppercase tracking-wider text-sage-deep">
+                                      PR
+                                    </span>
+                                  )}
                                 </span>
                               ))}
                             </div>
