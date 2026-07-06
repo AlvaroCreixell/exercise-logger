@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Claude Code terminal tile: dark bg, orange prompt chevron, ivory cursor -->
+  <rect width="512" height="512" rx="96" fill="#1F1E1B"/>
+  <path d="M150 166 L 254 256 L 150 346" fill="none" stroke="#D97757" stroke-width="44" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="296" y="316" width="86" height="34" rx="6" fill="#FAF9F5"/>
+</svg>
