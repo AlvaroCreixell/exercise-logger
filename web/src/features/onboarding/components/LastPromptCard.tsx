@@ -55,18 +55,18 @@ export function LastPromptCard({ settings }: LastPromptCardProps) {
   return (
     <div
       className={cn(
-        "rounded-[var(--radius-card)] bg-sage-soft border border-[var(--line)] p-4 space-y-3"
+        "rounded-[var(--radius-card)] bg-accent-cli-soft border border-[var(--line)] p-4 space-y-3"
       )}
     >
       <div className="flex items-baseline justify-between">
-        <p className="text-eyebrow text-sage-deep">Saved prompt</p>
+        <p className="text-eyebrow text-accent-cli-bright">Saved prompt</p>
         <p className="text-meta">{when}</p>
       </div>
       <div className="flex flex-wrap gap-2">
         <button
           type="button"
           onClick={handleCopy}
-          className="rounded-[var(--radius-pill)] border border-[var(--line)] bg-paper px-3 py-1.5 text-sm hover:bg-sage-soft/50"
+          className="rounded-[var(--radius-pill)] border border-[var(--line)] bg-paper px-3 py-1.5 text-sm hover:bg-accent-cli-soft/50"
         >
           Copy
         </button>
@@ -81,7 +81,7 @@ export function LastPromptCard({ settings }: LastPromptCardProps) {
           type="button"
           onClick={() => setExpanded((v) => !v)}
           aria-pressed={expanded}
-          className="rounded-[var(--radius-pill)] border border-[var(--line)] bg-paper px-3 py-1.5 text-sm hover:bg-sage-soft/50"
+          className="rounded-[var(--radius-pill)] border border-[var(--line)] bg-paper px-3 py-1.5 text-sm hover:bg-accent-cli-soft/50"
         >
           {expanded ? "Hide prompt" : "Show prompt"}
         </button>

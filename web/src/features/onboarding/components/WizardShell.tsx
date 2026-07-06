@@ -49,10 +49,10 @@ export function WizardShell({
           aria-valuemin={1}
           aria-valuemax={totalSteps}
           aria-valuenow={stepIndex + 1}
-          className="h-0.5 flex-1 overflow-hidden rounded-full bg-[var(--line-soft)]"
+          className="h-0.5 flex-1 overflow-hidden rounded-[2px] bg-[var(--line-soft)]"
         >
           <div
-            className="h-full bg-sage transition-[width] duration-200"
+            className="h-full bg-accent-cli transition-[width] duration-200"
             style={{ width: `${fillPercent}%` }}
           />
         </div>
@@ -60,7 +60,7 @@ export function WizardShell({
           type="button"
           aria-label="Exit questionnaire"
           onClick={() => setConfirmOpen(true)}
-          className="text-ink-2 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage/40 rounded-full p-1"
+          className="text-ink-2 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-cli/40 rounded-full p-1"
         >
           <span aria-hidden="true">×</span>
         </button>
@@ -74,9 +74,12 @@ export function WizardShell({
         <h1
           ref={headingRef}
           tabIndex={-1}
-          className="text-hero-serif italic text-ink focus:outline-none"
+          className="flex items-baseline gap-2 text-hero-serif text-ink focus:outline-none"
         >
-          {title}
+          <span aria-hidden="true" className="shrink-0 text-accent-cli select-none">
+            ❯
+          </span>
+          <span>{title}</span>
         </h1>
         {subtitle && (
           <p className="text-sm text-ink-2 leading-relaxed">{subtitle}</p>

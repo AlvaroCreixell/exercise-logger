@@ -14,10 +14,10 @@ export interface StepTextAreaProps {
 }
 
 const chipBase =
-  "inline-flex items-center justify-center rounded-[var(--radius-pill)] px-4 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage/40";
+  "inline-flex items-center justify-center rounded-[var(--radius-pill)] px-4 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-cli/40";
 const chipSelected = "bg-ink text-paper";
 const chipUnselected =
-  "border border-[var(--line)] bg-paper text-ink hover:bg-sage-soft";
+  "border border-[var(--line)] bg-paper text-ink hover:bg-accent-cli-soft";
 
 export function StepTextArea({
   value,

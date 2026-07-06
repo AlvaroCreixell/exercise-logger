@@ -175,14 +175,17 @@ export default function HandoffScreen() {
             type="button"
             aria-label="Exit"
             onClick={() => setExitOpen(true)}
-            className="text-ink-2 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage/40 rounded-full p-1"
+            className="text-ink-2 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-cli/40 rounded-full p-1"
           >
             <span aria-hidden="true">×</span>
           </button>
         </div>
         <div className="flex flex-col gap-2">
-          <h1 className="text-hero-serif italic text-ink">
-            Copy your prompt, then bring back the YAML.
+          <h1 className="flex items-baseline gap-2 text-hero-serif text-ink">
+            <span aria-hidden="true" className="shrink-0 text-accent-cli select-none">
+              ❯
+            </span>
+            <span>Copy your prompt, then bring back the YAML.</span>
           </h1>
           <p className="text-sm text-ink-2 leading-relaxed">
             The saved prompt below stays on this device. Copy it (or select it
@@ -197,7 +200,7 @@ export default function HandoffScreen() {
             href={GPT_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center rounded-[var(--radius-pill)] bg-ink px-4 py-2 text-sm text-paper hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage/40"
+            className="inline-flex items-center rounded-[var(--radius-pill)] bg-ink px-4 py-2 text-sm text-paper hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-cli/40"
           >
             Open GPT →
           </a>
