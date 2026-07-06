@@ -22,6 +22,8 @@ import {
 } from "@/services/backup-service";
 import type { UnitSystem } from "@/domain/enums";
 import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
+import { PromptHeading } from "@/shared/components/PromptHeading";
+import { SectionHeader } from "@/shared/components/SectionHeader";
 import { ActiveRoutineCard } from "./ActiveRoutineCard";
 import { AboutCard } from "./AboutCard";
 import { RoutineList } from "./RoutineList";
@@ -107,13 +109,13 @@ export default function SettingsScreen() {
   return (
     <div className="space-y-6 p-5 pb-8">
       <div className="space-y-1">
-        <p className="text-eyebrow text-ink-3">Preferences</p>
-        <h1 className="text-hero-serif italic text-foreground">Settings</h1>
+        <SectionHeader>Preferences</SectionHeader>
+        <PromptHeading command="Settings" />
       </div>
 
       {/* Profile */}
       <div className="space-y-3">
-        <p className="text-eyebrow text-ink-3">Profile</p>
+        <SectionHeader>Profile</SectionHeader>
         <Card className="py-0">
           {!editingName ? (
             <button
@@ -122,7 +124,7 @@ export default function SettingsScreen() {
                 setNameDraft(settings.userName ?? "");
                 setEditingName(true);
               }}
-              className="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-sage-soft/40"
+              className="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-accent-cli-soft/40"
             >
               <span className="text-sm font-medium">Your name</span>
               <span
@@ -168,7 +170,7 @@ export default function SettingsScreen() {
 
       {/* Routines */}
       <div className="space-y-3">
-        <p className="text-eyebrow text-ink-3">Routine</p>
+        <SectionHeader>Routine</SectionHeader>
         <ActiveRoutineCard
           routine={activeRoutine ?? null}
           onDelete={() => setDeleteActiveOpen(true)}
@@ -201,7 +203,7 @@ export default function SettingsScreen() {
 
       {/* Display */}
       <div className="space-y-3">
-        <p className="text-eyebrow text-ink-3">Display</p>
+        <SectionHeader>Display</SectionHeader>
         <Card className="py-0">
           <SettingRow label="Units" sublabel="Weight display">
             <UnitsToggle value={settings.units} onChange={handleUnits} />
@@ -212,7 +214,7 @@ export default function SettingsScreen() {
       {/* App (install) */}
       {canInstall && (
         <div className="space-y-3">
-          <p className="text-eyebrow text-ink-3">App</p>
+          <SectionHeader>App</SectionHeader>
           <Card className="py-0">
             <RowLink
               label="Install app"
@@ -227,7 +229,7 @@ export default function SettingsScreen() {
 
       {/* Data */}
       <div className="space-y-3">
-        <p className="text-eyebrow text-ink-3">Data</p>
+        <SectionHeader>Data</SectionHeader>
         <Card className="py-0 divide-y divide-line">
           <RowLink
             label="Import routine (YAML)"

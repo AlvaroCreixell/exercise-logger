@@ -14,6 +14,8 @@ import {
 } from "@/services/onboarding-service";
 import { clearWizardState } from "@/features/onboarding/lib/session-storage";
 import { YamlErrorList } from "./YamlErrorList";
+import { PromptHeading } from "@/shared/components/PromptHeading";
+import { SectionHeader } from "@/shared/components/SectionHeader";
 import { GPT_URL } from "@/shared/lib/gpt-url";
 import { extractSharedYaml } from "@/shared/lib/extractSharedYaml";
 import { toast } from "sonner";
@@ -125,14 +127,14 @@ export default function RoutineImportScreen() {
       <Link
         to="/settings"
         aria-label="Back to Settings"
-        className="inline-flex h-10 w-10 items-center justify-center rounded-[var(--radius-pill)] text-foreground hover:bg-sage-soft/50 transition-colors"
+        className="inline-flex h-10 w-10 items-center justify-center rounded-[var(--radius-pill)] text-foreground hover:bg-accent-cli-soft/50 transition-colors"
       >
         <Back />
       </Link>
 
       <div className="space-y-1">
-        <p className="text-eyebrow text-ink-3">Routine</p>
-        <h1 className="text-hero-serif text-foreground">Import routine</h1>
+        <SectionHeader>Routine</SectionHeader>
+        <PromptHeading command="Import routine" />
       </div>
 
       <p className="text-sm leading-relaxed text-ink-2">
@@ -141,7 +143,7 @@ export default function RoutineImportScreen() {
           href={GPT_URL}
           target="_blank"
           rel="noopener noreferrer"
-          className="font-medium text-sage-deep underline underline-offset-2"
+          className="font-medium text-accent-cli-bright underline underline-offset-2"
         >
           Ace Logger Routine Maker
         </a>{" "}
@@ -161,7 +163,7 @@ export default function RoutineImportScreen() {
             type="button"
             onClick={handleClipboardPaste}
             disabled={importing}
-            className="rounded-[var(--radius-pill)] border border-line px-3 py-1 text-[11px] font-semibold uppercase tracking-widest text-ink-3 transition-colors hover:border-sage hover:text-sage-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage/40 disabled:opacity-50"
+            className="rounded-[var(--radius-pill)] border border-line px-3 py-1 text-[11px] font-semibold uppercase tracking-widest text-ink-3 transition-colors hover:border-accent-cli hover:text-accent-cli-bright focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-cli/40 disabled:opacity-50"
           >
             Paste from clipboard
           </button>
@@ -173,7 +175,7 @@ export default function RoutineImportScreen() {
           value={pastedYaml}
           onChange={(e) => setPastedYaml(e.target.value)}
           disabled={importing}
-          className="w-full rounded-[var(--radius-card)] border border-line bg-card px-3 py-2 font-mono text-sm text-foreground transition-colors focus-visible:border-sage focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage/40 disabled:opacity-50"
+          className="w-full rounded-[var(--radius-card)] border border-line bg-card px-3 py-2 font-mono text-sm text-foreground transition-colors focus-visible:border-accent-cli focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-cli/40 disabled:opacity-50"
         />
       </div>
 

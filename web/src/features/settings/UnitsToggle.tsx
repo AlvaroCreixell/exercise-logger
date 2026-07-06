@@ -25,7 +25,7 @@ export function UnitsToggle({ value, onChange }: UnitsToggleProps) {
               if (!selected) onChange(option);
             }}
             className={
-              "inline-flex items-center rounded-[var(--radius-pill)] px-3 py-1 text-xs font-semibold uppercase tracking-wider transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage/40 " +
+              "inline-flex items-center rounded-[var(--radius-pill)] px-3 py-1 text-xs font-semibold uppercase tracking-wider transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-cli/40 " +
               (selected
                 ? "bg-primary text-primary-foreground"
                 : "text-ink-3 hover:text-foreground")
