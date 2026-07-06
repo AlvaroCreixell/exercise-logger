@@ -27,6 +27,12 @@ export interface ActiveRestTimer {
   startedAtMs: number;
   label: string;
   roundOrdinal: number | null;
+  /**
+   * The LoggedSet whose save started this timer, or null when unknown.
+   * Quick-log undo uses it to cancel exactly the timer its set started —
+   * never one started by a later save.
+   */
+  loggedSetId: string | null;
 }
 
 /**

@@ -6,6 +6,13 @@ import { toDisplayWeight } from "@/domain/unit-conversion";
 import { Card, CardContent } from "@/shared/ui/card";
 import { SetRow } from "./SetRow";
 import { formatExerciseTargetLine } from "./lib/formatSetTarget";
+import {
+  resolvePrimedSlot,
+  resolveQuickTarget,
+  formatQuickTarget,
+  formatBlockTargetHint,
+  type QuickTarget,
+} from "./lib/quick-target";
 
 interface ExerciseCardProps {
   sessionExercise: SessionExercise;
@@ -16,6 +23,12 @@ interface ExerciseCardProps {
   onSetTap: (blockIndex: number, setIndex: number) => void;
   /** Callback when unit toggle is tapped. Undefined = no toggle shown (history view). */
   onUnitToggle?: (newUnit: UnitSystem) => void;
+  /**
+   * Quick-log handler for the primed row (guided logging). Undefined = no
+   * primed rows (history view). Only routine-origin cards ever prime a row
+   * (invariant 7 — extras have no suggestions and no blocks).
+   */
+  onQuickLog?: (blockIndex: number, setIndex: number, target: QuickTarget) => Promise<void>;
 }
 
 /**
@@ -48,10 +61,42 @@ export function ExerciseCard({
   extraHistory,
   onSetTap,
   onUnitToggle,
+  onQuickLog,
 }: ExerciseCardProps) {
   const se = sessionExercise;
   const blocks = se.setBlocksSnapshot;
   const isExtra = se.origin === "extra";
+
+  // Guided logging: the one primed row per card — its first empty prescribed
+  // slot — logs its resolved target in a single tap. No handler (history
+  // view) or an incomplete target (day one) → no primed row anywhere.
+  const [quickSaving, setQuickSaving] = useState(false);
+  const primedSlot =
+    onQuickLog && !isExtra ? resolvePrimedSlot(blocks, loggedSets) : null;
+  const primedTarget = primedSlot
+    ? resolveQuickTarget({
+        block: blocks[primedSlot.blockIndex]!,
+        setIndex: primedSlot.setIndex,
+        suggestion: historyData?.suggestions?.find(
+          (s) => s.blockIndex === primedSlot.blockIndex,
+        ),
+        lastTime: historyData?.lastTime[primedSlot.blockIndex],
+        blockSetsInSession: loggedSets.filter(
+          (ls) => ls.blockIndex === primedSlot.blockIndex,
+        ),
+        effectiveType: se.effectiveType,
+      })
+    : null;
+
+  async function handleQuickLog(target: QuickTarget, blockIndex: number, setIndex: number) {
+    if (!onQuickLog || quickSaving) return;
+    setQuickSaving(true);
+    try {
+      await onQuickLog(blockIndex, setIndex, target);
+    } finally {
+      setQuickSaving(false);
+    }
+  }
 
   // Sprint 4 (D3b): per-block in-session "Add extra set" tap counter.
   // Source of truth on rehydrate is loggedSets (extras logged in a prior
@@ -191,6 +236,15 @@ export function ExerciseCard({
                   runningIndex += 1;
                   const setKey = `${bi}:${si}`;
                   const logged = setLookup.get(setKey);
+                  const isPrimed =
+                    primedTarget !== null &&
+                    primedSlot !== null &&
+                    primedSlot.blockIndex === bi &&
+                    primedSlot.setIndex === si &&
+                    logged === undefined;
+                  const blockSuggestion = historyData?.suggestions?.find(
+                    (s) => s.blockIndex === bi,
+                  );
                   rows.push(
                     <SetRow
                       key={setKey}
@@ -199,8 +253,34 @@ export function ExerciseCard({
                       units={units}
                       // Extras are not "top" sets; only prescribed rows in a top-tagged block carry the badge.
                       isTopBlock={block.tag === "top" && si < block.count}
-                      lastHint={si < block.count ? emptyHintForBlock(bi) : undefined}
-                      onClick={() => onSetTap(bi, si)}
+                      // Empty prescribed rows hint last time's set, falling
+                      // back to the prescription itself on day one.
+                      lastHint={
+                        si < block.count
+                          ? emptyHintForBlock(bi) ?? formatBlockTargetHint(block)
+                          : undefined
+                      }
+                      primed={
+                        isPrimed
+                          ? {
+                              display: formatQuickTarget(primedTarget, units),
+                              // Only honest ↑: the tone claims a progression
+                              // solely when the tap would log the engine's
+                              // progressed weight (not a carryover override).
+                              isProgression:
+                                blockSuggestion?.isProgression === true &&
+                                primedTarget.performedWeightKg ===
+                                  blockSuggestion.suggestedWeightKg,
+                              saving: quickSaving,
+                            }
+                          : undefined
+                      }
+                      onClick={
+                        isPrimed
+                          ? () => void handleQuickLog(primedTarget, bi, si)
+                          : () => onSetTap(bi, si)
+                      }
+                      onEditTap={isPrimed ? () => onSetTap(bi, si) : undefined}
                     />,
                   );
                 }
@@ -235,8 +315,9 @@ export function ExerciseCard({
           </div>
         )}
 
-        {/* LAST strip (routine exercises only, shown when there's history data) */}
-        {blocks.length > 0 && lastStripFormatted.length > 0 && (
+        {/* LAST strip — multi-block exercises only: on single-block cards it
+            duplicates every row hint verbatim (spec §3.2). */}
+        {blocks.length > 1 && lastStripFormatted.length > 0 && (
           <p className="text-meta tabular-nums">
             LAST {lastStripFormatted.join(" · ")}
           </p>

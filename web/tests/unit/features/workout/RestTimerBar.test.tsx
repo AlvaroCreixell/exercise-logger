@@ -14,6 +14,7 @@ function makeTimer(overrides: Partial<ActiveRestTimer> = {}): ActiveRestTimer {
     startedAtMs: 0,
     label: "Rest — Barbell Bench Press",
     roundOrdinal: null,
+    loggedSetId: null,
     ...overrides,
   };
 }

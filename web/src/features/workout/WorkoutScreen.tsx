@@ -5,7 +5,7 @@ import { useSettings } from "@/shared/hooks/useSettings";
 import { useExerciseHistory } from "@/shared/hooks/useExerciseHistory";
 import { useExtraHistory } from "@/shared/hooks/useExtraHistory";
 import { db } from "@/db/database";
-import { logSet, editSet, deleteSet } from "@/services/set-service";
+import { logSet, editSet, deleteSet, type SetLogInput } from "@/services/set-service";
 import { addExtraExercise, finishSession, discardSession } from "@/services/session-service";
 import { setUnitOverride } from "@/services/settings-service";
 import { getEffectiveUnit } from "@/domain/unit-helpers";
@@ -27,6 +27,8 @@ import {
   type RestTimerStart,
 } from "./lib/rest-timer";
 import { getSlotOrdinal, isRoundComplete } from "./lib/superset-rhythm";
+import { formatQuickTarget, type QuickTarget } from "./lib/quick-target";
+import { isNewPersonalBest } from "@/domain/personal-records";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { Dumbbell } from "@/shared/icons";
 import { toast } from "sonner";
@@ -41,8 +43,8 @@ function computeRestRemainingSec(timer: ActiveRestTimer): number {
   return getRestRemainingSec(timer, Date.now());
 }
 
-function makeRunningTimer(start: RestTimerStart): ActiveRestTimer {
-  return { status: "running", startedAtMs: Date.now(), ...start };
+function makeRunningTimer(start: RestTimerStart, loggedSetId: string | null): ActiveRestTimer {
+  return { status: "running", startedAtMs: Date.now(), loggedSetId, ...start };
 }
 
 export default function WorkoutScreen() {
@@ -161,6 +163,66 @@ export default function WorkoutScreen() {
     setSheetOpen(true);
   }
 
+  /**
+   * Shared create path for BOTH the sheet and quick-log: upsert-aware save
+   * plus the rest-timer start rules. Timers start ONLY here (never from
+   * effects observing loggedSets) so live-query re-renders, edits, and
+   * deletes can never restart one.
+   */
+  async function saveNewSet(
+    se: SessionExercise,
+    blockIndex: number,
+    setIndex: number,
+    input: SetLogInput,
+  ): Promise<{ savedSet: LoggedSet; created: boolean }> {
+    // Stale-slot guard: the slot may have been logged elsewhere since this
+    // interaction started (logSet upserts). If it already exists in the
+    // current loggedSets snapshot, this save is really an update — no timer.
+    const slotAlreadyLogged = (setsByExercise.get(se.id) ?? []).some(
+      (ls) => ls.blockIndex === blockIndex && ls.setIndex === setIndex,
+    );
+
+    const savedSet = await logSet(db, se.id, blockIndex, setIndex, input);
+    if (slotAlreadyLogged) return { savedSet, created: false };
+
+    const partner =
+      se.groupType === "superset" && se.supersetGroupId !== null
+        ? sessionExercises.find(
+            (other) =>
+              other.id !== se.id &&
+              other.supersetGroupId === se.supersetGroupId,
+          )
+        : undefined;
+
+    let supersetRoundJustCompleted = false;
+    let supersetRoundOrdinal: number | null = null;
+    if (partner) {
+      // The loggedSets snapshot predates this save — include the saved set so
+      // the round check sees our side of the pair.
+      const augmented = new Map(setsByExercise);
+      augmented.set(se.id, [...(setsByExercise.get(se.id) ?? []), savedSet]);
+      const ordinal = getSlotOrdinal(se, blockIndex, setIndex);
+      supersetRoundOrdinal = ordinal;
+      supersetRoundJustCompleted = isRoundComplete({
+        exercises: [se, partner],
+        setsByExercise: augmented,
+        ordinal,
+      });
+    }
+
+    const start = getRestTimerStartAfterNewSet({
+      session,
+      exerciseName: se.exerciseNameSnapshot,
+      isSupersetMember: partner !== undefined,
+      supersetRoundJustCompleted,
+      supersetRoundOrdinal,
+    });
+    if (start) {
+      setRestTimer(makeRunningTimer(start, savedSet.id));
+    }
+    return { savedSet, created: true };
+  }
+
   async function handleSave(input: {
     performedWeightKg: number | null;
     performedReps: number | null;
@@ -174,63 +236,39 @@ export default function WorkoutScreen() {
       await editSet(db, sheetExistingSet.id, input);
       return;
     }
+    await saveNewSet(sheetExercise, sheetBlockIndex, sheetSetIndex, input);
+  }
 
-    // Stale-sheet guard: the sheet may have been opened before this slot was
-    // logged elsewhere (logSet upserts). If the slot already exists in the
-    // current loggedSets snapshot, this save is really an update — no timer.
-    const slotAlreadyLogged = (setsByExercise.get(sheetExercise.id) ?? []).some(
-      (ls) => ls.blockIndex === sheetBlockIndex && ls.setIndex === sheetSetIndex,
-    );
-
-    const savedSet = await logSet(
-      db,
-      sheetExercise.id,
-      sheetBlockIndex,
-      sheetSetIndex,
-      input,
-    );
-    if (slotAlreadyLogged) return;
-
-    // Genuinely new set — decide whether to start rest. Timers start ONLY
-    // here (never from effects observing loggedSets) so live-query re-renders,
-    // edits, and deletes can never restart one.
-    const partner =
-      sheetExercise.groupType === "superset" && sheetExercise.supersetGroupId !== null
-        ? sessionExercises.find(
-            (other) =>
-              other.id !== sheetExercise.id &&
-              other.supersetGroupId === sheetExercise.supersetGroupId,
-          )
-        : undefined;
-
-    let supersetRoundJustCompleted = false;
-    let supersetRoundOrdinal: number | null = null;
-    if (partner) {
-      // The loggedSets snapshot predates this save — include the saved set so
-      // the round check sees our side of the pair.
-      const augmented = new Map(setsByExercise);
-      augmented.set(sheetExercise.id, [
-        ...(setsByExercise.get(sheetExercise.id) ?? []),
-        savedSet,
-      ]);
-      const ordinal = getSlotOrdinal(sheetExercise, sheetBlockIndex, sheetSetIndex);
-      supersetRoundOrdinal = ordinal;
-      supersetRoundJustCompleted = isRoundComplete({
-        exercises: [sheetExercise, partner],
-        setsByExercise: augmented,
-        ordinal,
+  /**
+   * One-tap accept from a primed row. Routes through the same create path as
+   * the sheet (identical timer/superset/upsert semantics — invariant 9), then
+   * offers an 8 s undo that deletes the set and cancels only the rest timer
+   * that this very save started.
+   */
+  async function handleQuickLog(
+    se: SessionExercise,
+    blockIndex: number,
+    setIndex: number,
+    input: SetLogInput,
+  ) {
+    try {
+      const { savedSet, created } = await saveNewSet(se, blockIndex, setIndex, input);
+      if (!created) return;
+      const display = formatQuickTarget(input, getEffectiveUnit(se.unitOverride, units));
+      toast(`⏺ Logged ${display}`, {
+        duration: 8000,
+        action: {
+          label: "Undo",
+          onClick: () => {
+            void (async () => {
+              await deleteSet(db, savedSet.id);
+              setRestTimer((t) => (t && t.loggedSetId === savedSet.id ? null : t));
+            })();
+          },
+        },
       });
-    }
-
-    const start = getRestTimerStartAfterNewSet({
-      session,
-      exerciseName: sheetExercise.exerciseNameSnapshot,
-      isSupersetMember: partner !== undefined,
-      supersetRoundJustCompleted,
-      supersetRoundOrdinal,
-    });
-    if (start) {
-      setRestTimer(makeRunningTimer(start));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to log set");
     }
   }
 
@@ -340,6 +378,7 @@ export default function WorkoutScreen() {
                 loggedSets={setsByExercise.get(se.id) ?? []}
                 globalUnits={units}
                 onSetTap={(bi, si) => handleSetTap(se, bi, si)}
+                onQuickLog={handleQuickLog}
               />
             );
           }
@@ -356,6 +395,7 @@ export default function WorkoutScreen() {
                   loggedSets={setsByExercise.get(se.id) ?? []}
                   globalUnits={units}
                   onSetTap={(bi, si) => handleSetTap(se, bi, si)}
+                  onQuickLog={handleQuickLog}
                 />
               ))}
             </SupersetGroup>
@@ -437,11 +477,18 @@ function ExerciseCardWithHistory({
   loggedSets,
   globalUnits,
   onSetTap,
+  onQuickLog,
 }: {
   sessionExercise: SessionExercise;
   loggedSets: LoggedSet[];
   globalUnits: "kg" | "lbs";
   onSetTap: (blockIndex: number, setIndex: number) => void;
+  onQuickLog?: (
+    se: SessionExercise,
+    blockIndex: number,
+    setIndex: number,
+    input: SetLogInput,
+  ) => Promise<void>;
 }) {
   const effectiveUnits = getEffectiveUnit(sessionExercise.unitOverride, globalUnits);
   const isRoutine = sessionExercise.origin === "routine";
@@ -451,6 +498,11 @@ function ExerciseCardWithHistory({
   );
   const extraHistory = useExtraHistory(
     !isRoutine ? sessionExercise.exerciseId : undefined,
+  );
+  // Best-ever baselines for auto-PR on quick-logged sets — same rule as the
+  // sheet's live detection. Extras never quick-log, so skip their query.
+  const personalBests = useExercisePersonalBests(
+    isRoutine && onQuickLog ? sessionExercise.exerciseId : undefined,
   );
 
   return (
@@ -464,6 +516,24 @@ function ExerciseCardWithHistory({
       onUnitToggle={async (newUnit) => {
         await setUnitOverride(db, sessionExercise.id, newUnit);
       }}
+      onQuickLog={
+        onQuickLog && isRoutine
+          ? async (blockIndex, setIndex, target: QuickTarget) => {
+              // Cardio never auto-PRs (mirrors the sheet's rule); otherwise a
+              // quick-logged set gets the exact isNewPersonalBest verdict a
+              // sheet save would.
+              const isPR =
+                sessionExercise.effectiveType !== "cardio" &&
+                personalBests !== undefined
+                  ? isNewPersonalBest(target, personalBests)
+                  : false;
+              await onQuickLog(sessionExercise, blockIndex, setIndex, {
+                ...target,
+                isPersonalRecord: isPR,
+              });
+            }
+          : undefined
+      }
     />
   );
 }

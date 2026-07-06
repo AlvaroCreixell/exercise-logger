@@ -248,22 +248,28 @@ describe("ExerciseCard — set rows", () => {
 });
 
 describe("ExerciseCard — LAST strip", () => {
-  it("renders 'LAST {set} · {set} · {set}' when historyData.lastTime has sets across blocks", () => {
+  it("renders 'LAST {set} · {set} · {set}' across blocks on multi-block exercises", () => {
     const se = makeSessionExercise({
       setBlocksSnapshot: [
-        { targetKind: "reps", minValue: 8, maxValue: 12, count: 3 } as SetBlock,
+        { targetKind: "reps", minValue: 12, maxValue: 16, count: 1, tag: "top" } as SetBlock,
+        { targetKind: "reps", minValue: 8, maxValue: 12, count: 2 } as SetBlock,
       ],
     });
     const historyData: ExerciseHistoryData = {
       lastTime: [
         {
           blockIndex: 0,
-          blockLabel: "Set block 1",
+          blockLabel: "Top",
+          tag: "top",
+          sets: [{ weightKg: 85, reps: 10, durationSec: null, distanceM: null }],
+        },
+        {
+          blockIndex: 1,
+          blockLabel: "Back-off",
           tag: null,
           sets: [
-            { weightKg: 85, reps: 10, durationSec: null, distanceM: null },
-            { weightKg: 85, reps: 9, durationSec: null, distanceM: null },
-            { weightKg: 85, reps: 8, durationSec: null, distanceM: null },
+            { weightKg: 80, reps: 9, durationSec: null, distanceM: null },
+            { weightKg: 80, reps: 8, durationSec: null, distanceM: null },
           ],
         },
       ],
@@ -279,7 +285,39 @@ describe("ExerciseCard — LAST strip", () => {
         onSetTap={() => {}}
       />,
     );
-    expect(screen.getByText(/LAST 85×10 · 85×9 · 85×8/)).toBeVisible();
+    expect(screen.getByText(/LAST 85×10 · 80×9 · 80×8/)).toBeVisible();
+  });
+
+  it("omits the LAST strip on single-block exercises (row hints already carry it)", () => {
+    const se = makeSessionExercise({
+      setBlocksSnapshot: [
+        { targetKind: "reps", minValue: 8, maxValue: 12, count: 3 } as SetBlock,
+      ],
+    });
+    const historyData: ExerciseHistoryData = {
+      lastTime: [
+        {
+          blockIndex: 0,
+          blockLabel: "Set block 1",
+          tag: null,
+          sets: [{ weightKg: 85, reps: 10, durationSec: null, distanceM: null }],
+        },
+      ],
+      suggestions: [],
+    };
+    render(
+      <ExerciseCard
+        sessionExercise={se}
+        loggedSets={[]}
+        units="kg"
+        historyData={historyData}
+        extraHistory={undefined}
+        onSetTap={() => {}}
+      />,
+    );
+    expect(screen.queryByText(/^LAST\s/)).toBeNull();
+    // The information still reaches the user through the per-row hints.
+    expect(screen.getAllByText(/last 85×10/).length).toBeGreaterThan(0);
   });
 
   it("does not render LAST strip when historyData is undefined", () => {
@@ -325,7 +363,13 @@ describe("ExerciseCard — LAST strip", () => {
 
 describe("ExerciseCard — LAST strip / hint formatting", () => {
   it("renders fractional LAST weight without rounding (70.5, not 71)", () => {
-    const se = makeSessionExercise();
+    // Multi-block: the LAST strip only renders when blocks.length > 1.
+    const se = makeSessionExercise({
+      setBlocksSnapshot: [
+        { targetKind: "reps", minValue: 12, maxValue: 16, count: 1, tag: "top" } as SetBlock,
+        { targetKind: "reps", minValue: 8, maxValue: 12, count: 2 } as SetBlock,
+      ],
+    });
     const historyData = {
       lastTime: [
         {
@@ -765,5 +809,170 @@ describe("ExerciseCard — contextual extra-set visibility (Sprint 2 delta 3)", 
     expect(screen.queryByText(/extra set/i)).toBeNull();
     // Logged row + next empty add-row.
     expect(screen.getAllByRole("button", { name: /^Set \d+/ })).toHaveLength(2);
+  });
+});
+
+describe("ExerciseCard — primed quick-log row (guided logging)", () => {
+  const progressionSuggestion = {
+    blockIndex: 0,
+    suggestedWeightKg: 52.5,
+    isProgression: true,
+    previousWeightKg: 50,
+  };
+  const squatLastTime: ExerciseHistoryData = {
+    lastTime: [
+      {
+        blockIndex: 0,
+        blockLabel: "Set block 1",
+        tag: null,
+        sets: [
+          { weightKg: 50, reps: 12, durationSec: null, distanceM: null },
+          { weightKg: 50, reps: 12, durationSec: null, distanceM: null },
+          { weightKg: 50, reps: 12, durationSec: null, distanceM: null },
+        ],
+      },
+    ],
+    suggestions: [progressionSuggestion],
+  };
+
+  it("primes the first empty prescribed slot and one tap logs the target", async () => {
+    const user = userEvent.setup();
+    const onQuickLog = vi.fn().mockResolvedValue(undefined);
+    render(
+      <ExerciseCard
+        sessionExercise={makeSessionExercise()}
+        loggedSets={[]}
+        units="kg"
+        historyData={squatLastTime}
+        extraHistory={undefined}
+        onSetTap={() => {}}
+        onQuickLog={onQuickLog}
+      />,
+    );
+    // Progression: suggested weight, range-floor reps.
+    const primed = screen.getByRole("button", { name: "Set 1: log 52.5 kg × 8" });
+    expect(primed).toBeVisible();
+    await user.click(primed);
+    expect(onQuickLog).toHaveBeenCalledWith(0, 0, {
+      performedWeightKg: 52.5,
+      performedReps: 8,
+      performedDurationSec: null,
+      performedDistanceM: null,
+    });
+  });
+
+  it("exactly one row is primed; later empty rows keep tap-to-log → sheet", async () => {
+    const user = userEvent.setup();
+    const onSetTap = vi.fn();
+    render(
+      <ExerciseCard
+        sessionExercise={makeSessionExercise()}
+        loggedSets={[]}
+        units="kg"
+        historyData={squatLastTime}
+        extraHistory={undefined}
+        onSetTap={onSetTap}
+        onQuickLog={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+    expect(screen.getAllByRole("button", { name: /: log / })).toHaveLength(1);
+    const laterRow = screen.getByRole("button", { name: /^Set 2: empty/ });
+    await user.click(laterRow);
+    expect(onSetTap).toHaveBeenCalledWith(0, 1);
+  });
+
+  it("the ✎ affordance opens the sheet instead of logging", async () => {
+    const user = userEvent.setup();
+    const onSetTap = vi.fn();
+    const onQuickLog = vi.fn().mockResolvedValue(undefined);
+    render(
+      <ExerciseCard
+        sessionExercise={makeSessionExercise()}
+        loggedSets={[]}
+        units="kg"
+        historyData={squatLastTime}
+        extraHistory={undefined}
+        onSetTap={onSetTap}
+        onQuickLog={onQuickLog}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: /Set 1: adjust before logging/ }));
+    expect(onSetTap).toHaveBeenCalledWith(0, 0);
+    expect(onQuickLog).not.toHaveBeenCalled();
+  });
+
+  it("does not prime anything on day one; empty rows hint the prescription", () => {
+    render(
+      <ExerciseCard
+        sessionExercise={makeSessionExercise()}
+        loggedSets={[]}
+        units="kg"
+        historyData={{ lastTime: [], suggestions: [] }}
+        extraHistory={undefined}
+        onSetTap={() => {}}
+        onQuickLog={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+    expect(screen.queryByRole("button", { name: /: log / })).toBeNull();
+    expect(screen.getAllByText(/Tap to log · last 8–12 reps/).length).toBe(3);
+  });
+
+  it("never primes extra-origin exercises (invariant 7)", () => {
+    const extraSe = makeSessionExercise({
+      id: "se-extra",
+      origin: "extra",
+      setBlocksSnapshot: [],
+    });
+    render(
+      <ExerciseCard
+        sessionExercise={extraSe}
+        loggedSets={[]}
+        units="kg"
+        historyData={undefined}
+        extraHistory={{ sets: [{ weightKg: 20, reps: 12, durationSec: null, distanceM: null }], sessionDate: "2026-07-01T10:00:00.000Z" }}
+        onSetTap={() => {}}
+        onQuickLog={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+    expect(screen.queryByRole("button", { name: /: log / })).toBeNull();
+  });
+
+  it("in-session carryover reprimes the next slot without the progression tone", () => {
+    // Set 1 was logged at 47.5 (a deviation below the 52.5 suggestion): the
+    // next primed row must offer 47.5 and drop the ↑ claim.
+    const deviated = makeLoggedSet({
+      id: "ls-dev",
+      setIndex: 0,
+      performedWeightKg: 47.5,
+      performedReps: 8,
+    });
+    render(
+      <ExerciseCard
+        sessionExercise={makeSessionExercise()}
+        loggedSets={[deviated]}
+        units="kg"
+        historyData={squatLastTime}
+        extraHistory={undefined}
+        onSetTap={() => {}}
+        onQuickLog={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+    const primed = screen.getByRole("button", { name: "Set 2: log 47.5 kg × 8" });
+    expect(primed).toBeVisible();
+    expect(primed.textContent).not.toContain("↑");
+  });
+
+  it("no primed rows at all without onQuickLog (history view)", () => {
+    render(
+      <ExerciseCard
+        sessionExercise={makeSessionExercise()}
+        loggedSets={[]}
+        units="kg"
+        historyData={squatLastTime}
+        extraHistory={undefined}
+        onSetTap={() => {}}
+      />,
+    );
+    expect(screen.queryByRole("button", { name: /: log / })).toBeNull();
   });
 });

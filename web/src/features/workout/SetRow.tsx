@@ -14,8 +14,23 @@ interface SetRowProps {
   isTopBlock: boolean;
   /** Optional "Tap to log · last …" hint text for empty rows. */
   lastHint?: string;
-  /** Triggered on click (opens SetLogSheet). */
+  /**
+   * Primed quick-log state (guided logging, spec §3.2). When set on an empty
+   * row, the row renders `❯ <target> [LOG]` and its tap LOGS the target;
+   * the trailing ✎ button (onEditTap) opens the sheet instead.
+   */
+  primed?: {
+    /** Display target, e.g. "52.5 kg × 8". */
+    display: string;
+    /** True renders the success ↑ treatment; false the repeat (info) tone. */
+    isProgression: boolean;
+    /** Disables the row while a quick-log save is in flight. */
+    saving: boolean;
+  };
+  /** Triggered on click (primed rows: quick-log; otherwise opens SetLogSheet). */
   onClick: () => void;
+  /** The primed row's ✎ affordance — opens the sheet for deviations. */
+  onEditTap?: () => void;
 }
 
 export function SetRow({
@@ -24,9 +39,51 @@ export function SetRow({
   units,
   isTopBlock,
   lastHint,
+  primed,
   onClick,
+  onEditTap,
 }: SetRowProps) {
   const isLogged = loggedSet !== undefined;
+
+  if (!isLogged && primed) {
+    return (
+      <div className="flex w-full items-stretch gap-1.5">
+        <button
+          type="button"
+          onClick={onClick}
+          disabled={primed.saving}
+          aria-label={`Set ${setNumber}: log ${primed.display}`}
+          className="flex min-w-0 flex-1 items-center gap-3 rounded-[var(--radius-set-empty)] border border-accent-cli/70 bg-accent-cli-soft/20 px-3 py-2.5 text-left transition-colors hover:border-accent-cli-bright hover:bg-accent-cli-soft/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-cli/40 disabled:opacity-50 disabled:pointer-events-none"
+        >
+          <span aria-hidden="true" className="shrink-0 text-accent-cli select-none">
+            ❯
+          </span>
+          <span
+            className={`min-w-0 truncate text-value tabular-nums ${
+              primed.isProgression ? "text-success font-semibold" : "text-info font-medium"
+            }`}
+          >
+            {primed.display}
+            {primed.isProgression && <span aria-hidden="true"> ↑</span>}
+          </span>
+          <span className="ml-auto flex shrink-0 items-center gap-2 text-[11px] font-semibold uppercase tracking-wider">
+            {isTopBlock && <span className="text-warm">TOP</span>}
+            <span aria-hidden="true" className="text-accent-cli-bright">
+              [LOG]
+            </span>
+          </span>
+        </button>
+        <button
+          type="button"
+          onClick={onEditTap}
+          aria-label={`Set ${setNumber}: adjust before logging`}
+          className="flex w-11 shrink-0 items-center justify-center rounded-[var(--radius-set-empty)] border border-line text-ink-3 transition-colors hover:border-accent-cli hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-cli/40"
+        >
+          <span aria-hidden="true">✎</span>
+        </button>
+      </div>
+    );
+  }
 
   if (isLogged) {
     const parts = formatLoggedSetParts(loggedSet, units);
