@@ -20,10 +20,10 @@ export function Pill({
       {...rest}
       className={cn(
         "relative inline-flex items-center gap-1 shrink-0 rounded-[var(--radius-pill)] px-2.5 py-0.5 text-xs font-medium transition-colors duration-[var(--dur-base)]",
-        "outline-none focus-visible:ring-2 focus-visible:ring-sage/40",
+        "outline-none focus-visible:ring-2 focus-visible:ring-accent-cli/40",
         selected
-          ? "bg-sage-soft text-sage-deep z-10"
-          : "border border-line bg-background text-foreground hover:bg-sage-soft/50",
+          ? "bg-accent-cli-soft text-accent-cli-bright border border-accent-cli/40 z-10"
+          : "border border-line bg-transparent text-ink-2 hover:border-ink-3 hover:text-foreground",
         className,
       )}
     >
@@ -31,7 +31,7 @@ export function Pill({
       {indicator && !selected && (
         <span
           data-indicator="true"
-          className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-sage"
+          className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-accent-cli"
         />
       )}
     </button>
