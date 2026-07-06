@@ -1035,6 +1035,32 @@ describe("SetLogSheet — auto PR detection (create mode)", () => {
     return screen.getByRole("button", { name: /(mark )?pr/i });
   }
 
+  it("never auto-flags cardio sets, even with distance-only input beating the best", async () => {
+    const user = userEvent.setup();
+    const cardioExtra = makeSessionExercise({
+      effectiveType: "cardio",
+      effectiveEquipment: "cardio",
+      origin: "extra",
+      setBlocksSnapshot: [],
+    });
+    renderSheet({
+      sessionExercise: cardioExtra,
+      personalBests: makeBests({
+        bestWeightKgAtReps: () => null,
+        maxDistanceM: 1000,
+        maxDurationSec: 600,
+      }),
+    });
+    // Type a farther distance than the 1000m best — distance-only shape.
+    // (Cardio extras use plain inputs, not the keypad ValueBoxes.)
+    await user.type(
+      screen.getByLabelText(/distance \(meters\)/i),
+      "5000",
+    );
+    expect(prButton().getAttribute("aria-pressed")).toBe("false");
+    expect(screen.queryByText(/auto/i)).toBeNull();
+  });
+
   it("turns the toggle on with the auto hint when a record-beating weight+reps is typed", async () => {
     const user = userEvent.setup();
     renderSheet({ personalBests: makeBests() });

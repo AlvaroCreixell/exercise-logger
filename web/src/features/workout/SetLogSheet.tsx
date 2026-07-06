@@ -233,10 +233,12 @@ export function SetLogSheet({
   // Effective PR state. CREATE mode: manual override wins; otherwise auto
   // best-ever detection on the in-flight input (off when no personalBests
   // provided). EDIT mode: today's behavior — plain manual toggle prefilled
-  // from existingSet.isPersonalRecord, no auto.
+  // from existingSet.isPersonalRecord, no auto. Cardio never auto-PRs —
+  // a cardio set with only duration or only distance filled would otherwise
+  // slip past the helper's duration+distance rule as a single-measure shape.
   const isCreateMode = existingSet === undefined;
   const autoPR =
-    isCreateMode && personalBests !== undefined
+    isCreateMode && personalBests !== undefined && se.effectiveType !== "cardio"
       ? isNewPersonalBest(parseCurrentInput(), personalBests)
       : false;
   const effectivePR = isCreateMode ? (prOverride ?? autoPR) : isPR;
