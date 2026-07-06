@@ -27,7 +27,7 @@
 
 ### 2. Trend spark-line + best-lift summary (Worker B)
 - Pure helpers `web/src/features/history/lib/trendPoints.ts`:
-  - `buildTrendPoints(groups: ExerciseHistoryGroup[], limit = 12)` — per session,
+  - `buildTrendSeries(groups: ExerciseHistoryGroup[], limit = 12)` — per session,
     the top-set value. Measure priority across all groups: weight → reps →
     duration → distance; sessions lacking the chosen measure are skipped.
     Ascending by date, last `limit` sessions. Values canonical (kg/m/sec).

@@ -476,6 +476,75 @@ describe("WorkoutScreen — rest timer", () => {
   });
 });
 
+describe("WorkoutScreen — auto-PR wiring", () => {
+  beforeEach(async () => {
+    await Promise.all([
+      db.settings.clear(),
+      db.routines.clear(),
+      db.exercises.clear(),
+      db.sessions.clear(),
+      db.sessionExercises.clear(),
+      db.loggedSets.clear(),
+    ]);
+    await initializeSettings(db);
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.restoreAllMocks();
+  });
+
+  it("auto-flags a record-beating set and persists isPersonalRecord", async () => {
+    const routine = await seedRoutineAndExercises();
+    // Prior best for bench: 60kg × 10, logged in some earlier session.
+    await db.loggedSets.put({
+      id: "prior-1",
+      sessionId: "old-session",
+      sessionExerciseId: "old-se",
+      exerciseId: "barbell-bench-press",
+      instanceLabel: "",
+      origin: "routine",
+      blockIndex: 0,
+      blockSignature: "reps:8-12:count2:tagnormal",
+      setIndex: 0,
+      tag: null,
+      performedWeightKg: 60,
+      performedReps: 10,
+      performedDurationSec: null,
+      performedDistanceM: null,
+      loggedAt: "2026-06-01T10:00:00.000Z",
+      updatedAt: "2026-06-01T10:00:00.000Z",
+    });
+    await startSessionWithCatalog(db, routine, "A");
+    const user = userEvent.setup();
+
+    renderWorkout();
+
+    const rows = await screen.findAllByRole("button", { name: /^Set \d+:/ });
+    await user.click(rows[0]!);
+    await screen.findByRole("button", { name: /^save$/i });
+
+    // Reps prefill to the block minimum ("8"); type 100 (kg) into Weight.
+    await user.click(screen.getByRole("button", { name: "Weight value" }));
+    const keypad = screen.getByRole("group", { name: /numeric keypad/i });
+    await user.click(within(keypad).getByRole("button", { name: "1" }));
+    await user.click(within(keypad).getByRole("button", { name: "0" }));
+    await user.click(within(keypad).getByRole("button", { name: "0" }));
+
+    // The auto hint proves personalBests reached the sheet.
+    await waitFor(() => {
+      expect(screen.getByText("auto")).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole("button", { name: /^save$/i }));
+    await waitFor(async () => {
+      const sets = await db.loggedSets.toArray();
+      const saved = sets.find((s) => s.performedWeightKg === 100);
+      expect(saved?.isPersonalRecord).toBe(true);
+    });
+  });
+});
+
 describe("WorkoutScreen — superset rhythm integration", () => {
   beforeEach(async () => {
     await Promise.all([
