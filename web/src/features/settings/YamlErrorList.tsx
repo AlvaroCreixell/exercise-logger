@@ -17,6 +17,7 @@ export function YamlErrorList({ errors }: YamlErrorListProps) {
       className="rounded-[var(--radius-card)] border border-destructive/40 bg-destructive/5 px-4 py-3 space-y-3"
     >
       <p className="text-eyebrow text-destructive">
+        <span aria-hidden="true" className="mr-1.5 select-none">✗</span>
         {summary}
       </p>
       <ul className="space-y-2">

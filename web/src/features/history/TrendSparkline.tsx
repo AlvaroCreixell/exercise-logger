@@ -89,13 +89,13 @@ export function TrendSparkline({ series, units }: TrendSparklineProps) {
         <polyline
           points={coords.map((c) => `${c.x},${c.y}`).join(" ")}
           fill="none"
-          className="stroke-sage-deep"
+          className="stroke-accent-cli-bright"
           strokeWidth={2}
           strokeLinecap="round"
           strokeLinejoin="round"
           vectorEffect="non-scaling-stroke"
         />
-        <circle cx={last.x} cy={last.y} r={3} className="fill-sage-deep" />
+        <circle cx={last.x} cy={last.y} r={3} className="fill-accent-cli-bright" />
       </svg>
     </div>
   );

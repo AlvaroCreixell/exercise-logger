@@ -54,9 +54,11 @@ export function TodayHeroCard({
             {muscleGroups.map((group) => (
               <li
                 key={group}
-                className="inline-flex items-center rounded-[var(--radius-pill)] border border-line bg-background px-2.5 py-0.5 text-xs font-medium text-foreground"
+                className="inline-flex items-center text-eyebrow text-ink-2"
               >
+                <span aria-hidden="true" className="text-ink-3 select-none">[</span>
                 {group}
+                <span aria-hidden="true" className="text-ink-3 select-none">]</span>
               </li>
             ))}
           </ul>

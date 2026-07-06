@@ -12,6 +12,7 @@ import { Back, Dumbbell } from "@/shared/icons";
 import { buttonVariants } from "@/shared/ui/button";
 import { cn } from "@/shared/lib/utils";
 import { EmptyState } from "@/shared/components/EmptyState";
+import { PromptHeading } from "@/shared/components/PromptHeading";
 import { SectionHeader } from "@/shared/components/SectionHeader";
 import { TrendSparkline } from "./TrendSparkline";
 import { buildTrendSeries, bestLiftSummary } from "./lib/trendPoints";
@@ -101,7 +102,7 @@ export default function ExerciseHistoryScreen() {
         <Back size={16} className="mr-1" />Back
       </button>
 
-      <h1 className="text-2xl font-extrabold tracking-tight font-heading">{name}</h1>
+      <PromptHeading command={name} />
 
       {trend && summary && (
         <div className="space-y-3">
@@ -173,7 +174,7 @@ export default function ExerciseHistoryScreen() {
                                 <span key={si} className="text-sm tabular-nums font-medium">
                                   {formatLoggedSet(ls, entryUnits, { fallback: "" })}
                                   {ls.isPersonalRecord === true && (
-                                    <span className="ml-1 text-[10px] font-semibold uppercase tracking-wider text-sage-deep">
+                                    <span className="ml-1 text-[10px] font-semibold uppercase tracking-wider text-accent-cli-bright">
                                       PR
                                     </span>
                                   )}

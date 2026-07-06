@@ -75,7 +75,7 @@ export function ExercisePicker({
                     onPick(ex.id);
                     onOpenChange(false);
                   }}
-                  className="flex w-full items-center justify-between gap-3 border-b border-line-soft px-3 py-3 text-left transition-colors hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage/40"
+                  className="flex w-full items-center justify-between gap-3 border-b border-line-soft px-3 py-3 text-left transition-colors hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-cli/40"
                 >
                   <div className="min-w-0 flex-1" aria-hidden="true">
                     <p className="truncate text-sm font-medium text-foreground">{ex.name}</p>

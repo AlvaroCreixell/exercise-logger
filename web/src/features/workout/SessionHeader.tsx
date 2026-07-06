@@ -1,4 +1,5 @@
 import { Close } from "@/shared/icons";
+import { PromptHeading } from "@/shared/components/PromptHeading";
 
 interface SessionHeaderProps {
   dayId: string;
@@ -24,18 +25,16 @@ export function SessionHeader({
     <div className="sticky top-0 z-10 border-b border-line bg-background">
       <div className="flex items-start gap-3 px-5 pt-3 pb-2">
         <div className="min-w-0 flex-1">
-          <p className="text-eyebrow text-sage-deep tabular-nums">
+          <p className="text-eyebrow text-accent-cli-bright tabular-nums">
             Day {dayId.toUpperCase()} · {formatElapsed(elapsedSec)} elapsed
           </p>
-          <h1 className="font-heading text-2xl font-bold tracking-tight text-foreground truncate">
-            {dayLabel}
-          </h1>
+          <PromptHeading command={dayLabel} detail="--active" />
         </div>
         <button
           type="button"
           aria-label="Close workout"
           onClick={onClose}
-          className="shrink-0 -mr-1 mt-0.5 inline-flex h-9 w-9 items-center justify-center rounded-[var(--radius-pill)] text-ink-3 hover:bg-sage-soft/50 hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage/40"
+          className="shrink-0 -mr-1 mt-0.5 inline-flex h-9 w-9 items-center justify-center rounded-[var(--radius-pill)] text-ink-3 hover:bg-accent-cli-soft/50 hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-cli/40"
         >
           <Close size={18} />
         </button>

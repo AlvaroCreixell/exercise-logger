@@ -33,8 +33,8 @@ export function SupersetRoundRail({ items }: SupersetRoundRailProps) {
               }
               className={cn(
                 "inline-flex items-center gap-1 rounded-[var(--radius-pill)] px-2 py-0.5 text-[11px] font-semibold tabular-nums",
-                isComplete && "bg-sage-deep text-paper",
-                isCurrent && "border border-sage-deep bg-sage-soft text-sage-deep",
+                isComplete && "bg-accent-cli-bright text-paper",
+                isCurrent && "border border-accent-cli-bright bg-accent-cli-soft text-accent-cli-bright",
                 !isComplete && !isCurrent && "border border-line bg-background text-ink-3",
               )}
             >

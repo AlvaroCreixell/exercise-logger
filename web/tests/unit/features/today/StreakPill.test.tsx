@@ -18,12 +18,10 @@ describe("StreakPill", () => {
     expect(container.firstChild).toBeNull();
   });
 
-  it("applies sage-soft palette classes", () => {
+  it("applies terminal bracket-tag palette classes", () => {
     const { container } = render(<StreakPill count={2} />);
     const el = container.firstChild as HTMLElement;
-    expect(el.className).toMatch(/bg-sage-soft/);
-    expect(el.className).toMatch(/text-sage-deep/);
-    expect(el.className).toMatch(/rounded-\[var\(--radius-pill\)\]/);
+    expect(el.className).toMatch(/text-accent-cli-bright/);
   });
 
   it("renders the Flame icon", () => {

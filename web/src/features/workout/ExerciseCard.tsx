@@ -131,8 +131,20 @@ export function ExerciseCard({
         {/* Header */}
         <div className="flex items-start gap-2">
           <div className="min-w-0 flex-1">
-            <h3 className="font-heading text-lg font-bold tracking-tight text-foreground truncate">
-              {se.exerciseNameSnapshot}
+            <h3 className="flex items-baseline gap-2 font-heading text-lg font-bold tracking-tight text-foreground">
+              <span
+                aria-hidden="true"
+                className={`shrink-0 text-xs select-none ${
+                  totalPrescribed > 0 && totalLogged >= totalPrescribed
+                    ? "text-success"
+                    : totalLogged > 0 || loggedSets.length > 0
+                      ? "text-accent-cli"
+                      : "text-ink-3"
+                }`}
+              >
+                ⏺
+              </span>
+              <span className="min-w-0 truncate">{se.exerciseNameSnapshot}</span>
             </h3>
             {blocks.length > 0 && (
               <p className="text-meta tabular-nums">
@@ -151,7 +163,7 @@ export function ExerciseCard({
           {onUnitToggle && (
             <button
               type="button"
-              className="shrink-0 rounded-[var(--radius-pill)] border border-line px-2 py-0.5 text-[11px] font-medium tabular-nums text-ink-3 transition-colors hover:border-sage hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage/40"
+              className="shrink-0 rounded-[var(--radius-pill)] border border-line px-2 py-0.5 text-[11px] font-medium tabular-nums text-ink-3 transition-colors hover:border-accent-cli hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-cli/40"
               onClick={(e) => {
                 e.stopPropagation();
                 onUnitToggle(units === "kg" ? "lbs" : "kg");
@@ -211,7 +223,7 @@ export function ExerciseCard({
                           : "Add extra set"
                       }
                       onClick={() => addExtraSet(bi)}
-                      className="ml-9 text-meta hover:text-sage-deep transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage/40 rounded-sm py-1"
+                      className="ml-9 text-meta hover:text-accent-cli-bright transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-cli/40 rounded-sm py-1"
                     >
                       Extra set
                     </button>,

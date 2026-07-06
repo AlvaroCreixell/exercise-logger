@@ -19,6 +19,11 @@ export function SectionHeader({ children, className, id, variant = "default" }: 
         className,
       )}
     >
+      {variant === "default" && (
+        <span aria-hidden="true" className="mr-1.5 text-accent-cli/70 select-none">
+          #
+        </span>
+      )}
       {children}
     </p>
   );

@@ -12,7 +12,7 @@ export interface ChipWithDescriptionProps {
 }
 
 const cardBase =
-  "flex flex-col gap-1 rounded-[var(--radius-card)] border border-[var(--line)] bg-paper p-4 text-left transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage/40";
+  "flex flex-col gap-1 rounded-[var(--radius-card)] border border-[var(--line)] bg-paper p-4 text-left transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-cli/40";
 const cardSelected = "bg-ink text-paper border-ink";
 const titleCls = "text-sm font-medium";
 const descSelected = "text-xs text-paper/75";

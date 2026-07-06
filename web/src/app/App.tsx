@@ -56,7 +56,12 @@ function LoadingState({ fullscreen = false }: { fullscreen?: boolean }) {
         fullscreen ? "h-screen" : "h-full min-h-40"
       }`}
     >
-      <p className="text-sm text-muted-foreground">Loading...</p>
+      <p className="flex items-center gap-2 text-sm text-muted-foreground">
+        <span aria-hidden="true" className="animate-glyph-pulse text-accent-cli select-none">
+          ✻
+        </span>
+        Loading...
+      </p>
     </div>
   );
 }
@@ -95,9 +100,9 @@ function AppShell() {
               to={to}
               end={to === "/"}
               className={({ isActive }) =>
-                `relative flex flex-col items-center gap-0.5 px-3 py-2 text-xs transition-all duration-[var(--dur-base)] focus-visible:ring-2 focus-visible:ring-sage/40 outline-none active:scale-95 rounded-[var(--radius-pill)] ${
+                `relative flex flex-col items-center gap-0.5 px-3 py-2 text-xs lowercase transition-all duration-[var(--dur-base)] focus-visible:ring-2 focus-visible:ring-accent-cli/40 outline-none active:scale-95 rounded-[var(--radius-button)] ${
                   isActive
-                    ? "text-sage-deep font-semibold"
+                    ? "text-accent-cli font-semibold"
                     : "text-ink-3 hover:text-foreground"
                 }`
               }
@@ -105,17 +110,11 @@ function AppShell() {
             >
               {({ isActive }) => (
                 <>
-                  {isActive && (
-                    <span
-                      className="absolute inset-x-1 inset-y-0.5 -z-0 rounded-[var(--radius-pill)] bg-sage-soft"
-                      aria-hidden="true"
-                    />
-                  )}
                   <Icon
-                    className="relative z-10 h-5 w-5"
+                    className="h-5 w-5"
                     strokeWidth={isActive ? 2.5 : 2}
                   />
-                  <span className="relative z-10">{label}</span>
+                  <span>{label}</span>
                 </>
               )}
             </NavLink>
@@ -227,11 +226,12 @@ export default function App() {
       </BrowserRouter>
       <Toaster
         position="top-center"
-        richColors
+        theme="dark"
         closeButton
         duration={3000}
         toastOptions={{
-          className: "!rounded-[var(--radius-card)] !border !border-line font-sans",
+          className:
+            "!rounded-[var(--radius-card)] !border !border-line !bg-card !text-foreground font-sans",
         }}
       />
       <SWUpdatePrompt />

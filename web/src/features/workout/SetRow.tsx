@@ -45,11 +45,11 @@ export function SetRow({
         type="button"
         onClick={onClick}
         aria-label={`Set ${setNumber}: ${primary}${unit ?? ""}${ariaSecondary}${ariaTertiary}`}
-        className="flex w-full items-center gap-3 rounded-[var(--radius-set-logged)] bg-sage-soft px-3 py-2.5 text-left transition-colors hover:bg-sage-soft/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage/40"
+        className="flex w-full items-center gap-3 rounded-[var(--radius-set-logged)] bg-accent-cli-soft px-3 py-2.5 text-left transition-colors hover:bg-accent-cli-soft/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-cli/40"
       >
         <span
           aria-hidden="true"
-          className="inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-sage-deep text-paper"
+          className="inline-flex size-6 shrink-0 items-center justify-center rounded-[4px] bg-accent-cli-bright text-paper"
         >
           <Check size={14} />
         </span>
@@ -72,7 +72,7 @@ export function SetRow({
         </span>
         <span className="ml-auto flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider">
           {showTop && <span className="text-warm">TOP</span>}
-          {showPR && <span className="text-sage-deep">↑ PR</span>}
+          {showPR && <span className="text-accent-cli-bright">↑ PR</span>}
         </span>
       </button>
     );
@@ -83,11 +83,11 @@ export function SetRow({
       type="button"
       onClick={onClick}
       aria-label={`Set ${setNumber}: empty, tap to log${lastHint ? `, last ${lastHint}` : ""}`}
-      className="flex w-full items-center gap-3 rounded-[var(--radius-set-empty)] border border-line bg-background px-3 py-2.5 text-left transition-colors hover:border-sage hover:bg-sage-soft/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage/40"
+      className="flex w-full items-center gap-3 rounded-[var(--radius-set-empty)] border border-line bg-background px-3 py-2.5 text-left transition-colors hover:border-accent-cli hover:bg-accent-cli-soft/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-cli/40"
     >
       <span
         aria-hidden="true"
-        className="inline-flex size-6 shrink-0 items-center justify-center rounded-full border border-line text-ink-3 text-xs font-semibold tabular-nums"
+        className="inline-flex size-6 shrink-0 items-center justify-center rounded-[4px] border border-line text-ink-3 text-xs font-semibold tabular-nums"
       >
         {setNumber}
       </span>

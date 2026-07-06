@@ -100,9 +100,12 @@ export default function OnboardingWelcomeScreen() {
         <h1
           ref={headingRef}
           tabIndex={-1}
-          className="text-hero-serif italic text-ink focus:outline-none"
+          className="flex items-baseline gap-2 text-hero-serif text-ink focus:outline-none"
         >
-          Your starter routine is ready.
+          <span aria-hidden="true" className="shrink-0 text-accent-cli select-none">
+            ❯
+          </span>
+          <span>Your starter routine is ready.</span>
         </h1>
         <p className="text-sm text-ink-2 leading-relaxed">
           Three rotating days you can train today. Or build a personalized

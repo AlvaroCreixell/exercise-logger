@@ -11,6 +11,8 @@ import { startSessionWithCatalog } from "@/services/session-service";
 import { db } from "@/db/database";
 import { Card, CardContent } from "@/shared/ui/card";
 import { EmptyState } from "@/shared/components/EmptyState";
+import { PromptHeading } from "@/shared/components/PromptHeading";
+import { SectionHeader } from "@/shared/components/SectionHeader";
 import { StreakPill } from "./StreakPill";
 import { TodayHeroCard } from "./TodayHeroCard";
 import { DaySelector } from "./DaySelector";
@@ -73,17 +75,17 @@ export default function TodayScreen() {
     return (
       <div className="p-5 space-y-5">
         <Link to="/workout" className="block">
-          <Card className="border border-sage bg-sage-soft/50 hover:bg-sage-soft transition-colors">
+          <Card className="border border-accent-cli bg-accent-cli-soft/50 hover:bg-accent-cli-soft transition-colors">
             <CardContent className="space-y-1 p-5">
-              <p className="text-eyebrow text-sage-deep">In progress</p>
+              <p className="text-eyebrow text-accent-cli-bright">
+                <span aria-hidden="true" className="mr-1.5 select-none">⏺</span>
+                In progress
+              </p>
               <h2 className="font-heading text-xl font-bold tracking-tight">
                 Resume workout
               </h2>
               <p className="text-meta flex items-center gap-1.5">
-                <span
-                  aria-hidden="true"
-                  className="inline-block size-1.5 rounded-full bg-sage"
-                />
+                <span aria-hidden="true" className="text-ink-3 select-none">⎿</span>
                 {elapsed} min · {activeSession.session.routineNameSnapshot} · {activeSession.session.dayLabelSnapshot}
               </p>
             </CardContent>
@@ -125,9 +127,9 @@ export default function TodayScreen() {
       <div className="flex-1 space-y-5 overflow-y-auto p-5">
         <p className="text-eyebrow text-ink-3">{formatTodayEyebrow(new Date())}</p>
 
-        <h1 className="text-hero-serif italic text-foreground">
-          {settings.userName ? `Hi, ${settings.userName}.` : "Hello."}
-        </h1>
+        <PromptHeading
+          command={settings.userName ? `Hi, ${settings.userName}.` : "Hello."}
+        />
 
         {settings.lastGeneratedPrompt !== null &&
           settings.onboardingBannerDismissedAt === null && (
@@ -154,7 +156,7 @@ export default function TodayScreen() {
         />
 
         <div className="space-y-3 pt-2">
-          <p className="text-eyebrow text-ink-3">Switch day</p>
+          <SectionHeader>Switch day</SectionHeader>
           <DaySelector
             routine={routine}
             selectedDayId={selectedId}

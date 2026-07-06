@@ -26,7 +26,7 @@ export function SessionDetailExerciseCard({
       <CardContent className="space-y-3 px-4 py-4">
         <Link
           to={`/history/exercise/${exerciseId}`}
-          className="inline-block text-sm font-semibold text-foreground hover:text-sage-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage/40 rounded-sm"
+          className="inline-block text-sm font-semibold text-foreground hover:text-accent-cli-bright focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-cli/40 rounded-sm"
         >
           {exerciseName}
         </Link>
@@ -37,7 +37,7 @@ export function SessionDetailExerciseCard({
                 <button
                   type="button"
                   onClick={() => onSetTap(set.blockIndex, set.setIndex)}
-                  className="inline-flex items-center rounded-[var(--radius-pill)] bg-sage-soft px-2.5 py-1 text-xs font-medium tabular-nums text-sage-deep transition-colors hover:bg-sage-soft/70 focus-visible:ring-2 focus-visible:ring-sage/40 outline-none"
+                  className="inline-flex items-center rounded-[var(--radius-pill)] bg-accent-cli-soft px-2.5 py-1 text-xs font-medium tabular-nums text-accent-cli-bright transition-colors hover:bg-accent-cli-soft/70 focus-visible:ring-2 focus-visible:ring-accent-cli/40 outline-none"
                 >
                   {formatLoggedSet(set, units)}
                 </button>

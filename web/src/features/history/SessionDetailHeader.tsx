@@ -1,5 +1,6 @@
 import { Link } from "react-router";
 import { Back } from "@/shared/icons";
+import { PromptHeading } from "@/shared/components/PromptHeading";
 import type { Session } from "@/domain/types";
 import { formatShortDuration } from "@/shared/lib/sessionStats";
 
@@ -23,16 +24,14 @@ export function SessionDetailHeader({ session }: SessionDetailHeaderProps) {
       <Link
         to="/history"
         aria-label="Back"
-        className="inline-flex h-10 w-10 items-center justify-center rounded-[var(--radius-pill)] text-foreground hover:bg-sage-soft/50 transition-colors"
+        className="inline-flex h-10 w-10 items-center justify-center rounded-[var(--radius-pill)] text-foreground hover:bg-accent-cli-soft/50 transition-colors"
       >
         <Back />
       </Link>
 
       <div className="space-y-1">
         <p className="text-eyebrow text-ink-3">{formatEyebrow(session)}</p>
-        <h1 className="text-hero-serif text-foreground">
-          {session.dayLabelSnapshot}
-        </h1>
+        <PromptHeading command={session.dayLabelSnapshot} />
       </div>
     </div>
   );

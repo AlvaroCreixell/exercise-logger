@@ -23,7 +23,7 @@ interface LinkRowLinkProps extends BaseProps {
 type RowLinkProps = ButtonRowLinkProps | LinkRowLinkProps;
 
 const BASE_CLASSES =
-  "flex w-full items-center gap-3 px-5 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage/40 disabled:pointer-events-none disabled:opacity-50 hover:bg-sage-soft/40";
+  "flex w-full items-center gap-3 px-5 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-cli/40 disabled:pointer-events-none disabled:opacity-50 hover:bg-accent-cli-soft/40";
 
 export function RowLink(props: RowLinkProps) {
   const { label, sublabel, variant = "default", disabled } = props;

@@ -24,9 +24,9 @@ export function SupersetGroup({ children, exercises, setsByExercise }: SupersetG
     : null;
 
   return (
-    <div className="border-l-2 border-sage-deep pl-4 space-y-3">
+    <div className="border-l-2 border-accent-cli-bright pl-4 space-y-3">
       <div className="space-y-0.5">
-        <SectionHeader className="!text-sage-deep">Superset</SectionHeader>
+        <SectionHeader className="!text-accent-cli-bright">Superset</SectionHeader>
         {hasRhythmData && (
           <p className="text-meta">Alternate A then B before resting</p>
         )}
@@ -38,7 +38,7 @@ export function SupersetGroup({ children, exercises, setsByExercise }: SupersetG
             if (!side) return child;
             return (
               <div key={side} data-superset-side={side} className="space-y-1">
-                <p className="text-eyebrow text-sage-deep">{side}</p>
+                <p className="text-eyebrow text-accent-cli-bright">{side}</p>
                 {child}
               </div>
             );

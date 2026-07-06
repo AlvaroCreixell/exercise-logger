@@ -25,8 +25,8 @@ describe("Pill", () => {
         A
       </Pill>,
     );
-    expect(screen.getByRole("button").className).toMatch(/bg-sage-soft/);
-    expect(screen.getByRole("button").className).toMatch(/text-sage-deep/);
+    expect(screen.getByRole("button").className).toMatch(/bg-accent-cli-soft/);
+    expect(screen.getByRole("button").className).toMatch(/text-accent-cli-bright/);
   });
 
   it("applies unselected styling when selected=false", () => {

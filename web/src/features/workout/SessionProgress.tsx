@@ -12,10 +12,10 @@ export function SessionProgress({
   return (
     <div className="px-5 pb-3">
       <div className="flex items-center gap-3">
-        <div className="relative h-1 flex-1 overflow-hidden rounded-[var(--radius-pill)] bg-line-soft">
+        <div className="relative h-1 flex-1 overflow-hidden rounded-[2px] bg-line-soft">
           <div
             data-progress-bar
-            className="absolute inset-y-0 left-0 bg-sage transition-all duration-[var(--dur-base)]"
+            className="absolute inset-y-0 left-0 bg-accent-cli transition-all duration-[var(--dur-base)]"
             style={{ width: `${pct}%` }}
           />
         </div>

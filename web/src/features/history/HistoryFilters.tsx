@@ -12,10 +12,10 @@ interface HistoryFiltersProps {
 
 function chipClass(active: boolean): string {
   return cn(
-    "rounded-[var(--radius-pill)] border px-3 py-1 text-[11px] font-semibold uppercase tracking-widest transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage/40",
+    "rounded-[var(--radius-pill)] border px-3 py-1 text-[11px] font-semibold uppercase tracking-widest transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-cli/40",
     active
-      ? "border-sage-deep bg-sage-deep text-paper"
-      : "border-line bg-background text-ink-3 hover:border-sage hover:text-sage-deep",
+      ? "border-accent-cli-bright bg-accent-cli-bright text-paper"
+      : "border-line bg-background text-ink-3 hover:border-accent-cli hover:text-accent-cli-bright",
   );
 }
 
@@ -58,7 +58,7 @@ export function HistoryFilters({
         placeholder="Search exercise…"
         value={query}
         onChange={(e) => onQueryChange(e.target.value)}
-        className="w-full rounded-[var(--radius-card)] border border-line bg-card px-3 py-2 text-sm text-foreground transition-colors placeholder:text-ink-3 focus-visible:border-sage focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage/40"
+        className="w-full rounded-[var(--radius-card)] border border-line bg-card px-3 py-2 text-sm text-foreground transition-colors placeholder:text-ink-3 focus-visible:border-accent-cli focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-cli/40"
       />
     </div>
   );
