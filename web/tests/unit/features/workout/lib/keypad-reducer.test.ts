@@ -36,3 +36,23 @@ describe("applyKeypadKey", () => {
     expect(applyKeypadKey("", "back")).toBe("");
   });
 });
+
+describe("applyKeypadKey: pristine replace", () => {
+  it("first digit replaces the whole prefilled value", () => {
+    expect(applyKeypadKey("52.5", "1", true)).toBe("1");
+    expect(applyKeypadKey("12", "0", true)).toBe("0");
+  });
+
+  it("decimal on a pristine value starts fresh as 0.", () => {
+    expect(applyKeypadKey("12", ".", true)).toBe("0.");
+  });
+
+  it("backspace on a pristine value edits it in place (append mode)", () => {
+    expect(applyKeypadKey("12", "back", true)).toBe("1");
+  });
+
+  it("pristine=false keeps today's append behavior", () => {
+    expect(applyKeypadKey("12", "1", false)).toBe("121");
+    expect(applyKeypadKey("12", "1")).toBe("121");
+  });
+});
