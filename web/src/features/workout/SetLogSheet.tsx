@@ -13,6 +13,7 @@ import type { UnitSystem } from "@/domain/enums";
 import type { BlockSuggestion, BlockLastTime } from "@/services/progression-service";
 import { getBlockLabel } from "@/services/progression-service";
 import { toDisplayWeight, toCanonicalKg } from "@/domain/unit-conversion";
+import { isNewPersonalBest, type PersonalBests } from "@/domain/personal-records";
 import { toast } from "sonner";
 import { isSetInputEmpty } from "./set-log-validation";
 import { SetDots } from "./SetDots";
@@ -49,6 +50,12 @@ interface SetLogSheetProps {
    * weight carryover on new slots. Default [] = carryover disabled.
    */
   blockSetsInSession?: LoggedSet[];
+  /**
+   * All-time bests for this exercise (from useExercisePersonalBests). When
+   * present, CREATE mode auto-defaults the PR toggle on record-beating input.
+   * Absent = today's behavior (plain manual toggle).
+   */
+  personalBests?: PersonalBests;
   units: UnitSystem;
   onSave: (input: {
     performedWeightKg: number | null;
@@ -72,6 +79,7 @@ export function SetLogSheet({
   suggestion,
   lastTime,
   blockSetsInSession = [],
+  personalBests,
   units,
   onSave,
   onDelete,
@@ -96,6 +104,10 @@ export function SetLogSheet({
   const [duration, setDuration] = useState("");
   const [distance, setDistance] = useState("");
   const [isPR, setIsPR] = useState(false);
+  // Create-mode manual PR override: null = follow auto detection; a boolean
+  // means the user tapped the toggle and their choice sticks until the sheet
+  // closes. Edit mode ignores this entirely (plain isPR toggle).
+  const [prOverride, setPrOverride] = useState<boolean | null>(null);
   const [showWeightForBodyweight, setShowWeightForBodyweight] = useState(false);
   const [saving, setSaving] = useState(false);
   const [savePulse, setSavePulse] = useState(false);
@@ -118,6 +130,7 @@ export function SetLogSheet({
     prevOpenRef.current = true;
 
     setShowWeightForBodyweight(false);
+    setPrOverride(null);
 
     if (existingSet) {
       // Priority 1: current logged value (edit mode)
@@ -200,16 +213,39 @@ export function SetLogSheet({
 
   const handleSaveRef = useRef<() => Promise<void>>(() => Promise.resolve());
 
-  async function handleSave() {
+  /**
+   * Parse the current field strings to canonical values — the single source
+   * of truth for both saving and live auto-PR detection, so the toggle can
+   * never disagree with what actually gets saved.
+   */
+  function parseCurrentInput() {
     const w = weight.trim() ? parseFloat(weight) : null;
-    const input = {
+    return {
       performedWeightKg: w != null ? toCanonicalKg(w, units) : null,
       performedReps: reps.trim() ? parseInt(reps, 10) : null,
       performedDurationSec: duration.trim()
         ? (durationInMinutes ? Math.round(parseFloat(duration) * 60) : parseInt(duration, 10))
         : null,
       performedDistanceM: distance.trim() ? parseFloat(distance) : null,
-      isPersonalRecord: isPR,
+    };
+  }
+
+  // Effective PR state. CREATE mode: manual override wins; otherwise auto
+  // best-ever detection on the in-flight input (off when no personalBests
+  // provided). EDIT mode: today's behavior — plain manual toggle prefilled
+  // from existingSet.isPersonalRecord, no auto.
+  const isCreateMode = existingSet === undefined;
+  const autoPR =
+    isCreateMode && personalBests !== undefined
+      ? isNewPersonalBest(parseCurrentInput(), personalBests)
+      : false;
+  const effectivePR = isCreateMode ? (prOverride ?? autoPR) : isPR;
+  const isAutoPR = isCreateMode && prOverride === null && autoPR;
+
+  async function handleSave() {
+    const input = {
+      ...parseCurrentInput(),
+      isPersonalRecord: effectivePR,
     };
     if (isSetInputEmpty(targetKind, input, { cardioExtra: isCardioExtra })) {
       const requiredField = isCardioExtra
@@ -478,7 +514,18 @@ export function SetLogSheet({
 
         <div className="space-y-2 pb-2 shrink-0">
           <div className="flex justify-end pb-1">
-            <PrToggle value={isPR} onChange={setIsPR} />
+            <PrToggle
+              value={effectivePR}
+              auto={isAutoPR}
+              onChange={(next) => {
+                if (isCreateMode) {
+                  // Tap = negate the current effective value; sticks until close.
+                  setPrOverride(next);
+                } else {
+                  setIsPR(next);
+                }
+              }}
+            />
           </div>
           <Button
             variant="default"
