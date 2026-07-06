@@ -56,7 +56,12 @@ function LoadingState({ fullscreen = false }: { fullscreen?: boolean }) {
         fullscreen ? "h-screen" : "h-full min-h-40"
       }`}
     >
-      <p className="text-sm text-muted-foreground">Loading...</p>
+      <p className="flex items-center gap-2 text-sm text-muted-foreground">
+        <span aria-hidden="true" className="animate-glyph-pulse text-accent-cli select-none">
+          ✻
+        </span>
+        Loading...
+      </p>
     </div>
   );
 }
@@ -227,11 +232,12 @@ export default function App() {
       </BrowserRouter>
       <Toaster
         position="top-center"
-        richColors
+        theme="dark"
         closeButton
         duration={3000}
         toastOptions={{
-          className: "!rounded-[var(--radius-card)] !border !border-line font-sans",
+          className:
+            "!rounded-[var(--radius-card)] !border !border-line !bg-card !text-foreground font-sans",
         }}
       />
       <SWUpdatePrompt />
