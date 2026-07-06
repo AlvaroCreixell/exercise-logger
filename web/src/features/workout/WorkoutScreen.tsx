@@ -9,6 +9,7 @@ import { logSet, editSet, deleteSet } from "@/services/set-service";
 import { addExtraExercise, finishSession, discardSession } from "@/services/session-service";
 import { setUnitOverride } from "@/services/settings-service";
 import { getEffectiveUnit } from "@/domain/unit-helpers";
+import { useExercisePersonalBests } from "@/shared/hooks/useExercisePersonalBests";
 import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
 import { ExerciseCard } from "./ExerciseCard";
 import { SetLogSheet } from "./SetLogSheet";
@@ -502,6 +503,7 @@ function SetLogSheetWithHistory({
     isRoutine ? sessionExercise : undefined,
     effectiveUnits,
   );
+  const personalBests = useExercisePersonalBests(sessionExercise.exerciseId);
 
   const suggestion = historyData?.suggestions.find(
     (s) => s.blockIndex === blockIndex,
@@ -519,6 +521,7 @@ function SetLogSheetWithHistory({
       suggestion={suggestion}
       lastTime={lastTime}
       blockSetsInSession={blockSetsInSession}
+      personalBests={personalBests}
       units={effectiveUnits}
       onSave={onSave}
       onDelete={onDelete}

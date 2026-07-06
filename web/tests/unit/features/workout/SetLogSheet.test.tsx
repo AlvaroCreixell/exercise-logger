@@ -6,6 +6,7 @@ import userEvent from "@testing-library/user-event";
 import { SetLogSheet } from "@/features/workout/SetLogSheet";
 import type { SessionExercise, LoggedSet, SetBlock } from "@/domain/types";
 import type { BlockSuggestion, BlockLastTime } from "@/services/progression-service";
+import type { PersonalBests } from "@/domain/personal-records";
 
 function makeSessionExercise(overrides: Partial<SessionExercise> = {}): SessionExercise {
   return {
@@ -62,6 +63,8 @@ interface RenderOpts {
   suggestion?: BlockSuggestion;
   lastTime?: BlockLastTime;
   blockSetsInSession?: LoggedSet[];
+  personalBests?: PersonalBests;
+  units?: "kg" | "lbs";
   onSave?: ReturnType<typeof vi.fn>;
   onOpenChange?: ReturnType<typeof vi.fn>;
   onDelete?: ReturnType<typeof vi.fn>;
@@ -79,7 +82,8 @@ function renderSheet(opts: RenderOpts = {}) {
       suggestion={opts.suggestion}
       lastTime={opts.lastTime}
       blockSetsInSession={opts.blockSetsInSession ?? []}
-      units="kg"
+      personalBests={opts.personalBests}
+      units={opts.units ?? "kg"}
       onSave={opts.onSave ?? vi.fn()}
       onDelete={opts.onDelete}
     />
@@ -1011,5 +1015,224 @@ describe("SetLogSheet — cancel control", () => {
     await user.keyboard("{Enter}");
     expect(onOpenChange).toHaveBeenCalledWith(false);
     expect(onSave).not.toHaveBeenCalled();
+  });
+});
+
+describe("SetLogSheet — auto PR detection (create mode)", () => {
+  /** Personal bests where the record is 100kg at any rep count up to 10. */
+  function makeBests(overrides: Partial<PersonalBests> = {}): PersonalBests {
+    return {
+      bestWeightKgAtReps: (reps: number) => (reps <= 10 ? 100 : null),
+      maxReps: null,
+      maxDurationSec: null,
+      maxDistanceM: null,
+      ...overrides,
+    };
+  }
+
+  /** The PR toggle button, whichever state it's in. */
+  function prButton(): HTMLElement {
+    return screen.getByRole("button", { name: /(mark )?pr/i });
+  }
+
+  it("never auto-flags cardio sets, even with distance-only input beating the best", async () => {
+    const user = userEvent.setup();
+    const cardioExtra = makeSessionExercise({
+      effectiveType: "cardio",
+      effectiveEquipment: "cardio",
+      origin: "extra",
+      setBlocksSnapshot: [],
+    });
+    renderSheet({
+      sessionExercise: cardioExtra,
+      personalBests: makeBests({
+        bestWeightKgAtReps: () => null,
+        maxDistanceM: 1000,
+        maxDurationSec: 600,
+      }),
+    });
+    // Type a farther distance than the 1000m best — distance-only shape.
+    // (Cardio extras use plain inputs, not the keypad ValueBoxes.)
+    await user.type(
+      screen.getByLabelText(/distance \(meters\)/i),
+      "5000",
+    );
+    expect(prButton().getAttribute("aria-pressed")).toBe("false");
+    expect(screen.queryByText(/auto/i)).toBeNull();
+  });
+
+  it("turns the toggle on with the auto hint when a record-beating weight+reps is typed", async () => {
+    const user = userEvent.setup();
+    renderSheet({ personalBests: makeBests() });
+    // Prefill: weight "0", reps "8" (block minValue). Not a PR yet.
+    expect(prButton().getAttribute("aria-pressed")).toBe("false");
+
+    // Type 105 — beats the 100kg best at 8 reps.
+    await user.click(screen.getByRole("button", { name: /^1$/ }));
+    await user.click(screen.getByRole("button", { name: /^0$/ }));
+    await user.click(screen.getByRole("button", { name: /^5$/ }));
+
+    const btn = prButton();
+    expect(btn.getAttribute("aria-pressed")).toBe("true");
+    expect(within(btn).getByText(/auto/i)).toBeVisible();
+  });
+
+  it("leaves the toggle off for a non-beating value", async () => {
+    const user = userEvent.setup();
+    renderSheet({ personalBests: makeBests() });
+    await user.click(screen.getByRole("button", { name: /^9$/ }));
+    await user.click(screen.getByRole("button", { name: /^5$/ }));
+    expect(weightValueText()).toBe("95");
+    expect(prButton().getAttribute("aria-pressed")).toBe("false");
+    expect(screen.queryByText(/auto/i)).toBeNull();
+  });
+
+  it("leaves the toggle off when the typed weight only EQUALS the best (boundary)", async () => {
+    const user = userEvent.setup();
+    renderSheet({ personalBests: makeBests() });
+    await user.click(screen.getByRole("button", { name: /^1$/ }));
+    await user.click(screen.getByRole("button", { name: /^0$/ }));
+    await user.click(screen.getByRole("button", { name: /^0$/ }));
+    expect(weightValueText()).toBe("100");
+    expect(prButton().getAttribute("aria-pressed")).toBe("false");
+  });
+
+  it("converts display units to canonical kg before comparing (lbs)", async () => {
+    const user = userEvent.setup();
+    renderSheet({ personalBests: makeBests(), units: "lbs" });
+    // 225 lbs ≈ 102.06 kg — beats the 100kg best.
+    await user.click(screen.getByRole("button", { name: /^2$/ }));
+    await user.click(screen.getByRole("button", { name: /^2$/ }));
+    await user.click(screen.getByRole("button", { name: /^5$/ }));
+    expect(prButton().getAttribute("aria-pressed")).toBe("true");
+  });
+
+  it("manual override off sticks while typing continues, and save passes false", async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn().mockResolvedValue(undefined);
+    renderSheet({ personalBests: makeBests(), onSave });
+
+    await user.click(screen.getByRole("button", { name: /^1$/ }));
+    await user.click(screen.getByRole("button", { name: /^0$/ }));
+    await user.click(screen.getByRole("button", { name: /^5$/ }));
+    expect(prButton().getAttribute("aria-pressed")).toBe("true");
+
+    // User taps the toggle off — the override must stick.
+    await user.click(prButton());
+    expect(prButton().getAttribute("aria-pressed")).toBe("false");
+
+    // Keep typing (nudge bumps weight to 107.5 — still record-beating).
+    await user.click(screen.getByRole("button", { name: /increase weight/i }));
+    expect(prButton().getAttribute("aria-pressed")).toBe("false");
+    expect(screen.queryByText(/auto/i)).toBeNull();
+
+    await user.click(screen.getByRole("button", { name: /^save$/i }));
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({ isPersonalRecord: false })
+    );
+  });
+
+  it("manual override on shows no auto hint and save passes true", async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn().mockResolvedValue(undefined);
+    renderSheet({ personalBests: makeBests(), onSave });
+
+    // Weight stays "0" (not a PR); user marks PR manually anyway.
+    await user.click(screen.getByRole("button", { name: /mark pr/i }));
+    const btn = prButton();
+    expect(btn.getAttribute("aria-pressed")).toBe("true");
+    expect(within(btn).queryByText(/auto/i)).toBeNull();
+
+    await user.click(screen.getByRole("button", { name: /^save$/i }));
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({ isPersonalRecord: true })
+    );
+  });
+
+  it("saving an auto-detected PR passes isPersonalRecord=true without any toggle tap", async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn().mockResolvedValue(undefined);
+    renderSheet({ personalBests: makeBests(), onSave });
+
+    await user.click(screen.getByRole("button", { name: /^1$/ }));
+    await user.click(screen.getByRole("button", { name: /^0$/ }));
+    await user.click(screen.getByRole("button", { name: /^5$/ }));
+    await user.click(screen.getByRole("button", { name: /^save$/i }));
+
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({ isPersonalRecord: true })
+    );
+  });
+
+  it("edit mode ignores auto detection entirely", () => {
+    // 200×10 would smash the 100kg best, but this is an EDIT — prefill from
+    // existingSet.isPersonalRecord (false) and no auto behavior.
+    renderSheet({
+      personalBests: makeBests(),
+      existingSet: makeLoggedSet({
+        performedWeightKg: 200,
+        performedReps: 10,
+        isPersonalRecord: false,
+      }),
+    });
+    expect(prButton().getAttribute("aria-pressed")).toBe("false");
+    expect(screen.queryByText(/auto/i)).toBeNull();
+  });
+
+  it("resets the manual override on the open edge (close then reopen)", async () => {
+    const user = userEvent.setup();
+
+    function Harness() {
+      const [open, setOpen] = useState(true);
+      return (
+        <>
+          <button data-testid="harness-close" onClick={() => setOpen(false)}>close sheet</button>
+          <button data-testid="harness-reopen" onClick={() => setOpen(true)}>reopen sheet</button>
+          <SetLogSheet
+            open={open}
+            onOpenChange={setOpen}
+            sessionExercise={makeSessionExercise()}
+            blockIndex={0}
+            setIndex={0}
+            existingSet={undefined}
+            suggestion={undefined}
+            lastTime={undefined}
+            blockSetsInSession={[]}
+            personalBests={makeBests()}
+            units="kg"
+            onSave={vi.fn()}
+          />
+        </>
+      );
+    }
+
+    render(<Harness />);
+
+    // Type a record-beating weight, then override the auto-on to off.
+    await user.click(screen.getByRole("button", { name: /^1$/ }));
+    await user.click(screen.getByRole("button", { name: /^0$/ }));
+    await user.click(screen.getByRole("button", { name: /^5$/ }));
+    await user.click(prButton());
+    expect(prButton().getAttribute("aria-pressed")).toBe("false");
+
+    // Close and reopen — the stale override must not survive.
+    await user.click(screen.getByTestId("harness-close"));
+    await user.click(screen.getByTestId("harness-reopen"));
+
+    // Type the record-beating weight again: auto must win (override was reset).
+    await user.click(screen.getByRole("button", { name: /^1$/ }));
+    await user.click(screen.getByRole("button", { name: /^0$/ }));
+    await user.click(screen.getByRole("button", { name: /^5$/ }));
+    expect(prButton().getAttribute("aria-pressed")).toBe("true");
+  });
+
+  it("behaves exactly as today when personalBests is absent (no auto, plain toggle)", async () => {
+    const user = userEvent.setup();
+    renderSheet();
+    await user.click(screen.getByRole("button", { name: /^1$/ }));
+    await user.click(screen.getByRole("button", { name: /^0$/ }));
+    await user.click(screen.getByRole("button", { name: /^5$/ }));
+    expect(prButton().getAttribute("aria-pressed")).toBe("false");
+    expect(screen.queryByText(/auto/i)).toBeNull();
   });
 });

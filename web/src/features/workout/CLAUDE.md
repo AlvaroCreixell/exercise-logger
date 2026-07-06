@@ -19,7 +19,7 @@ The active workout screen (`/workout`). Only accessible when a session is in pro
 - `SetLogSheet.tsx` — Bottom sheet for logging/editing a set. Uses `Keypad` + `ValueBox`.
 - `Keypad.tsx` — Custom numeric keypad (digits, decimal, backspace, ± nudge). Reducer-driven.
 - `ValueBox.tsx` — The active weight/reps field the keypad targets.
-- `PrToggle.tsx` — Toggle for marking a set as a personal record.
+- `PrToggle.tsx` — Toggle for marking a set as a personal record. Shows a quiet "auto" hint when the on-state came from best-ever auto-detection rather than a manual tap.
 - `ExercisePicker.tsx` — Sheet for picking an extra exercise to add mid-session.
 - `WorkoutFooter.tsx` — Sticky footer with "+ Exercise", "Finish", "Discard".
 - `FinishCelebration.tsx` — Celebration overlay shown briefly before navigating to the session detail.
@@ -53,3 +53,4 @@ Top-level: `set-log-validation.ts` — guards against invalid set input before h
 - **Discard does not advance rotation** (invariant 4). `finishSession` is the only path that advances `nextDayId`.
 - **Rest timers start only in `handleSave`'s create path** — never from effects observing `loggedSets`, never on edit/delete/stale-slot saves. Timer state is ephemeral UI state (resets on reload; never persisted). Durations come from `Session.restDefaultSecSnapshot` / `restSupersetSecSnapshot`; superset rest waits for `isRoundComplete` on the saved set's ordinal.
 - **Extra-set control is contextual** — visible only when the block's prescribed slots are complete, or extras (persisted or locally tapped) already exist. Extra-origin exercises are unaffected.
+- **Auto-PR is best-ever and create-mode only.** `SetLogSheet` receives `personalBests` (from `useExercisePersonalBests`; all previously logged sets for the exerciseId, any session status, extras included) and defaults the PR toggle via `isNewPersonalBest` (`@/domain/personal-records`). Manual toggle taps override auto until the sheet closes; edit mode never auto-flags; no prior comparable set → not a PR (day one stays quiet). Cardio (duration+distance) never auto-PRs.
