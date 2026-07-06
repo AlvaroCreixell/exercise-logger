@@ -52,6 +52,7 @@ export function SetRow({
           type="button"
           onClick={onClick}
           disabled={primed.saving}
+          data-primed-row
           aria-label={`Set ${setNumber}: log ${primed.display}`}
           className="flex min-w-0 flex-1 items-center gap-3 rounded-[var(--radius-set-empty)] border border-accent-cli/70 bg-accent-cli-soft/20 px-3 py-2.5 text-left transition-colors hover:border-accent-cli-bright hover:bg-accent-cli-soft/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-cli/40 disabled:opacity-50 disabled:pointer-events-none"
         >

@@ -29,7 +29,7 @@ import {
   type RestTimerStart,
 } from "./lib/rest-timer";
 import { getSlotOrdinal, isRoundComplete } from "./lib/superset-rhythm";
-import { formatQuickTarget, type QuickTarget } from "./lib/quick-target";
+import { formatQuickTarget, resolvePrimedSlot, type QuickTarget } from "./lib/quick-target";
 import { isNewPersonalBest } from "@/domain/personal-records";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { Dumbbell } from "@/shared/icons";
@@ -73,6 +73,16 @@ export default function WorkoutScreen() {
   const [sheetBlockIndex, setSheetBlockIndex] = useState(0);
   const [sheetSetIndex, setSheetSetIndex] = useState(0);
   const [sheetExistingSet, setSheetExistingSet] = useState<LoggedSet | undefined>();
+
+  // Flow focus (spec §4.3). Complete cards collapse to their header line,
+  // except the unit that just received a save (protects the finished-block →
+  // extra-set intention). Collapse units: se.id for singles, supersetGroupId
+  // for pairs (a pair collapses only as a whole). `expandOverrides` records
+  // explicit header taps: true = keep expanded, false = keep collapsed.
+  const [expandOverrides, setExpandOverrides] = useState<Record<string, boolean>>({});
+  const [lastSavedUnitKey, setLastSavedUnitKey] = useState<string | null>(null);
+  // Primed-target labels lifted from cards for the rest bar's "next:" line.
+  const [primedLabels, setPrimedLabels] = useState<Record<string, string | null>>({});
 
   // Rest timer — ephemeral UI state (never persisted, resets on reload).
   // Stored as "running"; the effective status is derived at render time from
@@ -189,6 +199,32 @@ export default function WorkoutScreen() {
     setsByExercise.set(ls.sessionExerciseId, arr);
   }
 
+  /** Collapse unit: singles collapse alone, superset pairs as a whole. */
+  function unitKeyFor(se: SessionExercise): string {
+    return se.groupType === "superset" && se.supersetGroupId !== null
+      ? se.supersetGroupId
+      : se.id;
+  }
+
+  /** All prescribed slots logged (extras/blockless exercises never "complete"). */
+  function isCardComplete(se: SessionExercise): boolean {
+    if (se.setBlocksSnapshot.length === 0) return false;
+    return (
+      resolvePrimedSlot(se.setBlocksSnapshot, setsByExercise.get(se.id) ?? []) === null
+    );
+  }
+
+  function isUnitCollapsed(key: string, complete: boolean): boolean {
+    if (!complete) return false;
+    const override = expandOverrides[key];
+    if (override !== undefined) return !override;
+    return key !== lastSavedUnitKey;
+  }
+
+  function toggleUnitCollapsed(key: string, currentlyCollapsed: boolean) {
+    setExpandOverrides((prev) => ({ ...prev, [key]: currentlyCollapsed }));
+  }
+
   function handleSetTap(se: SessionExercise, blockIndex: number, setIndex: number) {
     const sets = setsByExercise.get(se.id) ?? [];
     const existing = sets.find(
@@ -225,7 +261,25 @@ export default function WorkoutScreen() {
     );
 
     const savedSet = await logSet(db, se.id, blockIndex, setIndex, input);
+    setLastSavedUnitKey(unitKeyFor(se));
     if (slotAlreadyLogged) return { savedSet, created: false };
+
+    // Flow focus: when this save completes the card, the previous card
+    // collapses on re-render — bring the next primed row into the middle
+    // band so the next decision sits one thumb-move away (spec §4.3).
+    const nowComplete =
+      se.setBlocksSnapshot.length > 0 &&
+      resolvePrimedSlot(se.setBlocksSnapshot, [
+        ...(setsByExercise.get(se.id) ?? []),
+        savedSet,
+      ]) === null;
+    if (nowComplete) {
+      window.setTimeout(() => {
+        document
+          .querySelector("[data-primed-row]")
+          ?.scrollIntoView({ block: "center", behavior: "smooth" });
+      }, 350);
+    }
 
     const partner =
       se.groupType === "superset" && se.supersetGroupId !== null
@@ -390,6 +444,18 @@ export default function WorkoutScreen() {
 
   const existingExerciseIds = new Set(sessionExercises.map((se) => se.exerciseId));
 
+  // The rest bar's "next:" glance anchor: the first exercise (session order)
+  // with an unlogged prescribed slot — its primed-target label when a card
+  // reported one, else the exercise name.
+  const nextUp = sessionExercises.find(
+    (se) =>
+      se.setBlocksSnapshot.length > 0 &&
+      resolvePrimedSlot(se.setBlocksSnapshot, setsByExercise.get(se.id) ?? []) !== null,
+  );
+  const nextLabel = nextUp
+    ? primedLabels[nextUp.id] ?? nextUp.exerciseNameSnapshot
+    : null;
+
   return (
     <div className="flex h-full flex-col">
       <SessionHeader
@@ -400,19 +466,13 @@ export default function WorkoutScreen() {
       />
       <SessionProgress totalSets={totalPrescribed} loggedSets={loggedRoutine} />
 
-      {restTimerForRender && (
-        <RestTimerBar
-          timer={restTimerForRender}
-          remainingSec={restRemainingSec}
-          onSkip={handleRestSkip}
-          onAddSeconds={handleRestAddSeconds}
-        />
-      )}
-
       <div className="flex-1 space-y-3 overflow-y-auto p-5">
         {renderGroups.map((group, i) => {
           if (group.type === "single") {
             const se = group.exercise;
+            const complete = isCardComplete(se);
+            const key = unitKeyFor(se);
+            const cardCollapsed = isUnitCollapsed(key, complete);
             return (
               <ExerciseCardWithHistory
                 key={se.id}
@@ -421,14 +481,29 @@ export default function WorkoutScreen() {
                 globalUnits={units}
                 onSetTap={(bi, si) => handleSetTap(se, bi, si)}
                 onQuickLog={handleQuickLog}
+                collapsed={cardCollapsed}
+                onToggleCollapsed={
+                  complete
+                    ? () => toggleUnitCollapsed(key, cardCollapsed)
+                    : undefined
+                }
+                onPrimedChange={(label) =>
+                  setPrimedLabels((prev) =>
+                    prev[se.id] === label ? prev : { ...prev, [se.id]: label },
+                  )
+                }
               />
             );
           }
+          const pairComplete = group.exercises.every((se) => isCardComplete(se));
+          const pairKey = unitKeyFor(group.exercises[0]);
+          const pairCollapsed = isUnitCollapsed(pairKey, pairComplete);
           return (
             <SupersetGroup
               key={i}
               exercises={group.exercises}
               setsByExercise={setsByExercise}
+              collapsed={pairCollapsed}
             >
               {group.exercises.map((se) => (
                 <ExerciseCardWithHistory
@@ -438,12 +513,35 @@ export default function WorkoutScreen() {
                   globalUnits={units}
                   onSetTap={(bi, si) => handleSetTap(se, bi, si)}
                   onQuickLog={handleQuickLog}
+                  collapsed={pairCollapsed}
+                  onToggleCollapsed={
+                    pairComplete
+                      ? () => toggleUnitCollapsed(pairKey, pairCollapsed)
+                      : undefined
+                  }
+                  onPrimedChange={(label) =>
+                    setPrimedLabels((prev) =>
+                      prev[se.id] === label ? prev : { ...prev, [se.id]: label },
+                    )
+                  }
                 />
               ))}
             </SupersetGroup>
           );
         })}
       </div>
+
+      {/* Rest bar docked above the footer — Skip/+30s in the thumb zone,
+          "next:" target readable without scrolling (spec §4.3). */}
+      {restTimerForRender && (
+        <RestTimerBar
+          timer={restTimerForRender}
+          remainingSec={restRemainingSec}
+          nextLabel={nextLabel}
+          onSkip={handleRestSkip}
+          onAddSeconds={handleRestAddSeconds}
+        />
+      )}
 
       <WorkoutFooter
         onAddExercise={() => setPickerOpen(true)}
@@ -520,6 +618,9 @@ function ExerciseCardWithHistory({
   globalUnits,
   onSetTap,
   onQuickLog,
+  collapsed,
+  onToggleCollapsed,
+  onPrimedChange,
 }: {
   sessionExercise: SessionExercise;
   loggedSets: LoggedSet[];
@@ -531,6 +632,9 @@ function ExerciseCardWithHistory({
     setIndex: number,
     input: SetLogInput,
   ) => Promise<void>;
+  collapsed?: boolean;
+  onToggleCollapsed?: () => void;
+  onPrimedChange?: (label: string | null) => void;
 }) {
   const effectiveUnits = getEffectiveUnit(sessionExercise.unitOverride, globalUnits);
   const isRoutine = sessionExercise.origin === "routine";
@@ -555,6 +659,9 @@ function ExerciseCardWithHistory({
       historyData={historyData}
       extraHistory={extraHistory}
       onSetTap={onSetTap}
+      collapsed={collapsed}
+      onToggleCollapsed={onToggleCollapsed}
+      onPrimedChange={onPrimedChange}
       onUnitToggle={async (newUnit) => {
         await setUnitOverride(db, sessionExercise.id, newUnit);
       }}

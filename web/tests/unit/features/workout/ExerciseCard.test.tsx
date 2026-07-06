@@ -976,3 +976,68 @@ describe("ExerciseCard — primed quick-log row (guided logging)", () => {
     expect(screen.queryByRole("button", { name: /: log / })).toBeNull();
   });
 });
+
+describe("ExerciseCard — collapsed flow focus", () => {
+  const completeSets = [
+    makeLoggedSet({ id: "c1", setIndex: 0, performedWeightKg: 62.5, performedReps: 12, isPersonalRecord: true }),
+    makeLoggedSet({ id: "c2", setIndex: 1, performedWeightKg: 52.5, performedReps: 12 }),
+    makeLoggedSet({ id: "c3", setIndex: 2, performedWeightKg: 52.5, performedReps: 10 }),
+  ];
+
+  it("renders only the header and one ⎿ summary line when collapsed", () => {
+    render(
+      <ExerciseCard
+        sessionExercise={makeSessionExercise()}
+        loggedSets={completeSets}
+        units="kg"
+        historyData={undefined}
+        extraHistory={undefined}
+        onSetTap={() => {}}
+        collapsed
+        onToggleCollapsed={() => {}}
+      />,
+    );
+    expect(screen.getByText("Barbell Back Squat")).toBeVisible();
+    // Summary line in block/set order with the PR marker.
+    expect(screen.getByText(/62\.5×12 ↑PR · 52\.5×12 · 52\.5×10/)).toBeVisible();
+    // Set rows are unmounted.
+    expect(screen.queryByRole("button", { name: /^Set \d/ })).toBeNull();
+  });
+
+  it("the header toggle carries aria-expanded and fires onToggleCollapsed", async () => {
+    const user = userEvent.setup();
+    const toggle = vi.fn();
+    render(
+      <ExerciseCard
+        sessionExercise={makeSessionExercise()}
+        loggedSets={completeSets}
+        units="kg"
+        historyData={undefined}
+        extraHistory={undefined}
+        onSetTap={() => {}}
+        collapsed
+        onToggleCollapsed={toggle}
+      />,
+    );
+    const header = screen.getByRole("button", { expanded: false });
+    await user.click(header);
+    expect(toggle).toHaveBeenCalledTimes(1);
+  });
+
+  it("expanded collapsible cards keep aria-expanded=true and full rows", () => {
+    render(
+      <ExerciseCard
+        sessionExercise={makeSessionExercise()}
+        loggedSets={completeSets}
+        units="kg"
+        historyData={undefined}
+        extraHistory={undefined}
+        onSetTap={() => {}}
+        collapsed={false}
+        onToggleCollapsed={() => {}}
+      />,
+    );
+    expect(screen.getByRole("button", { expanded: true })).toBeVisible();
+    expect(screen.getAllByRole("button", { name: /^Set \d/ }).length).toBeGreaterThan(0);
+  });
+});
