@@ -27,8 +27,8 @@ export function RestTimerBar({
   if (timer.status === "done") {
     return (
       <div className="px-5 pb-3">
-        <div className="flex items-center justify-between gap-3 rounded-[var(--radius-card)] bg-sage-soft px-3 py-1.5">
-          <p aria-live="polite" className="text-eyebrow text-sage-deep">
+        <div className="flex items-center justify-between gap-3 rounded-[var(--radius-card)] bg-accent-cli-soft px-3 py-1.5">
+          <p aria-live="polite" className="text-eyebrow text-accent-cli-bright">
             Rest complete
           </p>
           <Button variant="ghost" size="xs" onClick={onSkip}>
@@ -49,7 +49,7 @@ export function RestTimerBar({
     <div className="px-5 pb-3">
       <div className="rounded-[var(--radius-card)] border border-line bg-card px-3 py-2">
         <div className="flex items-center gap-2">
-          <p className="min-w-0 flex-1 truncate text-eyebrow text-sage-deep">
+          <p className="min-w-0 flex-1 truncate text-eyebrow text-accent-cli-bright">
             {timer.label}
           </p>
           <span className="shrink-0 text-sm font-semibold text-foreground tabular-nums">
@@ -67,10 +67,10 @@ export function RestTimerBar({
             Skip
           </Button>
         </div>
-        <div className="relative mt-1.5 h-1 overflow-hidden rounded-[var(--radius-pill)] bg-line-soft">
+        <div className="relative mt-1.5 h-1 overflow-hidden rounded-[2px] bg-line-soft">
           <div
             data-rest-progress
-            className="absolute inset-y-0 left-0 bg-sage transition-all duration-[var(--dur-base)]"
+            className="absolute inset-y-0 left-0 bg-accent-cli transition-all duration-[var(--dur-base)]"
             style={{ width: `${pct}%` }}
           />
         </div>

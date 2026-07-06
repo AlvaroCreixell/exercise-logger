@@ -349,7 +349,7 @@ export function SetLogSheet({
               )}
               <button
                 type="button"
-                className="inline-flex items-center rounded-[var(--radius-pill)] border border-line px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-ink-3 transition-colors hover:border-sage hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage/40"
+                className="inline-flex items-center rounded-[var(--radius-pill)] border border-line px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-ink-3 transition-colors hover:border-accent-cli hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-cli/40"
                 onClick={() => onOpenChange(false)}
               >
                 Cancel
@@ -390,7 +390,7 @@ export function SetLogSheet({
                     return (
                       <button
                         type="button"
-                        className="ml-3 inline-flex items-center rounded-[var(--radius-pill)] border border-line px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wider text-ink-3 transition-colors hover:border-sage hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage/40"
+                        className="ml-3 inline-flex items-center rounded-[var(--radius-pill)] border border-line px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wider text-ink-3 transition-colors hover:border-accent-cli hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-cli/40"
                         onClick={() => {
                           if (s.weightKg != null) setWeight(String(toDisplayWeight(s.weightKg, units)));
                           if (s.reps != null) setReps(String(s.reps));

@@ -19,12 +19,12 @@ describe("SessionProgress", () => {
     ).toBeInTheDocument();
   });
 
-  it("renders a sage progress bar at the correct width", () => {
+  it("renders an accent progress bar at the correct width", () => {
     const { container } = render(<SessionProgress totalSets={20} loggedSets={5} />);
     const bar = container.querySelector("[data-progress-bar]") as HTMLElement;
     expect(bar).not.toBeNull();
     expect(bar.style.width).toBe("25%");
-    expect(bar.className).toMatch(/bg-sage/);
+    expect(bar.className).toMatch(/bg-accent-cli/);
   });
 
   it("clamps width to 100% when loggedSets exceeds totalSets", () => {

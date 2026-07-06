@@ -19,7 +19,7 @@ export function WorkoutFooter({
   return (
     <div className="sticky bottom-0 z-10 border-t border-line bg-background p-5 pb-[env(safe-area-inset-bottom)]">
       {allLogged && (
-        <div className="mb-2 inline-flex items-center gap-1.5 rounded-[var(--radius-pill)] bg-sage-soft px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-sage-deep">
+        <div className="mb-2 inline-flex items-center gap-1.5 rounded-[var(--radius-pill)] bg-accent-cli-soft px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-accent-cli-bright">
           <Check size={13} />
           All sets logged
         </div>

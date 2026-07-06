@@ -14,11 +14,11 @@ export function PrToggle({ value, onChange, auto = false }: PrToggleProps) {
       type="button"
       aria-pressed={value}
       onClick={() => onChange(!value)}
-      className="inline-flex items-center gap-1 rounded-[var(--radius-pill)] border px-3 py-1 text-xs font-semibold uppercase tracking-wider transition-colors aria-pressed:border-sage-deep aria-pressed:bg-sage-soft aria-pressed:text-sage-deep aria-[pressed=false]:border-line aria-[pressed=false]:text-ink-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage/40"
+      className="inline-flex items-center gap-1 rounded-[var(--radius-pill)] border px-3 py-1 text-xs font-semibold uppercase tracking-wider transition-colors aria-pressed:border-accent-cli-bright aria-pressed:bg-accent-cli-soft aria-pressed:text-accent-cli-bright aria-[pressed=false]:border-line aria-[pressed=false]:text-ink-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-cli/40"
     >
       {value ? "PR ✓" : "Mark PR"}
       {value && auto && (
-        <span className="text-[10px] font-medium lowercase tracking-normal text-sage-deep/70">
+        <span className="text-[10px] font-medium lowercase tracking-normal text-accent-cli-bright/70">
           auto
         </span>
       )}

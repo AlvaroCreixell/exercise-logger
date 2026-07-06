@@ -30,7 +30,7 @@ export function Keypad({ onKey, disabled = false }: KeypadProps) {
             disabled={disabled}
             onClick={() => onKey(key)}
             aria-label={label}
-            className="h-14 rounded-[var(--radius-pill)] bg-line-soft text-xl font-semibold tabular-nums text-foreground transition-colors hover:bg-line/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage/40 disabled:opacity-50 disabled:pointer-events-none"
+            className="h-14 rounded-[var(--radius-pill)] bg-line-soft text-xl font-semibold tabular-nums text-foreground transition-colors hover:bg-line/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-cli/40 disabled:opacity-50 disabled:pointer-events-none"
           >
             {isBack ? (
               <span className="inline-flex items-center justify-center">
