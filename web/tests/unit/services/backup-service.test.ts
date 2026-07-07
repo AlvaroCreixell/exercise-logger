@@ -1414,3 +1414,50 @@ describe("gym-proofing settings — backup round-trip", () => {
     expect(stored?.restCueSound).toBe(true);
   });
 });
+
+describe("llmApiKey (Dexie v5) — export-strip and import-preserve", () => {
+  it("exportBackup strips the key to \"\" in the exported envelope", async () => {
+    await db.settings.update("user", { llmApiKey: "sk-ant-secret" });
+
+    const envelope = await exportBackup(db);
+    expect(envelope.data.settings.llmApiKey).toBe("");
+
+    // The device-local key is untouched by export.
+    const stored = await db.settings.get("user");
+    expect(stored?.llmApiKey).toBe("sk-ant-secret");
+  });
+
+  it("importBackup preserves the device-local key over the backup's value", async () => {
+    await db.settings.update("user", { llmApiKey: "sk-ant-local" });
+
+    const cat = new Set([catalogId]);
+    const payload = makeMinimalValidPayload();
+    payload.data.settings.llmApiKey = "sk-ant-foreign";
+    expect(validateBackupPayload(payload, cat)).toEqual([]);
+
+    await importBackup(db, payload);
+    const stored = await db.settings.get("user");
+    expect(stored?.llmApiKey).toBe("sk-ant-local");
+  });
+
+  it("importBackup preserves the device-local key when the backup omits the field (legacy)", async () => {
+    await db.settings.update("user", { llmApiKey: "sk-ant-local" });
+
+    const cat = new Set([catalogId]);
+    const payload = makeMinimalValidPayload();
+    delete (payload.data.settings as Record<string, unknown>).llmApiKey;
+    expect(validateBackupPayload(payload, cat)).toEqual([]);
+
+    await importBackup(db, payload);
+    const stored = await db.settings.get("user");
+    expect(stored?.llmApiKey).toBe("sk-ant-local");
+  });
+
+  it("rejects a non-string llmApiKey", () => {
+    const cat = new Set([catalogId]);
+    const payload = makeMinimalValidPayload();
+    (payload.data.settings as Record<string, unknown>).llmApiKey = 42;
+    const errors = validateBackupPayload(payload, cat);
+    expect(errors.some((e) => e.field === "data.settings.llmApiKey")).toBe(true);
+  });
+});
