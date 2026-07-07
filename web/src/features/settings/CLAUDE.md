@@ -12,12 +12,13 @@ Settings screen (`/settings`), routine import screen (`/settings/import`), and t
 
 - `ActiveRoutineCard.tsx` — Highlighted card for the currently active routine.
 - `RoutineList.tsx` — List of non-active routines with activate/delete affordances.
-- `AboutCard.tsx` — App info, GPT link, install prompt.
+- `AboutCard.tsx` — App info (name, tagline, privacy blurb, version). No GPT link — the custom-GPT flow is deprecated (`docs/custom-gpt/DEPRECATED.md`).
 - `RowLink.tsx` — Settings row as a link.
 - `SettingRow.tsx` — Generic settings row (label + action).
 - `UnitsToggle.tsx` — Global kg/lbs toggle.
 - `PrefSwitch.tsx` — Boolean `[on]`/`[off]` bracket-tag switch (role="switch", ≥44 px hit area). Used by the Workout section (keep screen on / rest cue vibration / rest cue sound).
-- `YamlErrorList.tsx` — Error list rendered in the import screen.
+- `LlmKeyCard.tsx` — "AI routine generation" section's Anthropic API key card. Collapsed row shows a masked key (`maskKey`) or "Not set"; tapping opens an inline editor (`Input` + Save/Cancel) that calls `setLlmApiKey`. When a key is set, also renders a "Test connection" button that calls `testAnthropicKey` (a free `models.retrieve` ping) and shows the pass/fail message inline.
+- `YamlErrorList.tsx` — Error list rendered in the import screen and reused by `GenerationScreen`'s `"validation"` failure view.
 
 ## Local utilities (`lib/`)
 
@@ -29,9 +30,14 @@ Settings screen (`/settings`), routine import screen (`/settings/import`), and t
 
 ## Services called
 
-- `setUnits`, `setActiveRoutine`, `deleteRoutine`, `setKeepScreenOn`, `setRestCueHaptic`, `setRestCueSound` — `@/services/settings-service`.
+- `setUnits`, `setActiveRoutine`, `deleteRoutine`, `setKeepScreenOn`, `setRestCueHaptic`, `setRestCueSound`, `setUserName`, `setLlmApiKey` — `@/services/settings-service`.
 - `validateAndNormalizeRoutine`, `importAndActivateRoutine` — `@/services/routine-service`.
 - `exportBackup`, `downloadBackupFile`, `importBackup`, `readJsonFile`, `validateBackupPayload`, `clearAllData` — `@/services/backup-service`.
+- `testAnthropicKey` — `@/services/llm/anthropic-provider` (LlmKeyCard's "Test connection").
+
+## AI routine generation
+
+`SettingsScreen` has an "AI routine generation" section composing only `LlmKeyCard`. The actual generation flow (questionnaire → `GenerationScreen`) lives in `features/onboarding/` — see that feature's CLAUDE.md — and is also reachable from here via the Routine section's "✨ Create a personalized routine" row, which navigates to `/onboarding/questionnaire` regardless of onboarding-completion state (Settings re-entry).
 
 ## Key UI invariants
 

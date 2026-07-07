@@ -30,9 +30,9 @@ New fields on `Settings`:
 - `userName: string | null` — user's preferred name for the Today greeting.
 - `onboardingCompletedAt: string | null` — ISO timestamp, set on successful YAML import from the handoff screen.
 - `onboardingSkippedAt: string | null` — ISO timestamp, set by "Maybe later" on the welcome screen. **Existing v2 users are backfilled with `nowISO()` here** (Decision D3) so the first-run gate does not trigger for testers already using the app.
-- `lastGeneratedPrompt: string | null` — the last questionnaire-derived prompt, persisted on the handoff screen's Stage-1 button tap.
-- `lastGeneratedPromptAt: string | null` — ISO timestamp matching `lastGeneratedPrompt`.
-- `onboardingBannerDismissedAt: string | null` — ISO timestamp when the user dismissed the Today "Finish importing your routine" banner. Reset to null whenever a new prompt is saved.
+- `lastGeneratedPrompt: string | null` — **removed at the type level** in the embedded-LLM-generation change (see version 5 below). Was the last questionnaire-derived prompt for the copy/paste custom-GPT flow.
+- `lastGeneratedPromptAt: string | null` — **removed at the type level** alongside `lastGeneratedPrompt`.
+- `onboardingBannerDismissedAt: string | null` — ISO timestamp when the user dismissed the Today "Finish setting up your routine" banner. Nothing resets it back to null; it stands until the wizard sessionStorage state clears or onboarding completes.
 
 Defaults on fresh v3 installs: all six are `null` (via `DEFAULT_SETTINGS`).
 
@@ -45,6 +45,26 @@ Adds 3 unindexed gym-proofing booleans to the `settings` record:
 - `restCueSound: boolean` — short beep on rest complete. Default/backfill `false`.
 
 Existing users are backfilled with the same defaults as fresh installs. Backup import normalizes missing fields to these defaults (`backup-service.importBackup`).
+
+### Schema (version 5)
+
+Adds `llmApiKey: string` to the `settings` record for in-app routine generation
+(Anthropic API key, entered in Settings). Unindexed, so the `.stores(...)`
+signature is identical to v4. Default/backfill is `""` (the "not configured"
+sentinel — never `null`, per the compound-index convention established at v3,
+even though this field isn't itself indexed).
+
+This version also predates the removal of `lastGeneratedPrompt` /
+`lastGeneratedPromptAt` from the `Settings` TypeScript type (the custom-GPT
+copy/paste flow they supported was replaced by in-app generation). Rows
+written under v3/v4 may still carry those two properties in IndexedDB —
+Dexie does not strip stale properties on upgrade, and nothing reads them
+anymore, so they are harmless dead weight on existing installs. No migration
+was added to delete them.
+
+Backup export strips `llmApiKey` (replaced with `""`) so exported JSON never
+carries the key off-device; backup import ignores any `llmApiKey` in the
+envelope and preserves the importing device's own key (`backup-service.ts`).
 
 ### Key indexes and their consumers
 

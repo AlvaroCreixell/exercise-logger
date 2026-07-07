@@ -1,8 +1,9 @@
-// Orchestrator binds reducer ↔ sessionStorage. Persistence of the generated
-// prompt happens in HandoffScreen. Wizard sessionStorage clearing happens in:
-//   1. HandoffScreen "Start over" (intentional reset).
-//   2. HandoffScreen successful import (Stage-2 success).
-//   3. Welcome screen "Start over" (the only first-run reset).
+// Orchestrator binds reducer ↔ sessionStorage. Reaching the last step
+// navigates to /onboarding/generate (GenerationScreen), which drives the LLM
+// call from the persisted wizard state. Wizard sessionStorage clearing
+// happens in exactly two places:
+//   1. OnboardingWelcomeScreen "Start over" (intentional reset).
+//   2. GenerationScreen.handleAccept, on successful routine activation.
 // This screen NEVER clears sessionStorage on exit — exit returns to the
 // welcome screen so the user can resume later.
 

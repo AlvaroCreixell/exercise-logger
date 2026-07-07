@@ -2,12 +2,14 @@
  * Answer-shape contract for the onboarding questionnaire.
  *
  * Consumed by:
- *   - features/onboarding/lib/prompt-builder.ts (Sprint A)
- *   - features/onboarding/lib/questionnaire-state.ts (Sprint B)
- *   - features/onboarding/HandoffScreen.tsx (Sprint D)
+ *   - features/onboarding/lib/prompt-builder.ts (builds the LLM user prompt)
+ *   - features/onboarding/lib/questionnaire-state.ts (wizard reducer)
+ *   - features/onboarding/GenerationScreen.tsx (reads Answers out of wizard
+ *     state and passes them to generation-service.generateRoutine)
  *
- * These 11 StepIds correspond 1-to-1 with the 11 intake topics of the
- * custom GPT (see docs/custom-gpt/workout-routine-gpt.instructions.md).
+ * These 11 StepIds correspond 1-to-1 with the 11 intake topics the system
+ * prompt expects (see services/llm/system-prompt.ts) — originally the intake
+ * topics of the deprecated custom GPT (docs/custom-gpt/DEPRECATED.md).
  * The welcome/name screen at /onboarding is NOT part of this enum — it
  * writes `userName` directly via setUserName(), not through answers.
  */

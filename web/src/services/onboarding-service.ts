@@ -2,9 +2,10 @@ import type { ExerciseLoggerDB } from "@/db/database";
 import { nowISO } from "@/domain/timestamp";
 
 /**
- * Mark onboarding as completed. Called after a successful YAML import on the
- * handoff screen's Stage 2. Idempotent — later calls overwrite the timestamp,
- * which is intentional: re-running the questionnaire re-stamps completion.
+ * Mark onboarding as completed. Called by GenerationScreen.handleAccept after
+ * a generated routine is validated and activated (first-run only — the
+ * caller checks onboardingCompletedAt === null so Settings re-entry doesn't
+ * re-stamp completion). Idempotent — later calls overwrite the timestamp.
  */
 export async function markOnboardingCompleted(
   db: ExerciseLoggerDB

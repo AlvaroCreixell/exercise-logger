@@ -1,8 +1,9 @@
 // Pure reducer — no I/O, no clock, no storage. The orchestrator binds side
 // effects (sessionStorage persistence, focus management) via useEffect.
 //
-// Frozen API contract — Sprint C's QuestionnaireScreen dispatches these
-// actions, Sprint D's HandoffScreen inspects `answers` through it.
+// Frozen API contract — QuestionnaireScreen dispatches these actions,
+// GenerationScreen reads the final `answers` back out of wizard state
+// (via lib/session-storage.ts) to drive generation.
 
 import type { Answer, Answers, StepId } from "./types";
 

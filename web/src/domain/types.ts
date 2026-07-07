@@ -274,7 +274,7 @@ export interface Settings {
   onboardingCompletedAt: string | null;
   /** ISO UTC timestamp when the user skipped onboarding ("Maybe later" on welcome, or migrated-from-v2). null = not skipped. */
   onboardingSkippedAt: string | null;
-  /** ISO UTC timestamp when the user dismissed the Today "Finish importing your routine" banner. Reset to null whenever a new prompt is saved. */
+  /** ISO UTC timestamp when the user dismissed the Today "Finish setting up your routine" banner. Nothing resets this back to null — it stands until the wizard sessionStorage state is cleared (which hides the banner outright, see OnboardingBanner's render guard in TodayScreen) or onboarding completes. */
   onboardingBannerDismissedAt: string | null;
   /** Hold a screen wake lock while a workout session is active. Default true. */
   keepScreenOn: boolean;
