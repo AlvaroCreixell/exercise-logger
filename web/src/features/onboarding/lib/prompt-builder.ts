@@ -1,19 +1,16 @@
-// Co-ships with `docs/custom-gpt/workout-routine-gpt.instructions.md` — update
-// both in the same commit when the intake topics or lead-in text change.
+// Co-ships with `@/services/llm/system-prompt.ts` — the user prompt built
+// here and the system prompt must stay consistent when intake topics change.
 //
-// Pure function: no clock, no RNG, no I/O. See spec §Prompt Generation for
-// the 10 formatting rules enforced here.
+// Pure function: no clock, no RNG, no I/O.
 
 import type { Answer, Answers } from "./types";
 
 const LEAD_IN =
-  "I'd like a personalized workout routine. All 11 intake topics are answered\n" +
-  "below — treat this as the complete intake. Do NOT ask follow-up questions.\n" +
-  "Proceed directly to the catalog-ID check and YAML generation per your\n" +
-  "self-check protocol.";
+  "Design a personalized workout routine for this user. All intake topics\n" +
+  "are answered below — treat this as the complete intake.";
 
 const TRAILING =
-  "Please generate the complete routine YAML following the contract exactly.";
+  "Generate the complete routine now, following your system instructions exactly.";
 
 const EMPTY_ERROR =
   "Cannot build prompt from empty answers — complete the questionnaire first.";
