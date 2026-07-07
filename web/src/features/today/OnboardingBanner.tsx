@@ -13,10 +13,10 @@ export function OnboardingBanner({ onDismiss }: OnboardingBannerProps) {
     >
       <button
         type="button"
-        onClick={() => navigate("/onboarding/handoff")}
+        onClick={() => navigate("/onboarding/questionnaire")}
         className="flex-1 text-left text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-cli/40 rounded"
       >
-        📋 Paste your routine YAML here →
+        Finish setting up your routine →
       </button>
       <button
         type="button"

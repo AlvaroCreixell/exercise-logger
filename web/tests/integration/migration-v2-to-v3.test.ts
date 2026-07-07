@@ -19,8 +19,6 @@ describe("migration v2 → v3", () => {
     expect(settings?.onboardingSkippedAt).toBeNull();
     expect(settings?.onboardingCompletedAt).toBeNull();
     expect(settings?.userName).toBeNull();
-    expect(settings?.lastGeneratedPrompt).toBeNull();
-    expect(settings?.lastGeneratedPromptAt).toBeNull();
     expect(settings?.onboardingBannerDismissedAt).toBeNull();
     await db.close();
   });

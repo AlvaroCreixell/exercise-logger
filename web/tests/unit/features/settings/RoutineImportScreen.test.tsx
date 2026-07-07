@@ -87,13 +87,7 @@ describe("RoutineImportScreen — first-run import completes onboarding", () => 
     });
   });
 
-  it("marks onboarding completed and clears prompt + wizard state when first-run", async () => {
-    const s = (await db.settings.get("user"))!;
-    await db.settings.put({
-      ...s,
-      lastGeneratedPrompt: "SAVED",
-      lastGeneratedPromptAt: new Date().toISOString(),
-    });
+  it("marks onboarding completed and clears wizard state when first-run", async () => {
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ stepIndex: 3, answers: {} }));
 
     const user = userEvent.setup();
@@ -105,18 +99,15 @@ describe("RoutineImportScreen — first-run import completes onboarding", () => 
 
     const after = (await db.settings.get("user"))!;
     expect(after.onboardingCompletedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
-    expect(after.lastGeneratedPrompt).toBeNull();
     expect(sessionStorage.getItem(STORAGE_KEY)).toBeNull();
   });
 
-  it("leaves onboarding flags alone for an already-skipped user but still clears the prompt", async () => {
+  it("leaves onboarding flags alone for an already-skipped user", async () => {
     const skippedAt = "2026-06-01T10:00:00.000Z";
     const s = (await db.settings.get("user"))!;
     await db.settings.put({
       ...s,
       onboardingSkippedAt: skippedAt,
-      lastGeneratedPrompt: "SAVED",
-      lastGeneratedPromptAt: new Date().toISOString(),
     });
 
     const user = userEvent.setup();
@@ -129,7 +120,6 @@ describe("RoutineImportScreen — first-run import completes onboarding", () => 
     const after = (await db.settings.get("user"))!;
     expect(after.onboardingCompletedAt).toBeNull();
     expect(after.onboardingSkippedAt).toBe(skippedAt);
-    expect(after.lastGeneratedPrompt).toBeNull();
   });
 });
 

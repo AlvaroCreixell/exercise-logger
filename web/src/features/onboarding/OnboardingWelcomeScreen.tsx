@@ -6,10 +6,7 @@ import { Input } from "@/shared/ui/input";
 import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
 import { db } from "@/db/database";
 import { setUserName } from "@/services/settings-service";
-import {
-  clearLastPrompt,
-  markOnboardingSkipped,
-} from "@/services/onboarding-service";
+import { markOnboardingSkipped } from "@/services/onboarding-service";
 import { useSettings } from "@/shared/hooks/useSettings";
 import { useRoutine } from "@/shared/hooks/useRoutine";
 import {
@@ -81,16 +78,9 @@ export default function OnboardingWelcomeScreen() {
     }
   }
 
-  async function handleStartOver() {
+  function handleStartOver() {
     clearWizardState();
     setHasWizardState(false);
-    // Saved-prompt lifecycle rule 3 (features/onboarding/CLAUDE.md): Welcome
-    // "Start over" is an explicit clear of the saved prompt too.
-    try {
-      await clearLastPrompt(db);
-    } catch (err) {
-      console.error("clearLastPrompt failed", err);
-    }
   }
 
   return (

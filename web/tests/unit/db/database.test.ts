@@ -32,8 +32,6 @@ describe("ExerciseLoggerDB", () => {
       userName: null,
       onboardingCompletedAt: null,
       onboardingSkippedAt: null,
-      lastGeneratedPrompt: null,
-      lastGeneratedPromptAt: null,
       onboardingBannerDismissedAt: null,
       // Gym-proofing (Dexie v4): wake lock + haptic cue on, sound off.
       keepScreenOn: true,

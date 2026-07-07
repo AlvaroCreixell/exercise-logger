@@ -861,14 +861,12 @@ function validateSettings(
     });
   }
 
-  // Five timestamp fields: each string-or-null OR undefined for legacy
+  // Three timestamp fields: each string-or-null OR undefined for legacy
   // backups. importBackup normalizes missing fields to null via `?? null`,
   // matching live setter behavior. ISO format is intentionally not enforced.
   for (const field of [
     "onboardingCompletedAt",
     "onboardingSkippedAt",
-    "lastGeneratedPrompt",
-    "lastGeneratedPromptAt",
     "onboardingBannerDismissedAt",
   ] as const) {
     if (s[field] !== undefined && !isStringOrNull(s[field])) {
@@ -1200,8 +1198,6 @@ export async function importBackup(
         userName: settings.userName ?? null,
         onboardingCompletedAt: settings.onboardingCompletedAt ?? null,
         onboardingSkippedAt: settings.onboardingSkippedAt ?? null,
-        lastGeneratedPrompt: settings.lastGeneratedPrompt ?? null,
-        lastGeneratedPromptAt: settings.lastGeneratedPromptAt ?? null,
         onboardingBannerDismissedAt: settings.onboardingBannerDismissedAt ?? null,
         keepScreenOn: settings.keepScreenOn ?? true,
         restCueHaptic: settings.restCueHaptic ?? true,

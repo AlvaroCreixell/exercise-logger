@@ -5,6 +5,10 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
 import TodayScreen from "@/features/today/TodayScreen";
 import { db, initializeSettings } from "@/db/database";
+import {
+  saveWizardState,
+  clearWizardState,
+} from "@/features/onboarding/lib/session-storage";
 import type { Routine, Session } from "@/domain/types";
 
 function renderAt(path = "/") {
@@ -246,7 +250,7 @@ function WithRouter() {
     <MemoryRouter initialEntries={["/"]}>
       <Routes>
         <Route path="/" element={<TodayScreen />} />
-        <Route path="/onboarding/handoff" element={<div>HANDOFF</div>} />
+        <Route path="/onboarding/questionnaire" element={<div>QUESTIONNAIRE</div>} />
         <Route path="/settings" element={<div>SETTINGS</div>} />
       </Routes>
     </MemoryRouter>
@@ -316,15 +320,17 @@ describe("TodayScreen greeting + banner", () => {
     ).toBeInTheDocument();
   });
 
-  it("renders the onboarding banner when a prompt is saved and not dismissed; × persists dismissal", async () => {
+  it("renders the onboarding banner when wizard state is saved and not dismissed; × persists dismissal", async () => {
     await seedMinimalRoutine();
     const s = (await db.settings.get("user"))!;
     await db.settings.put({
       ...s,
       activeRoutineId: "r1",
-      lastGeneratedPrompt: "SAVED",
-      lastGeneratedPromptAt: new Date().toISOString(),
       onboardingBannerDismissedAt: null,
+    });
+    saveWizardState({
+      stepIndex: 0,
+      answers: { goal: { kind: "chip", value: "x" } },
     });
     const user = userEvent.setup();
     render(<WithRouter />);
@@ -339,5 +345,39 @@ describe("TodayScreen greeting + banner", () => {
     expect(persisted?.onboardingBannerDismissedAt).toMatch(
       /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/
     );
+  });
+
+  it("does not render the onboarding banner when no wizard state is saved", async () => {
+    await seedMinimalRoutine();
+    const s = (await db.settings.get("user"))!;
+    await db.settings.put({
+      ...s,
+      activeRoutineId: "r1",
+      onboardingBannerDismissedAt: null,
+    });
+    clearWizardState();
+    render(<WithRouter />);
+    await waitFor(() => {
+      expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    });
+  });
+
+  it("does not render the onboarding banner when onboarding is already completed", async () => {
+    await seedMinimalRoutine();
+    const s = (await db.settings.get("user"))!;
+    await db.settings.put({
+      ...s,
+      activeRoutineId: "r1",
+      onboardingCompletedAt: new Date().toISOString(),
+      onboardingBannerDismissedAt: null,
+    });
+    saveWizardState({
+      stepIndex: 0,
+      answers: { goal: { kind: "chip", value: "x" } },
+    });
+    render(<WithRouter />);
+    await waitFor(() => {
+      expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    });
   });
 });

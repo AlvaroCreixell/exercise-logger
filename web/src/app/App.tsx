@@ -38,9 +38,6 @@ const OnboardingWelcomeScreen = lazy(
 const QuestionnaireScreen = lazy(
   () => import("@/features/onboarding/QuestionnaireScreen"),
 );
-const HandoffScreen = lazy(
-  () => import("@/features/onboarding/HandoffScreen"),
-);
 const GenerationScreen = lazy(
   () => import("@/features/onboarding/GenerationScreen"),
 );
@@ -182,15 +179,6 @@ export function AppRoutes() {
   ) {
     return <Navigate to="/" replace />;
   }
-  // Handoff guard: no prompt AND no just-completed → back to questionnaire.
-  if (
-    location.pathname === "/onboarding/handoff" &&
-    settings.lastGeneratedPrompt === null &&
-    (location.state as { justCompleted?: boolean } | null)?.justCompleted !== true
-  ) {
-    return <Navigate to="/onboarding/questionnaire" replace />;
-  }
-
   return (
     <Suspense fallback={<LoadingState fullscreen />}>
       <Routes>
@@ -214,7 +202,6 @@ export function AppRoutes() {
             element={<QuestionnaireScreen />}
           />
           <Route path="/onboarding/generate" element={<GenerationScreen />} />
-          <Route path="/onboarding/handoff" element={<HandoffScreen />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

@@ -870,8 +870,6 @@ function makeMinimalValidPayload(): BackupEnvelope {
         userName: null,
         onboardingCompletedAt: null,
         onboardingSkippedAt: null,
-        lastGeneratedPrompt: null,
-        lastGeneratedPromptAt: null,
         onboardingBannerDismissedAt: null,
       },
     },
@@ -1173,7 +1171,7 @@ describe("validator hardening — Sprint 2 — Settings onboarding fields", () =
     )).toBe(true);
   });
 
-  it("accepts all six onboarding fields as null", () => {
+  it("accepts all four onboarding fields as null", () => {
     const cat = new Set([catalogId]);
     const payload = makeMinimalValidPayload();
     // settings already has them as null in makeMinimalValidPayload; assert no errors come back
@@ -1183,8 +1181,6 @@ describe("validator hardening — Sprint 2 — Settings onboarding fields", () =
       "userName",
       "onboardingCompletedAt",
       "onboardingSkippedAt",
-      "lastGeneratedPrompt",
-      "lastGeneratedPromptAt",
       "onboardingBannerDismissedAt",
     ];
     for (const f of onboardingFields) {
@@ -1192,7 +1188,7 @@ describe("validator hardening — Sprint 2 — Settings onboarding fields", () =
     }
   });
 
-  it("accepts ISO-shaped strings for the five timestamp fields", () => {
+  it("accepts ISO-shaped strings for the three timestamp fields", () => {
     const cat = new Set([catalogId]);
     const payload = makeMinimalValidPayload();
     const stamp = "2026-04-23T00:00:00.000Z";
@@ -1200,8 +1196,6 @@ describe("validator hardening — Sprint 2 — Settings onboarding fields", () =
       userName: "Alice",
       onboardingCompletedAt: stamp,
       onboardingSkippedAt: null,
-      lastGeneratedPrompt: "some prompt",
-      lastGeneratedPromptAt: stamp,
       onboardingBannerDismissedAt: null,
     });
     const errors = validateBackupPayload(payload, cat);
@@ -1333,25 +1327,21 @@ describe("validator hardening — Sprint 2 — extended referential integrity", 
 });
 
 describe("Sprint 2 hotfix — backward-compat", () => {
-  it("accepts a legacy settings object that omits the six onboarding fields", () => {
+  it("accepts a legacy settings object that omits the four onboarding fields", () => {
     const cat = new Set([catalogId]);
     const payload = makeMinimalValidPayload();
-    // Remove the six onboarding keys entirely (legacy pre-onboarding shape).
+    // Remove the four onboarding keys entirely (legacy pre-onboarding shape).
     const settingsObj = payload.data.settings as Record<string, unknown>;
     delete settingsObj.userName;
     delete settingsObj.onboardingCompletedAt;
     delete settingsObj.onboardingSkippedAt;
-    delete settingsObj.lastGeneratedPrompt;
-    delete settingsObj.lastGeneratedPromptAt;
     delete settingsObj.onboardingBannerDismissedAt;
     const errors = validateBackupPayload(payload, cat);
-    // None of the six onboarding fields should produce errors when omitted.
+    // None of the four onboarding fields should produce errors when omitted.
     const onboardingFields = [
       "userName",
       "onboardingCompletedAt",
       "onboardingSkippedAt",
-      "lastGeneratedPrompt",
-      "lastGeneratedPromptAt",
       "onboardingBannerDismissedAt",
     ];
     for (const f of onboardingFields) {

@@ -19,6 +19,7 @@ import { DaySelector } from "./DaySelector";
 import { LastSessionCard } from "./LastSessionCard";
 import { OnboardingBanner } from "./OnboardingBanner";
 import { dismissOnboardingBanner } from "@/services/onboarding-service";
+import { loadWizardState } from "@/features/onboarding/lib/session-storage";
 import { formatTodayEyebrow } from "./lib/formatDate";
 import { summarizeRoutineDay } from "./lib/routineSummary";
 import type { Exercise } from "@/domain/types";
@@ -131,7 +132,8 @@ export default function TodayScreen() {
           command={settings.userName ? `Hi, ${settings.userName}.` : "Hello."}
         />
 
-        {settings.lastGeneratedPrompt !== null &&
+        {loadWizardState() !== null &&
+          settings.onboardingCompletedAt === null &&
           settings.onboardingBannerDismissedAt === null && (
             <OnboardingBanner
               onDismiss={() => {

@@ -112,6 +112,9 @@ export class ExerciseLoggerDB extends Dexie {
     // string, so the `.stores(...)` signature is identical to v4. "" is the
     // "not configured" sentinel (never null — see the compound-index note on
     // version 3).
+    // v5 also predates the removal of lastGeneratedPrompt fields from the
+    // Settings type; stale props on existing rows are harmless and
+    // intentionally not migrated away.
     this.version(5).stores({
       exercises: "id",
       routines: "id",
@@ -137,8 +140,6 @@ export const DEFAULT_SETTINGS: Settings = {
   userName: null,
   onboardingCompletedAt: null,
   onboardingSkippedAt: null,
-  lastGeneratedPrompt: null,
-  lastGeneratedPromptAt: null,
   onboardingBannerDismissedAt: null,
   keepScreenOn: true,
   restCueHaptic: true,
