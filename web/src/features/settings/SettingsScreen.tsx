@@ -38,6 +38,7 @@ import { RowLink } from "./RowLink";
 import { SettingRow } from "./SettingRow";
 import { UnitsToggle } from "./UnitsToggle";
 import { PrefSwitch } from "./PrefSwitch";
+import { LlmKeyCard } from "./LlmKeyCard";
 import { Card } from "@/shared/ui/card";
 import { toast } from "sonner";
 
@@ -207,6 +208,12 @@ export default function SettingsScreen() {
             hasActiveSession={hasActive}
           />
         )}
+      </div>
+
+      {/* AI generation */}
+      <div className="space-y-3">
+        <SectionHeader>AI routine generation</SectionHeader>
+        <LlmKeyCard llmApiKey={settings.llmApiKey} />
       </div>
 
       {/* Display */}
