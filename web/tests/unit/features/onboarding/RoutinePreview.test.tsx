@@ -56,7 +56,7 @@ describe("RoutinePreview", () => {
     render(<RoutinePreview routine={routine} exercisesById={exercisesById} />);
     expect(screen.getByText("3 × 5–8")).toBeInTheDocument();
     expect(screen.getAllByText("3 × 10")).toHaveLength(2);
-    expect(screen.getByText(/superset/i)).toBeInTheDocument();
+    expect(screen.getByText("superset")).toBeInTheDocument();
   });
 
   it("renders the cardio section when present", () => {

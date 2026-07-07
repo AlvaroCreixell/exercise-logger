@@ -47,7 +47,7 @@ export function RoutinePreview({
     <div className="flex flex-col gap-3">
       <h2 className="text-hero-serif text-ink">{routine.name}</h2>
       <p className="text-meta">
-        Rest {routine.restDefaultSec}s · recovery {routine.restSupersetSec}s
+        Rest {routine.restDefaultSec}s · superset rest {routine.restSupersetSec}s
       </p>
       {routine.dayOrder.map((dayId) => {
         const day = routine.days[dayId];
