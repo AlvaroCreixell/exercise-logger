@@ -10,10 +10,21 @@ export type KeypadKey =
  * - "." is ignored if the string already contains one.
  * - "." on empty string becomes "0.".
  * - A digit after a standalone "0" replaces the "0" (prevents "07").
+ * - `pristine` (a prefilled value the user hasn't touched): the first digit
+ *   or "." REPLACES the whole value instead of appending — accepting a
+ *   prefill then correcting it costs 1 keystroke, not backspaces + retype.
+ *   Backspace on a pristine value edits it in place (append mode).
  */
-export function applyKeypadKey(current: string, key: KeypadKey): string {
+export function applyKeypadKey(
+  current: string,
+  key: KeypadKey,
+  pristine: boolean = false,
+): string {
   if (key === "back") {
     return current.length === 0 ? "" : current.slice(0, -1);
+  }
+  if (pristine) {
+    return key === "." ? "0." : key;
   }
   if (key === ".") {
     if (current.includes(".")) return current;

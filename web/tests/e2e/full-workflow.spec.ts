@@ -29,11 +29,13 @@ test.describe("Exercise Logger E2E Smoke Test", () => {
   test("bundled routine is auto-seeded and active", async ({ page }) => {
     await page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: /settings/i }).click();
 
-    // The bundled routine should already be present and active
+    // The bundled routine should already be present and active.
+    // ("Active Routine" exactly — a bare "Active" also matches the Workout
+    // section's "While a workout is active" sublabel.)
     await expect(
       page.getByText("Full Body 3-Day Rotation", { exact: true })
     ).toBeVisible({ timeout: 5000 });
-    await expect(page.getByText("Active")).toBeVisible();
+    await expect(page.getByText("Active Routine")).toBeVisible();
   });
 
   test("full workflow: start -> log -> finish -> history -> export", async ({

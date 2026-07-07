@@ -43,14 +43,33 @@ export function ExercisePicker({
         if (!isOpen) setSearch("");
       }}
     >
-      <SheetContent side="bottom" className="h-[85dvh] bg-background" showCloseButton={false}>
+      {/* data-[side=bottom]: the sheet base sets data-[side=bottom]:h-auto
+          (class+attribute, specificity 0-2-0) which silently defeats a plain
+          h-[85dvh] (0-1-0) — the sheet then grows to content height and its
+          header/search render off-screen. Matching the variant wins. */}
+      <SheetContent
+        side="bottom"
+        className="data-[side=bottom]:h-[85dvh] bg-background"
+        showCloseButton={false}
+      >
         {/* Grabber bar per prototype */}
         <div className="flex justify-center pt-2.5 pb-1">
           <div className="h-1 w-10 rounded-full bg-line" aria-hidden="true" />
         </div>
         <SheetHeader className="px-5 pt-1 pb-3">
-          <p className="text-eyebrow text-ink-3">Add extra</p>
-          <SheetTitle className="text-title-serif">Pick an exercise</SheetTitle>
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-eyebrow text-ink-3">Add extra</p>
+              <SheetTitle className="text-title-serif">Pick an exercise</SheetTitle>
+            </div>
+            <button
+              type="button"
+              className="inline-flex min-h-11 shrink-0 items-center rounded-[var(--radius-pill)] border border-line px-2.5 text-[11px] font-semibold uppercase tracking-wider text-ink-3 transition-colors hover:border-accent-cli hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-cli/40"
+              onClick={() => onOpenChange(false)}
+            >
+              Cancel
+            </button>
+          </div>
         </SheetHeader>
 
         <div className="px-5 pb-3">

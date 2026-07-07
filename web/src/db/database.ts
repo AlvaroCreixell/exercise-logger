@@ -84,6 +84,29 @@ export class ExerciseLoggerDB extends Dexie {
         });
       }
     });
+
+    // Version 4: gym-proofing preferences on the settings record. Unindexed
+    // booleans, so the `.stores(...)` signature is identical to v3. Existing
+    // users get the same defaults as fresh installs: wake lock and haptic cue
+    // on, sound off (gyms don't need another beeping phone).
+    this.version(4).stores({
+      exercises: "id",
+      routines: "id",
+      sessions: "id, status, [routineId+startedAt]",
+      sessionExercises: "id, sessionId, [sessionId+orderIndex]",
+      loggedSets:
+        "id, sessionId, [sessionExerciseId+blockIndex+setIndex], [exerciseId+loggedAt], [exerciseId+instanceLabel+blockSignature+loggedAt]",
+      settings: "id",
+    }).upgrade(async (trans) => {
+      const existing = await trans.table("settings").get("user");
+      if (existing) {
+        await trans.table("settings").update("user", {
+          keepScreenOn: true,
+          restCueHaptic: true,
+          restCueSound: false,
+        });
+      }
+    });
   }
 }
 
@@ -98,6 +121,9 @@ export const DEFAULT_SETTINGS: Settings = {
   lastGeneratedPrompt: null,
   lastGeneratedPromptAt: null,
   onboardingBannerDismissedAt: null,
+  keepScreenOn: true,
+  restCueHaptic: true,
+  restCueSound: false,
 };
 
 /**

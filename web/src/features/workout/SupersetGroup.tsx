@@ -15,11 +15,16 @@ interface SupersetGroupProps {
   exercises?: [SessionExercise, SessionExercise];
   /** Logged sets grouped by sessionExerciseId (WorkoutScreen's map). */
   setsByExercise?: Map<string, LoggedSet[]>;
+  /**
+   * True when both partners are complete and the pair is collapsed as a unit
+   * (spec §4.3) — hides the rail and rhythm hint, keeps the group border.
+   */
+  collapsed?: boolean;
 }
 
-export function SupersetGroup({ children, exercises, setsByExercise }: SupersetGroupProps) {
+export function SupersetGroup({ children, exercises, setsByExercise, collapsed = false }: SupersetGroupProps) {
   const hasRhythmData = exercises !== undefined && setsByExercise !== undefined;
-  const railItems = hasRhythmData
+  const railItems = hasRhythmData && !collapsed
     ? buildSupersetRail({ exercises, setsByExercise })
     : null;
 
@@ -27,7 +32,7 @@ export function SupersetGroup({ children, exercises, setsByExercise }: SupersetG
     <div className="border-l-2 border-accent-cli-bright pl-4 space-y-3">
       <div className="space-y-0.5">
         <SectionHeader className="!text-accent-cli-bright">Superset</SectionHeader>
-        {hasRhythmData && (
+        {hasRhythmData && !collapsed && (
           <p className="text-meta">Alternate A then B before resting</p>
         )}
       </div>

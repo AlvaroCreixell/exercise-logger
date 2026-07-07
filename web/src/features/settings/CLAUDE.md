@@ -16,6 +16,7 @@ Settings screen (`/settings`), routine import screen (`/settings/import`), and t
 - `RowLink.tsx` — Settings row as a link.
 - `SettingRow.tsx` — Generic settings row (label + action).
 - `UnitsToggle.tsx` — Global kg/lbs toggle.
+- `PrefSwitch.tsx` — Boolean `[on]`/`[off]` bracket-tag switch (role="switch", ≥44 px hit area). Used by the Workout section (keep screen on / rest cue vibration / rest cue sound).
 - `YamlErrorList.tsx` — Error list rendered in the import screen.
 
 ## Local utilities (`lib/`)
@@ -28,7 +29,7 @@ Settings screen (`/settings`), routine import screen (`/settings/import`), and t
 
 ## Services called
 
-- `setUnits`, `setActiveRoutine`, `deleteRoutine` — `@/services/settings-service`.
+- `setUnits`, `setActiveRoutine`, `deleteRoutine`, `setKeepScreenOn`, `setRestCueHaptic`, `setRestCueSound` — `@/services/settings-service`.
 - `validateAndNormalizeRoutine`, `importAndActivateRoutine` — `@/services/routine-service`.
 - `exportBackup`, `downloadBackupFile`, `importBackup`, `readJsonFile`, `validateBackupPayload`, `clearAllData` — `@/services/backup-service`.
 

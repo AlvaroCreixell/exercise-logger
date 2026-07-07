@@ -8,6 +8,11 @@ interface PromptHeadingProps {
   detail?: string;
   className?: string;
   as?: "h1" | "h2" | "p";
+  /**
+   * Wrap the command onto up to two lines instead of truncating. Used on the
+   * workout header where long day labels lost ~60% of their text at 375 px.
+   */
+  wrapCommand?: boolean;
 }
 
 /**
@@ -19,6 +24,7 @@ export function PromptHeading({
   detail,
   className,
   as: Tag = "h1",
+  wrapCommand = false,
 }: PromptHeadingProps) {
   return (
     <Tag
@@ -30,7 +36,9 @@ export function PromptHeading({
       <span aria-hidden="true" className="text-accent-cli select-none">
         ❯
       </span>
-      <span className="min-w-0 truncate">{command}</span>
+      <span className={wrapCommand ? "min-w-0 line-clamp-2" : "min-w-0 truncate"}>
+        {command}
+      </span>
       {detail && (
         <span
           aria-hidden="true"

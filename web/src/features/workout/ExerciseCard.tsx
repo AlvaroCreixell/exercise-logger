@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { SessionExercise, LoggedSet } from "@/domain/types";
 import type { UnitSystem } from "@/domain/enums";
 import type { ExerciseHistoryData, ExtraExerciseHistory } from "@/services/progression-service";
@@ -6,6 +6,13 @@ import { toDisplayWeight } from "@/domain/unit-conversion";
 import { Card, CardContent } from "@/shared/ui/card";
 import { SetRow } from "./SetRow";
 import { formatExerciseTargetLine } from "./lib/formatSetTarget";
+import {
+  resolvePrimedSlot,
+  resolveQuickTarget,
+  formatQuickTarget,
+  formatBlockTargetHint,
+  type QuickTarget,
+} from "./lib/quick-target";
 
 interface ExerciseCardProps {
   sessionExercise: SessionExercise;
@@ -16,6 +23,24 @@ interface ExerciseCardProps {
   onSetTap: (blockIndex: number, setIndex: number) => void;
   /** Callback when unit toggle is tapped. Undefined = no toggle shown (history view). */
   onUnitToggle?: (newUnit: UnitSystem) => void;
+  /**
+   * Quick-log handler for the primed row (guided logging). Undefined = no
+   * primed rows (history view). Only routine-origin cards ever prime a row
+   * (invariant 7 — extras have no suggestions and no blocks).
+   */
+  onQuickLog?: (blockIndex: number, setIndex: number, target: QuickTarget) => Promise<void>;
+  /**
+   * Collapsed flow-focus state (spec §4.3): header + one `⎿` summary line,
+   * rows unmounted. Driven by WorkoutScreen; undefined = normal card.
+   */
+  collapsed?: boolean;
+  /** Header-name toggle for collapsible (complete) cards; sets aria-expanded. */
+  onToggleCollapsed?: () => void;
+  /**
+   * Reports the current primed-target display label (null when no primed
+   * row). WorkoutScreen lifts it into the rest bar's "next:" line.
+   */
+  onPrimedChange?: (label: string | null) => void;
 }
 
 /**
@@ -48,10 +73,53 @@ export function ExerciseCard({
   extraHistory,
   onSetTap,
   onUnitToggle,
+  onQuickLog,
+  collapsed = false,
+  onToggleCollapsed,
+  onPrimedChange,
 }: ExerciseCardProps) {
   const se = sessionExercise;
   const blocks = se.setBlocksSnapshot;
   const isExtra = se.origin === "extra";
+
+  // Guided logging: the one primed row per card — its first empty prescribed
+  // slot — logs its resolved target in a single tap. No handler (history
+  // view) or an incomplete target (day one) → no primed row anywhere.
+  const [quickSaving, setQuickSaving] = useState(false);
+  const primedSlot =
+    onQuickLog && !isExtra ? resolvePrimedSlot(blocks, loggedSets) : null;
+  const primedTarget = primedSlot
+    ? resolveQuickTarget({
+        block: blocks[primedSlot.blockIndex]!,
+        setIndex: primedSlot.setIndex,
+        suggestion: historyData?.suggestions?.find(
+          (s) => s.blockIndex === primedSlot.blockIndex,
+        ),
+        lastTime: historyData?.lastTime[primedSlot.blockIndex],
+        blockSetsInSession: loggedSets.filter(
+          (ls) => ls.blockIndex === primedSlot.blockIndex,
+        ),
+        effectiveType: se.effectiveType,
+      })
+    : null;
+
+  async function handleQuickLog(target: QuickTarget, blockIndex: number, setIndex: number) {
+    if (!onQuickLog || quickSaving) return;
+    setQuickSaving(true);
+    try {
+      await onQuickLog(blockIndex, setIndex, target);
+    } finally {
+      setQuickSaving(false);
+    }
+  }
+
+  // Lift the primed-target label so the rest bar can show "next: 52.5 kg × 8"
+  // without re-deriving history at the screen level.
+  const primedDisplay = primedTarget ? formatQuickTarget(primedTarget, units) : null;
+  useEffect(() => {
+    onPrimedChange?.(primedDisplay);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [primedDisplay]);
 
   // Sprint 4 (D3b): per-block in-session "Add extra set" tap counter.
   // Source of truth on rehydrate is loggedSets (extras logged in a prior
@@ -125,33 +193,74 @@ export function ExerciseCard({
     return formatHintValue(first, units) ?? undefined;
   }
 
+  const headerContent = (
+    <>
+      <h3 className="flex items-baseline gap-2 font-heading text-lg font-bold tracking-tight text-foreground">
+        <span
+          aria-hidden="true"
+          className={`shrink-0 text-xs select-none ${
+            totalPrescribed > 0 && totalLogged >= totalPrescribed
+              ? "text-success"
+              : totalLogged > 0 || loggedSets.length > 0
+                ? "text-accent-cli"
+                : "text-ink-3"
+          }`}
+        >
+          ⏺
+        </span>
+        <span className="min-w-0 truncate">{se.exerciseNameSnapshot}</span>
+      </h3>
+      {blocks.length > 0 && !collapsed && (
+        <p className="text-meta tabular-nums">
+          {formatExerciseTargetLine(blocks)}
+        </p>
+      )}
+    </>
+  );
+
+  // Collapsed summary: one compact "⎿ 62.5×12 ↑PR · 52.5×12 · …" line in
+  // block/set order (spec §4.3).
+  const collapsedSummary = collapsed
+    ? [...loggedSets]
+        .sort((a, b) =>
+          a.blockIndex !== b.blockIndex
+            ? a.blockIndex - b.blockIndex
+            : a.setIndex - b.setIndex,
+        )
+        .map((ls) => {
+          const v = formatHintValue(
+            {
+              weightKg: ls.performedWeightKg,
+              reps: ls.performedReps,
+              durationSec: ls.performedDurationSec,
+              distanceM: ls.performedDistanceM,
+            },
+            units,
+          );
+          if (v === null) return null;
+          return ls.isPersonalRecord === true ? `${v} ↑PR` : v;
+        })
+        .filter((v): v is string => v !== null)
+        .join(" · ")
+    : "";
+
   return (
     <Card className="py-0">
-      <CardContent className="space-y-3 px-4 py-4">
+      <CardContent className={collapsed ? "space-y-1 px-4 py-3" : "space-y-3 px-4 py-4"}>
         {/* Header */}
         <div className="flex items-start gap-2">
-          <div className="min-w-0 flex-1">
-            <h3 className="flex items-baseline gap-2 font-heading text-lg font-bold tracking-tight text-foreground">
-              <span
-                aria-hidden="true"
-                className={`shrink-0 text-xs select-none ${
-                  totalPrescribed > 0 && totalLogged >= totalPrescribed
-                    ? "text-success"
-                    : totalLogged > 0 || loggedSets.length > 0
-                      ? "text-accent-cli"
-                      : "text-ink-3"
-                }`}
-              >
-                ⏺
-              </span>
-              <span className="min-w-0 truncate">{se.exerciseNameSnapshot}</span>
-            </h3>
-            {blocks.length > 0 && (
-              <p className="text-meta tabular-nums">
-                {formatExerciseTargetLine(blocks)}
-              </p>
-            )}
-          </div>
+          {onToggleCollapsed ? (
+            <button
+              type="button"
+              aria-expanded={!collapsed}
+              onClick={onToggleCollapsed}
+              className="min-w-0 flex-1 rounded-sm text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-cli/40"
+            >
+              {headerContent}
+            </button>
+          ) : (
+            <div className="min-w-0 flex-1">{headerContent}</div>
+          )}
           {totalPrescribed > 0 && (
             <span
               aria-label={`${totalLogged} of ${totalPrescribed} sets logged`}
@@ -163,7 +272,7 @@ export function ExerciseCard({
           {onUnitToggle && (
             <button
               type="button"
-              className="shrink-0 rounded-[var(--radius-pill)] border border-line px-2 py-0.5 text-[11px] font-medium tabular-nums text-ink-3 transition-colors hover:border-accent-cli hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-cli/40"
+              className="relative shrink-0 rounded-[var(--radius-pill)] border border-line px-2 py-0.5 text-[11px] font-medium tabular-nums text-ink-3 transition-colors before:absolute before:-inset-y-3 before:-inset-x-2 before:content-[''] hover:border-accent-cli hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-cli/40"
               onClick={(e) => {
                 e.stopPropagation();
                 onUnitToggle(units === "kg" ? "lbs" : "kg");
@@ -174,12 +283,20 @@ export function ExerciseCard({
           )}
         </div>
 
-        {se.notesSnapshot && (
+        {/* Collapsed: header + one ⎿ summary line, nothing else mounted. */}
+        {collapsed && collapsedSummary && (
+          <p className="min-w-0 truncate text-meta tabular-nums">
+            <span aria-hidden="true" className="text-ink-3 select-none">⎿ </span>
+            {collapsedSummary}
+          </p>
+        )}
+
+        {!collapsed && se.notesSnapshot && (
           <p className="text-meta line-clamp-1">{se.notesSnapshot}</p>
         )}
 
         {/* Set rows — continuous numbering across blocks; extras render after each block's prescribed rows. */}
-        {blocks.length > 0 && (
+        {!collapsed && blocks.length > 0 && (
           <div className="space-y-1.5">
             {(() => {
               const rows: React.ReactNode[] = [];
@@ -191,6 +308,15 @@ export function ExerciseCard({
                   runningIndex += 1;
                   const setKey = `${bi}:${si}`;
                   const logged = setLookup.get(setKey);
+                  const isPrimed =
+                    primedTarget !== null &&
+                    primedSlot !== null &&
+                    primedSlot.blockIndex === bi &&
+                    primedSlot.setIndex === si &&
+                    logged === undefined;
+                  const blockSuggestion = historyData?.suggestions?.find(
+                    (s) => s.blockIndex === bi,
+                  );
                   rows.push(
                     <SetRow
                       key={setKey}
@@ -199,8 +325,34 @@ export function ExerciseCard({
                       units={units}
                       // Extras are not "top" sets; only prescribed rows in a top-tagged block carry the badge.
                       isTopBlock={block.tag === "top" && si < block.count}
+                      // Empty prescribed rows hint last time's set; day one
+                      // falls back to the prescription (rendered without the
+                      // "last" prefix — it's a target, not history).
                       lastHint={si < block.count ? emptyHintForBlock(bi) : undefined}
-                      onClick={() => onSetTap(bi, si)}
+                      prescriptionHint={
+                        si < block.count ? formatBlockTargetHint(block) : undefined
+                      }
+                      primed={
+                        isPrimed
+                          ? {
+                              display: formatQuickTarget(primedTarget, units),
+                              // Only honest ↑: the tone claims a progression
+                              // solely when the tap would log the engine's
+                              // progressed weight (not a carryover override).
+                              isProgression:
+                                blockSuggestion?.isProgression === true &&
+                                primedTarget.performedWeightKg ===
+                                  blockSuggestion.suggestedWeightKg,
+                              saving: quickSaving,
+                            }
+                          : undefined
+                      }
+                      onClick={
+                        isPrimed
+                          ? () => void handleQuickLog(primedTarget, bi, si)
+                          : () => onSetTap(bi, si)
+                      }
+                      onEditTap={isPrimed ? () => onSetTap(bi, si) : undefined}
                     />,
                   );
                 }
@@ -223,7 +375,7 @@ export function ExerciseCard({
                           : "Add extra set"
                       }
                       onClick={() => addExtraSet(bi)}
-                      className="ml-9 text-meta hover:text-accent-cli-bright transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-cli/40 rounded-sm py-1"
+                      className="relative ml-9 self-start text-meta before:absolute before:-inset-y-2.5 before:-inset-x-2 before:content-[''] hover:text-accent-cli-bright transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-cli/40 rounded-sm py-1"
                     >
                       Extra set
                     </button>,
@@ -235,15 +387,16 @@ export function ExerciseCard({
           </div>
         )}
 
-        {/* LAST strip (routine exercises only, shown when there's history data) */}
-        {blocks.length > 0 && lastStripFormatted.length > 0 && (
+        {/* LAST strip — multi-block exercises only: on single-block cards it
+            duplicates every row hint verbatim (spec §3.2). */}
+        {!collapsed && blocks.length > 1 && lastStripFormatted.length > 0 && (
           <p className="text-meta tabular-nums">
             LAST {lastStripFormatted.join(" · ")}
           </p>
         )}
 
         {/* Extra exercise: single row list, no block structure */}
-        {isExtra && (() => {
+        {!collapsed && isExtra && (() => {
           const sorted = [...loggedSets].sort((a, b) => a.loggedAt.localeCompare(b.loggedAt));
           const nextSetIndex = loggedSets.reduce((max, ls) => Math.max(max, ls.setIndex + 1), 0);
           const extraHint = extraHistory?.sets[0]

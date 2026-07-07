@@ -14,6 +14,7 @@ function makeTimer(overrides: Partial<ActiveRestTimer> = {}): ActiveRestTimer {
     startedAtMs: 0,
     label: "Rest — Barbell Bench Press",
     roundOrdinal: null,
+    loggedSetId: null,
     ...overrides,
   };
 }
@@ -79,6 +80,41 @@ describe("RestTimerBar — running state", () => {
   it("does not put the live countdown in an aria-live region", () => {
     const { container } = renderBar({ remainingSec: 90 });
     expect(container.querySelectorAll("[aria-live]").length).toBe(0);
+  });
+});
+
+describe("RestTimerBar — next-target line", () => {
+  it("shows the next primed target while running", () => {
+    render(
+      <RestTimerBar
+        timer={makeTimer()}
+        remainingSec={72}
+        nextLabel="52.5 kg × 8"
+        onSkip={vi.fn()}
+        onAddSeconds={vi.fn()}
+      />,
+    );
+    expect(screen.getByText(/next:/)).toBeVisible();
+    expect(screen.getByText(/52\.5 kg × 8/)).toBeVisible();
+  });
+
+  it("shows the next target in the done state too", () => {
+    render(
+      <RestTimerBar
+        timer={makeTimer({ status: "done" })}
+        remainingSec={0}
+        nextLabel="12 reps"
+        onSkip={vi.fn()}
+        onAddSeconds={vi.fn()}
+      />,
+    );
+    expect(screen.getByText(/rest complete/i)).toBeVisible();
+    expect(screen.getByText(/12 reps/)).toBeVisible();
+  });
+
+  it("omits the line when nextLabel is null", () => {
+    renderBar({ remainingSec: 30 });
+    expect(screen.queryByText(/next:/)).toBeNull();
   });
 });
 

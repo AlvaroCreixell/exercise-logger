@@ -22,7 +22,9 @@ export function DaySelector({
             selected={dayId === selectedDayId}
             indicator={dayId === routine.nextDayId}
             aria-label={`Day ${dayId}`}
-            className={i > 0 ? "-ml-[1.5px]" : ""}
+            // Pseudo-element hit-area extension: the chip stays 29×22 visually
+            // ("themed, not literal") but the touch target reaches ~44 px tall.
+            className={`before:absolute before:-inset-y-3 before:-inset-x-0.5 before:content-[''] ${i > 0 ? "-ml-[1.5px]" : ""}`}
           >
             {dayId}
           </Pill>

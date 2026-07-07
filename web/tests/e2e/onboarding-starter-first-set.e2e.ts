@@ -39,16 +39,18 @@ test.describe("Cold install activation — starter routine to first logged set",
     // 5. Log first set.
     //
     // The starter routine Day A begins with "Barbell Back Squat" — a weight+reps
-    // exercise. The first set row renders as an empty-state button:
-    //   aria-label="Set 1: empty, tap to log"
+    // exercise. On day one (no history, no suggestion) rows are never primed,
+    // so the first set row renders as an empty-state button whose hint carries
+    // the prescription:
+    //   aria-label="Set 1: empty, tap to log, last 12–16 reps"
     //
-    // Clicking it opens the SetLogSheet (bottom sheet). On a cold first session,
-    // the weight field is pre-filled as "0" and the reps field is empty.
-    // activeField defaults to "weight".
+    // Clicking it opens the SetLogSheet (bottom sheet). On a cold first session
+    // the weight field is genuinely empty ("—", never a phantom "0") and reps
+    // prefill to the block floor. activeField defaults to "weight".
     //
     // Strategy: focus the Reps ValueBox (aria-label "Reps value"), enter "8"
-    // via the Numeric keypad, then click Save.  This produces a logged set that
-    // the row re-renders as aria-label "Set 1: 8 …".
+    // via the Numeric keypad, then click Save. Weight stays empty, so this
+    // saves an honest reps-only set — no 0 kg record.
 
     // Open the log sheet for Set 1.
     // Multiple exercises on the workout screen each have a "Set 1: empty, tap to log"
@@ -67,8 +69,9 @@ test.describe("Cold install activation — starter routine to first logged set",
     // Focus the Reps field so keypad drives reps not weight.
     await page.getByRole("button", { name: "Reps value" }).click();
 
-    // Enter "8" on the numeric keypad (scoped to keypad group to avoid
-    // accidentally matching a stale "8" elsewhere in the page).
+    // Enter "8" on the numeric keypad. Reps prefill to the block floor (12 for
+    // the top block) and the field is pristine after focus, so the first digit
+    // REPLACES the prefill — one keystroke sets reps to 8.
     const keypad = page.getByRole("group", { name: "Numeric keypad" });
     await keypad.getByRole("button", { name: "8" }).click();
 
@@ -76,12 +79,12 @@ test.describe("Cold install activation — starter routine to first logged set",
     await page.getByRole("button", { name: "Save" }).click();
 
     // Sheet should close; assert the row now shows the logged value.
-    // weight=0 + reps=8 → formatLoggedSetParts produces primary="0", unit="kg",
-    // secondary="8". SetRow aria-label: "Set 1: 0kg × 8".
-    // Use .first() to avoid strict-mode violation (same label could exist on other
-    // exercise cards for the same exercise if weights happen to match).
+    // Weight stayed empty → reps-only set. formatLoggedSetParts produces
+    // primary="8" with no weight — never a phantom "0kg" record.
+    // Use .first() to avoid strict-mode violation (same label could exist on
+    // other exercise cards).
     await expect(
-      page.getByRole("button", { name: /^Set 1: 0kg/i }).first()
+      page.getByRole("button", { name: /^Set 1: 8/i }).first()
     ).toBeVisible({ timeout: 5_000 });
 
     // 6. Telemetry — wall-clock time logged but NOT asserted in CI.

@@ -105,10 +105,53 @@ function repsValueText(): string {
 }
 
 describe("SetLogSheet prefill", () => {
-  it("defaults weight to '0' and reps to block minValue when no history is available", () => {
+  it("leaves weight empty ('—') and reps at block minValue when no history is available", () => {
+    // Day one: an empty weight field reads as "not set" — never a
+    // committed-looking "0" that saves as a 0 kg lift.
     renderSheet({ setIndex: 0 });
-    expect(weightValueText()).toBe("0");
+    expect(weightValueText()).toBe("—");
     expect(repsValueText()).toBe("8"); // minValue of the default STANDARD_BLOCK
+  });
+
+  it("prefills reps at the range floor on a progression (not last time's reps)", () => {
+    renderSheet({
+      setIndex: 0,
+      suggestion: {
+        blockIndex: 0,
+        suggestedWeightKg: 105,
+        isProgression: true,
+        previousWeightKg: 100,
+      },
+      lastTime: {
+        blockIndex: 0,
+        blockLabel: "",
+        tag: null,
+        sets: [{ weightKg: 100, reps: 12, durationSec: null, distanceM: null }],
+      },
+    });
+    expect(weightValueText()).toBe("105");
+    // Last time's 12 reps were hit at 100kg — at 105kg the honest default
+    // restarts at the range floor.
+    expect(repsValueText()).toBe("8");
+  });
+
+  it("prefills reps from last time's per-set reps on a repeat", () => {
+    renderSheet({
+      setIndex: 0,
+      suggestion: {
+        blockIndex: 0,
+        suggestedWeightKg: 100,
+        isProgression: false,
+        previousWeightKg: 100,
+      },
+      lastTime: {
+        blockIndex: 0,
+        blockLabel: "",
+        tag: null,
+        sets: [{ weightKg: 100, reps: 10, durationSec: null, distanceM: null }],
+      },
+    });
+    expect(repsValueText()).toBe("10");
   });
 
   it("prefills weight from the most recent in-session set for the same block, overriding the suggestion", () => {
@@ -298,6 +341,211 @@ describe("SetLogSheet prefill", () => {
     });
 
     expect(weightValueText()).toBe("125");
+  });
+});
+
+describe("SetLogSheet — historyLoaded gating (prefill race)", () => {
+  function renderGated(props: { historyLoaded: boolean; suggestion?: BlockSuggestion }) {
+    return render(
+      <SetLogSheet
+        open={true}
+        onOpenChange={vi.fn()}
+        sessionExercise={makeSessionExercise()}
+        blockIndex={0}
+        setIndex={0}
+        existingSet={undefined}
+        suggestion={props.suggestion}
+        lastTime={undefined}
+        blockSetsInSession={[]}
+        historyLoaded={props.historyLoaded}
+        units="kg"
+        onSave={vi.fn()}
+      />,
+    );
+  }
+
+  it("waits for history before prefilling, then prefills once from the loaded data", () => {
+    const { rerender } = renderGated({ historyLoaded: false });
+    // No prefill yet — not even the reps minValue.
+    expect(weightValueText()).toBe("—");
+    expect(repsValueText()).toBe("—");
+
+    // History resolves with a suggestion → prefill applies exactly once.
+    rerender(
+      <SetLogSheet
+        open={true}
+        onOpenChange={vi.fn()}
+        sessionExercise={makeSessionExercise()}
+        blockIndex={0}
+        setIndex={0}
+        existingSet={undefined}
+        suggestion={{ blockIndex: 0, suggestedWeightKg: 100, isProgression: false, previousWeightKg: 100 }}
+        lastTime={undefined}
+        blockSetsInSession={[]}
+        historyLoaded={true}
+        units="kg"
+        onSave={vi.fn()}
+      />,
+    );
+    expect(weightValueText()).toBe("100");
+  });
+
+  it("does not clobber typed input when history resolves after the user started typing", async () => {
+    const user = userEvent.setup();
+    const { rerender } = renderGated({ historyLoaded: false });
+    // The keypad still works pre-prefill; user types 80.
+    await user.click(screen.getByRole("button", { name: /^8$/ }));
+    await user.click(screen.getByRole("button", { name: /^0$/ }));
+    expect(weightValueText()).toBe("80");
+
+    rerender(
+      <SetLogSheet
+        open={true}
+        onOpenChange={vi.fn()}
+        sessionExercise={makeSessionExercise()}
+        blockIndex={0}
+        setIndex={0}
+        existingSet={undefined}
+        suggestion={{ blockIndex: 0, suggestedWeightKg: 100, isProgression: false, previousWeightKg: 100 }}
+        lastTime={undefined}
+        blockSetsInSession={[]}
+        historyLoaded={true}
+        units="kg"
+        onSave={vi.fn()}
+      />,
+    );
+    // Late-arriving history must not overwrite what the user typed.
+    expect(weightValueText()).toBe("80");
+  });
+
+  it("edit mode prefills from existingSet without waiting for history", () => {
+    render(
+      <SetLogSheet
+        open={true}
+        onOpenChange={vi.fn()}
+        sessionExercise={makeSessionExercise()}
+        blockIndex={0}
+        setIndex={0}
+        existingSet={makeLoggedSet({ performedWeightKg: 80, performedReps: 10 })}
+        suggestion={undefined}
+        lastTime={undefined}
+        blockSetsInSession={[]}
+        historyLoaded={false}
+        units="kg"
+        onSave={vi.fn()}
+      />,
+    );
+    expect(weightValueText()).toBe("80");
+    expect(repsValueText()).toBe("10");
+  });
+});
+
+describe("SetLogSheet — hidden measures never save", () => {
+  it("cardio extra saves null weight/reps even when stale props carried them (poisoning fix)", async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn().mockResolvedValue(undefined);
+    const cardioExtra = makeSessionExercise({
+      effectiveType: "cardio",
+      effectiveEquipment: "cardio",
+      origin: "extra",
+      setBlocksSnapshot: [],
+    });
+    render(
+      <SetLogSheet
+        open={true}
+        onOpenChange={vi.fn()}
+        sessionExercise={cardioExtra}
+        blockIndex={0}
+        setIndex={0}
+        existingSet={undefined}
+        // Hostile props: a suggestion/lastTime that should never exist for an
+        // extra (invariant 7). Even if prefill stores them in hidden field
+        // state, the save must not include them.
+        suggestion={{ blockIndex: 0, suggestedWeightKg: 20, isProgression: false, previousWeightKg: 20 }}
+        lastTime={{
+          blockIndex: 0,
+          blockLabel: "",
+          tag: null,
+          sets: [{ weightKg: 20, reps: 12, durationSec: null, distanceM: null }],
+        }}
+        blockSetsInSession={[]}
+        historyLoaded={true}
+        units="kg"
+        onSave={onSave}
+      />,
+    );
+
+    await user.type(screen.getByLabelText(/duration \(minutes\)/i), "20");
+    await user.type(screen.getByLabelText(/distance \(meters\)/i), "5000");
+    await user.click(screen.getByRole("button", { name: /^save$/i }));
+
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+    expect(onSave.mock.calls[0]![0]).toEqual(
+      expect.objectContaining({
+        performedWeightKg: null,
+        performedReps: null,
+        performedDurationSec: 1200, // 20 min
+        performedDistanceM: 5000,
+      }),
+    );
+  });
+
+  it("a weight+reps block saves null duration/distance", async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn().mockResolvedValue(undefined);
+    renderSheet({ onSave });
+    await user.keyboard("85");
+    await user.click(screen.getByRole("button", { name: /reps value/i }));
+    await user.click(screen.getByRole("button", { name: /^1$/ }));
+    await user.click(screen.getByRole("button", { name: /^0$/ }));
+    await user.click(screen.getByRole("button", { name: /^save$/i }));
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+    expect(onSave.mock.calls[0]![0]).toEqual(
+      expect.objectContaining({
+        performedWeightKg: 85,
+        performedReps: 10,
+        performedDurationSec: null,
+        performedDistanceM: null,
+      }),
+    );
+  });
+});
+
+describe("SetLogSheet — pristine replace", () => {
+  it("first digit replaces a prefilled weight; further digits append", async () => {
+    const user = userEvent.setup();
+    renderSheet({
+      suggestion: { blockIndex: 0, suggestedWeightKg: 52.5, isProgression: false, previousWeightKg: 52.5 },
+    });
+    expect(weightValueText()).toBe("52.5");
+    await user.click(screen.getByRole("button", { name: /^5$/ }));
+    expect(weightValueText()).toBe("5");
+    await user.click(screen.getByRole("button", { name: /^0$/ }));
+    expect(weightValueText()).toBe("50");
+  });
+
+  it("re-focusing a field re-arms replace", async () => {
+    const user = userEvent.setup();
+    renderSheet({
+      suggestion: { blockIndex: 0, suggestedWeightKg: 100, isProgression: false, previousWeightKg: 100 },
+    });
+    // Type into weight (no longer pristine), hop to reps and back.
+    await user.click(screen.getByRole("button", { name: /^9$/ }));
+    expect(weightValueText()).toBe("9");
+    await user.click(screen.getByRole("button", { name: /reps value/i }));
+    await user.click(screen.getByRole("button", { name: /weight value/i }));
+    // Re-focused → next digit replaces again.
+    await user.click(screen.getByRole("button", { name: /^7$/ }));
+    expect(weightValueText()).toBe("7");
+  });
+
+  it("first digit replaces prefilled reps (honest-reps edit = focus + digits)", async () => {
+    const user = userEvent.setup();
+    renderSheet(); // reps prefilled to minValue 8
+    await user.click(screen.getByRole("button", { name: /reps value/i }));
+    await user.click(screen.getByRole("button", { name: /^1$/ }));
+    await user.click(screen.getByRole("button", { name: /^0$/ }));
+    expect(repsValueText()).toBe("10");
   });
 });
 
