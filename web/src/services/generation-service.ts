@@ -34,7 +34,11 @@ function buildRepairPrompt(errors: ValidationError[]): string {
     "Your previous routine failed validation with these errors:\n\n" +
     `${lines}\n\n` +
     "Fix exactly these problems and return the complete corrected routine. " +
-    "Do not change anything that was not flagged."
+    "Do not change anything that was not flagged.\n\n" +
+    "Note: error paths refer to a converted form of your routine — " +
+    "`days.<id>` means the entry in your `days` array with that `id`, and " +
+    "`reps`/`duration`/`distance` values (or `[min, max]` ranges) correspond " +
+    "to your `target_kind` with `exact_value` (or `min_value`/`max_value`)."
   );
 }
 

@@ -98,8 +98,8 @@ export default function OnboardingWelcomeScreen() {
           <span>Your starter routine is ready.</span>
         </h1>
         <p className="text-sm text-ink-2 leading-relaxed">
-          Three rotating days you can train today. Or build a personalized
-          routine with the GPT — your call.
+          Three rotating days you can train today. Or answer a short
+          questionnaire and let AI build a personalized routine — your call.
         </p>
       </div>
 
