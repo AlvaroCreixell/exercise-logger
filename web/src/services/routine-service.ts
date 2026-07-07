@@ -129,19 +129,30 @@ export async function validateAndNormalizeRoutine(
   yamlString: string,
   exerciseLookup: Map<string, Exercise>
 ): Promise<ValidateRoutineResult> {
-  const errors: ValidationError[] = [];
-
-  // Parse YAML
-  let raw: RawRoutine;
+  let raw: unknown;
   try {
     const YAML = await loadYaml();
-    raw = YAML.parse(yamlString) as RawRoutine;
+    raw = YAML.parse(yamlString);
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : "Unknown parse error";
     return { ok: false, errors: [{ path: "", message: `Invalid YAML: ${message}` }] };
   }
+  return validateRoutineObject(raw, exerciseLookup);
+}
 
-  if (raw == null || typeof raw !== "object") {
+/**
+ * Validate and normalize an already-parsed routine object (the raw YAML
+ * contract shape). Synchronous — used by the LLM generation path, which
+ * produces JSON directly, and by validateAndNormalizeRoutine after parsing.
+ */
+export function validateRoutineObject(
+  rawInput: unknown,
+  exerciseLookup: Map<string, Exercise>
+): ValidateRoutineResult {
+  const errors: ValidationError[] = [];
+  const raw = rawInput as RawRoutine;
+
+  if (raw == null || typeof raw !== "object" || Array.isArray(raw)) {
     return {
       ok: false,
       errors: [{ path: "", message: "YAML must be a mapping (object), not a scalar or list" }],

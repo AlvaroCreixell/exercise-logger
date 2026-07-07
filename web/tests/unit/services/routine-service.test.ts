@@ -3,6 +3,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { ExerciseLoggerDB } from "@/db/database";
 import {
   validateAndNormalizeRoutine,
+  validateRoutineObject,
   importRoutine,
   validateParseAndImportRoutine,
   type ValidationError,
@@ -1587,5 +1588,60 @@ days:
 `;
     const result = await validateAndNormalizeRoutine(yaml, exerciseLookup);
     expect(result.ok).toBe(true);
+  });
+});
+
+describe("validateRoutineObject", () => {
+  it("validates a parsed object without YAML", () => {
+    const raw = {
+      version: 1,
+      name: "Object Routine",
+      rest_default_sec: 90,
+      rest_superset_sec: 60,
+      day_order: ["A"],
+      days: {
+        A: {
+          label: "Day A",
+          entries: [
+            { exercise_id: "barbell-back-squat", sets: [{ reps: [5, 8], count: 3 }] },
+          ],
+        },
+      },
+    };
+    const result = validateRoutineObject(raw, VALID_LOOKUP);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.routine.name).toBe("Object Routine");
+      expect(result.routine.dayOrder).toEqual(["A"]);
+    }
+  });
+
+  it("rejects a non-object input with a top-level error", () => {
+    const result = validateRoutineObject("not an object", VALID_LOOKUP);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errors[0]!.message).toContain("mapping");
+    }
+  });
+
+  it("collects the same semantic errors as the YAML path", () => {
+    const raw = {
+      version: 1,
+      name: "Bad",
+      rest_default_sec: 90,
+      rest_superset_sec: 60,
+      day_order: ["A"],
+      days: {
+        A: {
+          label: "Day A",
+          entries: [{ exercise_id: "not-a-real-exercise", sets: [{ reps: [5, 8], count: 3 }] }],
+        },
+      },
+    };
+    const result = validateRoutineObject(raw, VALID_LOOKUP);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errors.some((e) => e.message.includes("not-a-real-exercise"))).toBe(true);
+    }
   });
 });
