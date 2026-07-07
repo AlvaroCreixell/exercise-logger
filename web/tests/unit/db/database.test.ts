@@ -39,6 +39,8 @@ describe("ExerciseLoggerDB", () => {
       keepScreenOn: true,
       restCueHaptic: true,
       restCueSound: false,
+      // Anthropic API key (Dexie v5): "" = not configured.
+      llmApiKey: "",
     });
   });
 

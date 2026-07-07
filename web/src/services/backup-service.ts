@@ -94,7 +94,7 @@ export async function exportBackup(
       sessions,
       sessionExercises,
       loggedSets,
-      settings,
+      settings: { ...settings, llmApiKey: "" },
     },
   };
 }
@@ -889,6 +889,15 @@ function validateSettings(
     }
   }
 
+  // llmApiKey (Dexie v5): string OR undefined for legacy backups. Exports
+  // strip it to "", so any value here is legacy/foreign — still type-check it.
+  if (s.llmApiKey !== undefined && typeof s.llmApiKey !== "string") {
+    errors.push({
+      field: `${path}.llmApiKey`,
+      message: "must be a string",
+    });
+  }
+
   // Pre-v3 backups may include a `theme` field; accept but ignore it.
   // It gets stripped in importBackup() before persisting.
 }
@@ -1153,6 +1162,9 @@ export async function importBackup(
   const { routines, sessions, sessionExercises, loggedSets, settings } =
     envelope.data;
 
+  const existingSettings = await db.settings.get("user");
+  const localLlmApiKey = existingSettings?.llmApiKey ?? "";
+
   // All-or-nothing transactional overwrite (invariant 12)
   // Active-session guard is INSIDE the transaction to prevent TOCTOU races
   await db.transaction(
@@ -1194,6 +1206,7 @@ export async function importBackup(
         keepScreenOn: settings.keepScreenOn ?? true,
         restCueHaptic: settings.restCueHaptic ?? true,
         restCueSound: settings.restCueSound ?? false,
+        llmApiKey: localLlmApiKey,
       };
       await db.settings.put(cleanSettings);
     }

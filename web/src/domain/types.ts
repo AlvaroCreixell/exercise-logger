@@ -286,4 +286,10 @@ export interface Settings {
   restCueHaptic: boolean;
   /** Play a short beep when the rest timer completes. Default false. */
   restCueSound: boolean;
+  /**
+   * Anthropic API key for in-app routine generation, entered by the user in
+   * Settings. Stored on-device only; stripped from backup exports. "" means
+   * "not configured" (empty-string sentinel, matching instanceLabel).
+   */
+  llmApiKey: string;
 }

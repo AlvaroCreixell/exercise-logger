@@ -107,6 +107,25 @@ export class ExerciseLoggerDB extends Dexie {
         });
       }
     });
+
+    // Version 5: Anthropic API key for in-app routine generation. Unindexed
+    // string, so the `.stores(...)` signature is identical to v4. "" is the
+    // "not configured" sentinel (never null — see the compound-index note on
+    // version 3).
+    this.version(5).stores({
+      exercises: "id",
+      routines: "id",
+      sessions: "id, status, [routineId+startedAt]",
+      sessionExercises: "id, sessionId, [sessionId+orderIndex]",
+      loggedSets:
+        "id, sessionId, [sessionExerciseId+blockIndex+setIndex], [exerciseId+loggedAt], [exerciseId+instanceLabel+blockSignature+loggedAt]",
+      settings: "id",
+    }).upgrade(async (trans) => {
+      const existing = await trans.table("settings").get("user");
+      if (existing) {
+        await trans.table("settings").update("user", { llmApiKey: "" });
+      }
+    });
   }
 }
 
@@ -124,6 +143,7 @@ export const DEFAULT_SETTINGS: Settings = {
   keepScreenOn: true,
   restCueHaptic: true,
   restCueSound: false,
+  llmApiKey: "",
 };
 
 /**
