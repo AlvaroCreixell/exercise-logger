@@ -145,4 +145,35 @@ describe("GenerationScreen", () => {
     await user.click(await screen.findByRole("button", { name: /regenerate/i }));
     await waitFor(() => expect(generateRoutine).toHaveBeenCalledTimes(2));
   });
+
+  it("no-key path: saving a key persists it and starts generation once", async () => {
+    const user = userEvent.setup();
+    vi.mocked(generateRoutine).mockResolvedValue({ ok: true, routine: fakeRoutine });
+    renderScreen();
+    // llmApiKey is "" from initializeSettings → key setup card shows.
+    const input = await screen.findByLabelText("Anthropic API key");
+    await user.type(input, "sk-ant-new-key");
+    await user.click(screen.getByRole("button", { name: /save and generate/i }));
+    await waitFor(() => expect(generateRoutine).toHaveBeenCalledTimes(1));
+    // setLlmApiKey is the real service — assert the key landed in the DB.
+    const settings = await db.settings.get("user");
+    expect(settings!.llmApiKey).toBe("sk-ant-new-key");
+    expect(await screen.findByText("Generated Plan")).toBeInTheDocument();
+  });
+
+  it("Settings re-entry: accept does not re-stamp onboardingCompletedAt", async () => {
+    const user = userEvent.setup();
+    const original = "2026-01-01T00:00:00.000Z";
+    await db.settings.update("user", {
+      llmApiKey: "sk-ant-x",
+      onboardingCompletedAt: original,
+    });
+    vi.mocked(generateRoutine).mockResolvedValue({ ok: true, routine: fakeRoutine });
+    renderScreen();
+    await user.click(await screen.findByRole("button", { name: /use this routine/i }));
+    expect(await screen.findByText("today")).toBeInTheDocument();
+    const settings = await db.settings.get("user");
+    expect(settings!.onboardingCompletedAt).toBe(original);
+    expect(settings!.activeRoutineId).toBe("r1");
+  });
 });
