@@ -185,3 +185,14 @@ export async function setUserName(
   const truncated = Array.from(trimmed).slice(0, 40).join("");
   await db.settings.update("user", { userName: truncated });
 }
+
+/**
+ * Set the Anthropic API key used for in-app routine generation.
+ * Trims outer whitespace; "" clears the key ("not configured").
+ */
+export async function setLlmApiKey(
+  db: ExerciseLoggerDB,
+  key: string
+): Promise<void> {
+  await db.settings.update("user", { llmApiKey: key.trim() });
+}

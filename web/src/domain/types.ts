@@ -270,15 +270,11 @@ export interface Settings {
    * null means "no name set" — UI falls back to "Hello.".
    */
   userName: string | null;
-  /** ISO UTC timestamp when the user completed the full onboarding flow (successful YAML import on Stage 2). null = not yet. */
+  /** ISO UTC timestamp when the user completed the full onboarding flow (successful routine generation or import). null = not yet. */
   onboardingCompletedAt: string | null;
   /** ISO UTC timestamp when the user skipped onboarding ("Maybe later" on welcome, or migrated-from-v2). null = not skipped. */
   onboardingSkippedAt: string | null;
-  /** The last prompt produced by `buildPrompt`, persisted on Stage 1 handoff button tap. null when no prompt has been generated. */
-  lastGeneratedPrompt: string | null;
-  /** ISO UTC timestamp matching `lastGeneratedPrompt`. null when `lastGeneratedPrompt` is null. */
-  lastGeneratedPromptAt: string | null;
-  /** ISO UTC timestamp when the user dismissed the Today "Finish importing your routine" banner. Reset to null whenever a new prompt is saved. */
+  /** ISO UTC timestamp when the user dismissed the Today "Finish setting up your routine" banner. Nothing resets this back to null — it stands until the wizard sessionStorage state is cleared (which hides the banner outright, see OnboardingBanner's render guard in TodayScreen) or onboarding completes. */
   onboardingBannerDismissedAt: string | null;
   /** Hold a screen wake lock while a workout session is active. Default true. */
   keepScreenOn: boolean;
@@ -286,4 +282,10 @@ export interface Settings {
   restCueHaptic: boolean;
   /** Play a short beep when the rest timer completes. Default false. */
   restCueSound: boolean;
+  /**
+   * Anthropic API key for in-app routine generation, entered by the user in
+   * Settings. Stored on-device only; stripped from backup exports. "" means
+   * "not configured" (empty-string sentinel, matching instanceLabel).
+   */
+  llmApiKey: string;
 }

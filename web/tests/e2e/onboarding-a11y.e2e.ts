@@ -1,10 +1,10 @@
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import {
+  completeQuestionnaire,
+  mockAnthropicRoutine,
   resetAppState,
-  seedCompletedPrompt,
-  seedSkippedUser,
-  stubClipboardAndWindowOpen,
+  seedLlmApiKey,
 } from "./helpers/onboarding-helpers";
 
 // We exclude the app's bottom navigation from axe scans. Its `text-ink-3`
@@ -77,51 +77,29 @@ test.describe("Onboarding a11y — axe-core", () => {
     await assertNoCriticalOrSerious(page);
   });
 
-  test("/onboarding/handoff Stage 2 has no critical/serious a11y violations", async ({
+  test("/onboarding/generate preview has no critical/serious a11y violations", async ({
     page,
   }) => {
-    // Guard: resetAppState's init script re-fires on every navigation, which
-    // would wipe the seeded settings when we goto the handoff route. Register
-    // a pre-reset wrapper on IDBFactory.deleteDatabase that no-ops once we've
-    // flagged the page as booted (same pattern used in
-    // onboarding-banner-recovery.e2e.ts).
-    await page.addInitScript(() => {
-      const realDelete = IDBFactory.prototype.deleteDatabase;
-      IDBFactory.prototype.deleteDatabase = function (
-        this: IDBFactory,
-        name: string
-      ) {
-        if (sessionStorage.getItem("e2e:a11y-handoff:booted") === "1") {
-          return {
-            onsuccess: null,
-            onerror: null,
-            onblocked: null,
-            onupgradeneeded: null,
-          } as unknown as IDBOpenDBRequest;
-        }
-        return realDelete.call(this, name);
-      };
-    });
     await resetAppState(page);
-    await stubClipboardAndWindowOpen(page);
+    await mockAnthropicRoutine(page);
 
-    // Boot once so useAppInit creates the settings row.
     await page.goto("/exercise-logger/");
     await expect(
       page.getByRole("heading", { name: /your starter routine is ready/i })
     ).toBeVisible({ timeout: 15_000 });
-
-    // Lock the DB so subsequent navigations keep our seeded state.
-    await page.evaluate(() =>
-      sessionStorage.setItem("e2e:a11y-handoff:booted", "1")
-    );
-    await seedSkippedUser(page);
-    await seedCompletedPrompt(page, "SCAN PROMPT");
-
-    await page.goto("/exercise-logger/onboarding/handoff");
+    await page
+      .getByRole("button", { name: /build personalized routine/i })
+      .click();
     await expect(
-      page.getByRole("heading", { name: /copy your prompt/i })
-    ).toBeVisible({ timeout: 15_000 });
+      page.getByRole("heading", { name: /What's your main goal/i })
+    ).toBeVisible({ timeout: 10_000 });
+
+    await seedLlmApiKey(page);
+    await completeQuestionnaire(page);
+
+    await expect(page.getByText("E2E Test Plan")).toBeVisible({
+      timeout: 15_000,
+    });
     // Skip color-contrast: text-meta and text-ink-3 against --paper are
     // pre-existing AA failures at the theme-token level. Documented in the
     // BOTTOM_NAV_SELECTOR exclude rationale above. A theme-wide a11y pass

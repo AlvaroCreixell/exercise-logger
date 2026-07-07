@@ -94,7 +94,7 @@ export async function exportBackup(
       sessions,
       sessionExercises,
       loggedSets,
-      settings,
+      settings: { ...settings, llmApiKey: "" },
     },
   };
 }
@@ -861,14 +861,12 @@ function validateSettings(
     });
   }
 
-  // Five timestamp fields: each string-or-null OR undefined for legacy
+  // Three timestamp fields: each string-or-null OR undefined for legacy
   // backups. importBackup normalizes missing fields to null via `?? null`,
   // matching live setter behavior. ISO format is intentionally not enforced.
   for (const field of [
     "onboardingCompletedAt",
     "onboardingSkippedAt",
-    "lastGeneratedPrompt",
-    "lastGeneratedPromptAt",
     "onboardingBannerDismissedAt",
   ] as const) {
     if (s[field] !== undefined && !isStringOrNull(s[field])) {
@@ -887,6 +885,15 @@ function validateSettings(
         message: "must be a boolean",
       });
     }
+  }
+
+  // llmApiKey (Dexie v5): string OR undefined for legacy backups. Exports
+  // strip it to "", so any value here is legacy/foreign — still type-check it.
+  if (s.llmApiKey !== undefined && typeof s.llmApiKey !== "string") {
+    errors.push({
+      field: `${path}.llmApiKey`,
+      message: "must be a string",
+    });
   }
 
   // Pre-v3 backups may include a `theme` field; accept but ignore it.
@@ -1153,6 +1160,9 @@ export async function importBackup(
   const { routines, sessions, sessionExercises, loggedSets, settings } =
     envelope.data;
 
+  const existingSettings = await db.settings.get("user");
+  const localLlmApiKey = existingSettings?.llmApiKey ?? "";
+
   // All-or-nothing transactional overwrite (invariant 12)
   // Active-session guard is INSIDE the transaction to prevent TOCTOU races
   await db.transaction(
@@ -1188,12 +1198,11 @@ export async function importBackup(
         userName: settings.userName ?? null,
         onboardingCompletedAt: settings.onboardingCompletedAt ?? null,
         onboardingSkippedAt: settings.onboardingSkippedAt ?? null,
-        lastGeneratedPrompt: settings.lastGeneratedPrompt ?? null,
-        lastGeneratedPromptAt: settings.lastGeneratedPromptAt ?? null,
         onboardingBannerDismissedAt: settings.onboardingBannerDismissedAt ?? null,
         keepScreenOn: settings.keepScreenOn ?? true,
         restCueHaptic: settings.restCueHaptic ?? true,
         restCueSound: settings.restCueSound ?? false,
+        llmApiKey: localLlmApiKey,
       };
       await db.settings.put(cleanSettings);
     }

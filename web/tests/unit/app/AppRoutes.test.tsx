@@ -32,7 +32,6 @@ beforeAll(async () => {
   await Promise.all([
     import("@/features/onboarding/OnboardingWelcomeScreen"),
     import("@/features/onboarding/QuestionnaireScreen"),
-    import("@/features/onboarding/HandoffScreen"),
     import("@/features/today/TodayScreen"),
     import("@/features/settings/SettingsScreen"),
   ]);
@@ -54,8 +53,6 @@ async function seedSettings(overrides: Partial<Settings> = {}) {
     userName: null,
     onboardingCompletedAt: null,
     onboardingSkippedAt: null,
-    lastGeneratedPrompt: null,
-    lastGeneratedPromptAt: null,
     onboardingBannerDismissedAt: null,
     ...overrides,
   });
@@ -184,24 +181,6 @@ describe("AppRoutes layout split", () => {
       </MemoryRouter>
     );
     await screen.findByRole("progressbar", undefined, { timeout: WAIT_TIMEOUT });
-    expect(
-      screen.queryByRole("navigation", { name: /main navigation/i })
-    ).not.toBeInTheDocument();
-  });
-
-  it("/onboarding/handoff has no Main navigation when a saved prompt exists", async () => {
-    await seedSettings({
-      lastGeneratedPrompt: "SAVED",
-      lastGeneratedPromptAt: new Date().toISOString(),
-      onboardingSkippedAt: new Date().toISOString(),
-    });
-    render(
-      <MemoryRouter initialEntries={["/onboarding/handoff"]}>
-        <AppRoutes />
-      </MemoryRouter>
-    );
-    // Wait for any onboarding heading.
-    await screen.findByRole("heading", undefined, { timeout: WAIT_TIMEOUT });
     expect(
       screen.queryByRole("navigation", { name: /main navigation/i })
     ).not.toBeInTheDocument();

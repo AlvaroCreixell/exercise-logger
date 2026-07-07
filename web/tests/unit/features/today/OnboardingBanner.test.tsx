@@ -9,7 +9,7 @@ function WithRouter({ onDismiss }: { onDismiss: () => void }) {
     <MemoryRouter initialEntries={["/"]}>
       <Routes>
         <Route path="/" element={<OnboardingBanner onDismiss={onDismiss} />} />
-        <Route path="/onboarding/handoff" element={<div>HANDOFF</div>} />
+        <Route path="/onboarding/questionnaire" element={<div>QUESTIONNAIRE</div>} />
       </Routes>
     </MemoryRouter>
   );
@@ -20,14 +20,14 @@ describe("OnboardingBanner", () => {
     render(<WithRouter onDismiss={() => {}} />);
     const banner = screen.getByRole("status");
     expect(banner).toBeInTheDocument();
-    expect(banner.textContent ?? "").toContain("Paste your routine YAML here");
+    expect(banner.textContent ?? "").toContain("Finish setting up your routine");
   });
 
-  it("clicking the body navigates to /onboarding/handoff", async () => {
+  it("clicking the body navigates to /onboarding/questionnaire", async () => {
     const user = userEvent.setup();
     render(<WithRouter onDismiss={() => {}} />);
-    await user.click(screen.getByRole("button", { name: /paste your routine/i }));
-    expect(await screen.findByText("HANDOFF")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /finish setting up your routine/i }));
+    expect(await screen.findByText("QUESTIONNAIRE")).toBeInTheDocument();
   });
 
   it("clicking × calls onDismiss and does NOT navigate", async () => {
@@ -36,6 +36,6 @@ describe("OnboardingBanner", () => {
     render(<WithRouter onDismiss={onDismiss} />);
     await user.click(screen.getByRole("button", { name: /dismiss banner/i }));
     expect(onDismiss).toHaveBeenCalledTimes(1);
-    expect(screen.queryByText("HANDOFF")).not.toBeInTheDocument();
+    expect(screen.queryByText("QUESTIONNAIRE")).not.toBeInTheDocument();
   });
 });

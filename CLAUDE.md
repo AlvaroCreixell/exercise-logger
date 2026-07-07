@@ -36,7 +36,7 @@ Layer-specific guides:
 
 ```bash
 cd web
-npm test              # 742 unit+integration tests (Vitest)
+npm test              # 1301 unit+integration tests (Vitest)
 npm run test:watch    # Watch mode
 npm run build         # Production build (includes PWA)
 npm run dev           # Dev server (localhost:5173)
@@ -55,6 +55,7 @@ npm run lint          # ESLint
 - **IDs:** UUIDs for records, slugified names for exercises (e.g., `barbell-back-squat`)
 - **Unit override:** Per-exercise unit choice stored on `SessionExercise.unitOverride`. Resolve with `getEffectiveUnit(se.unitOverride, globalUnits)`. `null` = inherit global.
 - **Weight precision:** `toCanonicalKg` and `toDisplayWeight` do not round to equipment increments. User input is stored and displayed with full precision. Only the progression engine's suggestions use `roundToIncrement`. Historical data logged before this change remains at its rounded values.
+- **LLM generation:** Routine generation calls Anthropic (claude-haiku-4-5) directly from the browser with the user's own key (Settings). Provider interface in services/llm/; validation reuses validateRoutineObject with a 2-attempt repair loop.
 
 ## Domain Invariants (enforced in services)
 

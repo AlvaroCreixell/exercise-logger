@@ -36,7 +36,7 @@ describe("SettingsScreen Profile section", () => {
   it("shows 'Not set' when userName is null", async () => {
     await seed();
     render(<WithRouter />);
-    expect(await screen.findByText(/not set/i)).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: /your name.*not set/i })).toBeInTheDocument();
   });
 
   it("editing and saving the name persists via setUserName", async () => {

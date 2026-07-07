@@ -9,6 +9,7 @@ import {
   setUnits,
   setUnitOverride,
   setUserName,
+  setLlmApiKey,
 } from "@/services/settings-service";
 import type { Routine, Session, SessionExercise } from "@/domain/types";
 
@@ -304,6 +305,21 @@ describe("settings-service", () => {
       await setUserName(db, null);
       const s = await getSettings(db);
       expect(s.userName).toBeNull();
+    });
+  });
+
+  describe("setLlmApiKey", () => {
+    it("stores the trimmed key on the settings record", async () => {
+      await setLlmApiKey(db, "  sk-ant-test-123  ");
+      const settings = await getSettings(db);
+      expect(settings.llmApiKey).toBe("sk-ant-test-123");
+    });
+
+    it("clears the key with an empty string", async () => {
+      await setLlmApiKey(db, "sk-ant-test-123");
+      await setLlmApiKey(db, "");
+      const settings = await getSettings(db);
+      expect(settings.llmApiKey).toBe("");
     });
   });
 });

@@ -4,7 +4,7 @@ The default route (`/`). Shows the active routine's current day, a "Start workou
 
 ## Screens
 
-- `TodayScreen.tsx` — Main layout. Composes the hero card, day selector, last session card, and streak pill. If there's an active session, renders a Resume Workout link card in place of the normal layout (honoring invariant 2: resume takes priority over start).
+- `TodayScreen.tsx` — Main layout. Composes the onboarding banner (conditionally), hero card, day selector, last session card, and streak pill. If there's an active session, renders a Resume Workout link card in place of the normal layout (honoring invariant 2: resume takes priority over start).
 
 ## Components
 
@@ -12,6 +12,7 @@ The default route (`/`). Shows the active routine's current day, a "Start workou
 - `DaySelector.tsx` — Lets the user pick a non-default day without advancing rotation.
 - `LastSessionCard.tsx` — Summary of the most recent finished session.
 - `StreakPill.tsx` — Training cadence badge (e.g., "3-day streak").
+- `OnboardingBanner.tsx` (`@/features/today/OnboardingBanner`) — Dismissable banner reading "Finish setting up your routine →". Tapping it navigates to `/onboarding/questionnaire`; the × button calls `dismissOnboardingBanner`. Rendered by `TodayScreen` only when all three are true: an in-progress wizard state exists in sessionStorage (`loadWizardState() !== null`), `settings.onboardingCompletedAt === null`, and `settings.onboardingBannerDismissedAt === null`. It is wizard-state driven, not prompt-driven — there is no saved-prompt concept anymore (see `docs/custom-gpt/DEPRECATED.md`).
 
 ## Local utilities (`lib/`)
 

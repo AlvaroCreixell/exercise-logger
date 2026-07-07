@@ -1,102 +1,95 @@
 import { test, expect } from "@playwright/test";
-import {
-  resetAppState,
-  seedCompletedPrompt,
-  seedSkippedUser,
-} from "./helpers/onboarding-helpers";
 
 test.describe("Onboarding banner recovery", () => {
-  test("banner shows → tap → Stage 2; dismiss persists; fresh prompt re-shows", async ({
+  test("banner shows for in-progress wizard state → tap resumes questionnaire; dismiss persists", async ({
     page,
   }) => {
-    // Guard: `resetAppState` deletes the Dexie DB via an init script that
-    // re-fires on every `page.reload()`. That would wipe the data we seed
-    // for this test. Register a wrapper around `IDBFactory.deleteDatabase`
-    // FIRST (init scripts run in registration order) so that, once we flag
-    // the page as "booted", later reloads skip the deletion and our seeded
-    // settings persist across reload.
-    await page.addInitScript(() => {
-      const realDelete = IDBFactory.prototype.deleteDatabase;
-      IDBFactory.prototype.deleteDatabase = function (
-        this: IDBFactory,
-        name: string,
-      ) {
-        if (sessionStorage.getItem("e2e:banner-recovery:booted") === "1") {
-          return {
-            onsuccess: null,
-            onerror: null,
-            onblocked: null,
-            onupgradeneeded: null,
-          } as unknown as IDBOpenDBRequest;
+    // Guard: unlike the shared `resetAppState` helper, this test's recovery
+    // signal is the wizard's sessionStorage state (not a Dexie field), and
+    // this test deliberately navigates away from the chrome-free onboarding
+    // routes back to Today via `page.goto()` — a real navigation that would
+    // re-run any init script. So we can't reuse `resetAppState` (it
+    // unconditionally deletes the DB *and* clears the wizard sessionStorage
+    // key on every navigation, which would wipe both the settings we rely on
+    // and the in-progress answers we're trying to recover). Instead: wipe
+    // once on the very first load, then no-op on every subsequent navigation
+    // once a "booted" flag is set.
+    const BOOT_FLAG = "e2e:banner-recovery:booted";
+    await page.addInitScript(
+      (flag) => {
+        if (sessionStorage.getItem(flag) === "1") return;
+        try {
+          indexedDB.deleteDatabase("ExerciseLoggerDB");
+        } catch {
+          /* ignore */
         }
-        return realDelete.call(this, name);
-      };
-    });
-    await resetAppState(page);
+        try {
+          sessionStorage.removeItem("exercise-logger:onboarding:in-progress");
+        } catch {
+          /* ignore */
+        }
+      },
+      BOOT_FLAG
+    );
 
-    // Boot once. Waiting for the welcome heading confirms `useAppInit` has
-    // finished (settings row created, starter routine activated) before we
-    // overwrite the settings row below.
     await page.goto("/");
     await expect(
-      page.getByRole("heading", { name: /your starter routine is ready/i }),
+      page.getByRole("heading", { name: /your starter routine is ready/i })
     ).toBeVisible({ timeout: 15_000 });
 
-    // Lock the DB: subsequent reloads must NOT wipe our seeded state.
-    await page.evaluate(() =>
-      sessionStorage.setItem("e2e:banner-recovery:booted", "1"),
-    );
-    await seedSkippedUser(page);
-    await seedCompletedPrompt(page, "SAVED PROMPT CONTENT\n\nDummy body.");
+    // Lock: subsequent navigations must not wipe our state.
+    await page.evaluate((flag) => sessionStorage.setItem(flag, "1"), BOOT_FLAG);
 
-    // The first-run gate navigated us to /onboarding. After seeding
-    // `onboardingSkippedAt`, navigate explicitly to the app root so the
-    // gate lets us through to Today. Use the full base path because the
-    // preview server only serves the app at `/exercise-logger/`.
-    await page.goto("/exercise-logger/");
+    await page.getByRole("button", { name: /use starter routine/i }).click();
+    await expect(page.getByRole("heading", { name: /hello/i })).toBeVisible({
+      timeout: 10_000,
+    });
 
-    // Today — banner visible.
-    await expect(page.getByRole("status")).toBeVisible({ timeout: 15_000 });
+    // No wizard state yet → no banner.
+    await expect(page.getByRole("status")).toBeHidden();
 
-    // Tap the banner body → handoff screen.
+    // Start (but don't finish) the personalized-routine wizard — this writes
+    // in-progress wizard state to sessionStorage.
+    await page.getByRole("link", { name: "Settings" }).click();
     await page
-      .getByRole("button", { name: /paste your routine yaml/i })
+      .getByRole("button", { name: /create a personalized routine/i })
       .click();
     await expect(
-      page.getByRole("heading", { name: /copy your prompt/i }),
+      page.getByRole("heading", { name: /What's your main goal/i })
     ).toBeVisible({ timeout: 10_000 });
-    // On the recovered handoff screen, the saved prompt body is visible.
+    await page.getByRole("button", { name: /^Build muscle$/i }).click();
     await expect(
-      page.getByRole("textbox", { name: /generated prompt/i })
-    ).toHaveValue(/SAVED PROMPT CONTENT/);
+      page.getByRole("heading", { name: /how experienced/i })
+    ).toBeVisible({ timeout: 5_000 });
 
-    // Reload — persists because lastGeneratedPrompt !== null.
-    await page.reload();
-    await expect(
-      page.getByRole("heading", { name: /copy your prompt/i }),
-    ).toBeVisible({ timeout: 10_000 });
-
-    // Back to Today, dismiss the banner. The Today nav link is no longer
-    // available from /onboarding/handoff (onboarding routes render under a
-    // chrome-free OnboardingLayout — see App.tsx), so navigate explicitly.
+    // Back to Today. Onboarding routes render under a chrome-free layout, so
+    // there's no nav link to use — navigate explicitly.
     await page.goto("/exercise-logger/");
-    await expect(page.getByRole("status")).toBeVisible();
+    await expect(page.getByRole("status")).toBeVisible({ timeout: 10_000 });
+    await expect(
+      page.getByText(/finish setting up your routine/i)
+    ).toBeVisible();
+
+    // Tap the banner → resumes the questionnaire at the saved step.
+    await page
+      .getByRole("button", { name: /finish setting up your routine/i })
+      .click();
+    await expect(page).toHaveURL(/\/onboarding\/questionnaire/);
+    await expect(
+      page.getByRole("heading", { name: /how experienced/i })
+    ).toBeVisible({ timeout: 10_000 });
+
+    // Back to Today, dismiss.
+    await page.goto("/exercise-logger/");
+    await expect(page.getByRole("status")).toBeVisible({ timeout: 10_000 });
     await page.getByRole("button", { name: /dismiss banner/i }).click();
     await expect(page.getByRole("status")).toBeHidden();
 
-    // Dismissal persists across reload. We goto() the explicit base path
-    // instead of reload() because the Today link resolves to a
-    // no-trailing-slash URL the preview server doesn't serve directly.
+    // Dismissal persists across reload.
     await page.goto("/exercise-logger/");
     await expect(page.getByRole("heading", { name: /hello/i })).toBeVisible({
       timeout: 10_000,
     });
     await expect(page.getByRole("status")).toBeHidden();
-
-    // Seed a fresh prompt — banner re-shows (seedCompletedPrompt resets the
-    // onboardingBannerDismissedAt field as part of its write).
-    await seedCompletedPrompt(page, "NEW SAVED PROMPT");
-    await page.goto("/exercise-logger/");
-    await expect(page.getByRole("status")).toBeVisible({ timeout: 10_000 });
   });
 });

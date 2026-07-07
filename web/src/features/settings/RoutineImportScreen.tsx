@@ -8,15 +8,11 @@ import {
   importAndActivateRoutine,
   type ValidationError,
 } from "@/services/routine-service";
-import {
-  markOnboardingCompleted,
-  clearLastPrompt,
-} from "@/services/onboarding-service";
+import { markOnboardingCompleted } from "@/services/onboarding-service";
 import { clearWizardState } from "@/features/onboarding/lib/session-storage";
 import { YamlErrorList } from "./YamlErrorList";
 import { PromptHeading } from "@/shared/components/PromptHeading";
 import { SectionHeader } from "@/shared/components/SectionHeader";
-import { GPT_URL } from "@/shared/lib/gpt-url";
 import { extractSharedYaml } from "@/shared/lib/extractSharedYaml";
 import { toast } from "sonner";
 
@@ -57,21 +53,18 @@ export default function RoutineImportScreen() {
         setErrors([{ path: "", message: activation.message }]);
         return false;
       }
-      // A successful import fulfills the GPT round-trip regardless of entry
-      // path (share sheet, clipboard, file, manual paste). Mirror the handoff
-      // success side effects so the first-run gate never bounces the user
-      // back into onboarding and stale prompt/wizard artifacts don't linger.
+      // A successful import fulfills the onboarding round-trip regardless of
+      // entry path (share sheet, clipboard, file, manual paste, or the new
+      // generation flow). Mark onboarding completed so the first-run gate
+      // never bounces the user back into onboarding, and clear any
+      // in-progress wizard state so it doesn't linger.
       const current = await db.settings.get("user");
-      if (current) {
-        if (
-          current.onboardingCompletedAt === null &&
-          current.onboardingSkippedAt === null
-        ) {
-          await markOnboardingCompleted(db);
-        }
-        if (current.lastGeneratedPrompt !== null) {
-          await clearLastPrompt(db);
-        }
+      if (
+        current &&
+        current.onboardingCompletedAt === null &&
+        current.onboardingSkippedAt === null
+      ) {
+        await markOnboardingCompleted(db);
       }
       clearWizardState();
       toast.success(`Routine "${result.routine.name}" imported and activated`);
@@ -136,20 +129,6 @@ export default function RoutineImportScreen() {
         <SectionHeader>Routine</SectionHeader>
         <PromptHeading command="Import routine" />
       </div>
-
-      <p className="text-sm leading-relaxed text-ink-2">
-        Go to{" "}
-        <a
-          href={GPT_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="font-medium text-accent-cli-bright underline underline-offset-2"
-        >
-          Ace Logger Routine Maker
-        </a>{" "}
-        and chat with the GPT about your personalised routine. Copy the YAML
-        answer and paste it below.
-      </p>
 
       <div className="space-y-2">
         <div className="flex items-center justify-between">

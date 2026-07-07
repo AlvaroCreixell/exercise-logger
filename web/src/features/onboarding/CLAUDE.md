@@ -1,6 +1,6 @@
 # Onboarding Feature
 
-Routes (Sprint C): `/onboarding`, `/onboarding/questionnaire`, `/onboarding/handoff` (Sprint D). First-run gate lives in `App.tsx`'s `AppRoutes` (Sprint D).
+Routes: `/onboarding`, `/onboarding/questionnaire`, `/onboarding/generate`. First-run gate lives in `App.tsx`'s `AppRoutes`. The custom-GPT copy/paste flow (`HandoffScreen`, saved-prompt lifecycle) was removed in favor of in-app generation — see `docs/custom-gpt/DEPRECATED.md`.
 
 ## Module shape
 
@@ -8,16 +8,18 @@ Routes (Sprint C): `/onboarding`, `/onboarding/questionnaire`, `/onboarding/hand
 features/onboarding/
   CLAUDE.md                    # this file
   lib/
-    types.ts                   # Answer / Answers / StepId — Sprint A
-    prompt-builder.ts          # pure buildPrompt(answers) — Sprint A
-    questionnaire-state.ts     # pure reducer + WizardState/WizardAction — Sprint B
-    session-storage.ts         # silent-fail sessionStorage helpers — Sprint B
+    types.ts                   # Answer / Answers / StepId
+    prompt-builder.ts          # pure buildPrompt(answers) — user-prompt half of generation
+    questionnaire-state.ts     # pure reducer + WizardState/WizardAction
+    session-storage.ts         # silent-fail sessionStorage helpers
   components/
-    WizardShell.tsx            # chrome, progress bar, close confirm, heading focus
-    ChipRow.tsx                # single-select chips (radiogroup when ≤5 options)
-    ChipMulti.tsx              # multi-select chips with optional exclusive value
-    ChipWithDescription.tsx    # vertical single-select with secondary descriptions
-    StepTextArea.tsx           # textarea + optional skip chip + character counter
+    WizardShell.tsx             # chrome, progress bar, close confirm, heading focus
+    ChipRow.tsx                 # single-select chips (radiogroup when ≤5 options)
+    ChipMulti.tsx                # multi-select chips with optional exclusive value
+    ChipWithDescription.tsx     # vertical single-select with secondary descriptions
+    StepTextArea.tsx             # textarea + optional skip chip + character counter
+    StarterRoutineSummary.tsx   # welcome-screen preview of the bundled starter routine
+    RoutinePreview.tsx           # generation-screen preview of a freshly generated Routine
   OnboardingWelcomeScreen.tsx    # route /onboarding
   QuestionnaireScreen.tsx        # route /onboarding/questionnaire (orchestrator)
   steps/
@@ -32,8 +34,7 @@ features/onboarding/
     FavoritesAvoidStep.tsx       # step 9 — two stacked StepTextAreas
     SupersetsStep.tsx            # step 10 — value/label divergence for "No"
     CardioStep.tsx               # step 11 — value/label divergence for "No cardio"
-  HandoffScreen.tsx              # route /onboarding/handoff (single recoverable screen)
-  components/LastPromptCard.tsx  # Settings card when lastGeneratedPrompt !== null
+  GenerationScreen.tsx           # route /onboarding/generate (LLM call, preview, accept)
 ```
 
 ## Invariants
@@ -41,45 +42,52 @@ features/onboarding/
 - **Reducer is pure.** `questionnaire-state.ts` imports only from `./types` and has no clock, no RNG, no storage. The orchestrator binds side effects via `useEffect`.
 - **sessionStorage is silent-fail.** `session-storage.ts` swallows every exception — private browsing, quota, missing sessionStorage — and degrades gracefully to "no resume."
 - **Exclusivity lives in `ChipMulti`.** The reducer stores whatever values array it receives; the mutual-exclusion rule for "Bodyweight only" is enforced inside `ChipMulti.nextFor`.
-- **Prompt co-ships with the GPT instructions.** `prompt-builder.ts` and `docs/custom-gpt/workout-routine-gpt.instructions.md` must be updated in the same commit when the intake topics or lead-in text change.
+- **The user prompt co-ships with the system prompt.** `prompt-builder.ts` (`buildPrompt(answers)`, the user-turn half of a generation request) and `@/services/llm/system-prompt.ts` (`buildSystemPrompt(exercises)`, the system-turn half) must be updated together when the intake topics, their renderings, or the lead-in/trailing text change — they are read together by `generation-service.generateRoutine`.
 
 ## Routes owned by this feature
 
-| Route | Component | Sprint |
+| Route | Component | Notes |
 |---|---|---|
-| `/onboarding` | `OnboardingWelcomeScreen` | C |
-| `/onboarding/questionnaire` | `QuestionnaireScreen` | C |
-| `/onboarding/handoff` | `HandoffScreen` | D |
+| `/onboarding` | `OnboardingWelcomeScreen` | Name capture, starter-routine preview, entry point |
+| `/onboarding/questionnaire` | `QuestionnaireScreen` | 11-step wizard orchestrator |
+| `/onboarding/generate` | `GenerationScreen` | LLM call → preview → accept/regenerate |
 
-## Services the feature consumes (Sprint C/D)
+## Services the feature consumes
 
 - `setUserName` from `@/services/settings-service` (welcome screen).
-- `markOnboardingCompleted`, `markOnboardingSkipped`, `saveGeneratedPrompt`, `clearLastPrompt`, `dismissOnboardingBanner` from `@/services/onboarding-service`.
-- `buildPrompt` from `./lib/prompt-builder` (HandoffScreen — builds prompt from sessionStorage when justCompleted).
-- `importAndActivateRoutine`, `validateAndNormalizeRoutine` from `@/services/routine-service` (HandoffScreen YAML import).
+- `markOnboardingCompleted`, `markOnboardingSkipped`, `dismissOnboardingBanner` from `@/services/onboarding-service`.
+- `buildPrompt` from `./lib/prompt-builder` — consumed indirectly via `generateRoutine` (see below), not called directly by any screen.
+- `generateRoutine` from `@/services/generation-service` (GenerationScreen — the LLM round trip + validation + repair loop).
+- `createAnthropicProvider` from `@/services/llm/anthropic-provider` (GenerationScreen — builds the `LlmProvider` from the saved/just-entered API key).
+- `setLlmApiKey` from `@/services/settings-service` (GenerationScreen's inline "no key yet" form).
+- `importAndActivateRoutine` from `@/services/routine-service` (GenerationScreen — accepting the previewed routine).
 
 ## Shared primitives reused
 
-- `ConfirmDialog` from `@/shared/components/ConfirmDialog` — wizard exit confirm, "Start over" confirm.
-- `Button`, `Textarea` from `@/shared/ui/*`.
+- `ConfirmDialog` from `@/shared/components/ConfirmDialog` — wizard exit confirm, welcome-screen "Start over" confirm.
+- `Button`, `Input`, `Card` from `@/shared/ui/*`.
 - `cn()` from `@/shared/lib/utils` for conditional class composition.
-- `GPT_URL` from `@/shared/lib/gpt-url` (HandoffScreen "Open GPT" anchor href).
+- `YamlErrorList` from `@/features/settings/YamlErrorList` — reused by `GenerationScreen`'s `"validation"` failure view to render the same `ValidationError[]` shape the manual YAML importer shows.
 
 ## First-run gate
 
-Wired in `@/app/App.tsx:AppRoutes`. Three guards:
+Wired in `@/app/App.tsx:AppRoutes`. Two guards (a third, the `/onboarding/handoff` guard, was removed along with `HandoffScreen`):
 
 1. `/` with `onboardingCompletedAt === null && onboardingSkippedAt === null` → redirect to `/onboarding`.
-2. `/onboarding` with `onboardingCompletedAt !== null` → redirect to `/`.
-3. `/onboarding/handoff` with `lastGeneratedPrompt === null` AND no `location.state.justCompleted === true` → redirect to `/onboarding/questionnaire`. The screen also re-checks this in a `useEffect` so it stays correct in isolation. The effect short-circuits when `onboardingCompletedAt !== null` so a successful import does not bounce back during the brief render between the settings write and `navigate("/")`.
+2. `/onboarding` with `onboardingCompletedAt !== null || onboardingSkippedAt !== null` → redirect to `/`.
 
-## Saved-prompt lifecycle
+There is no route-level guard on `/onboarding/generate`. `GenerationScreen` self-redirects instead: its mount effect checks `loadWizardState()` and navigates to `/onboarding/questionnaire` (`replace: true`) if no wizard state exists (or answers are empty) — so visiting `/onboarding/generate` directly, or after "Start over" cleared sessionStorage, bounces back to the questionnaire rather than 404ing or rendering blank.
 
-The `lastGeneratedPrompt` field is the single source of truth for what the user copied to GPT. Three rules:
+## Generation flow
 
-1. **Generate-time write** is centralized in `saveGeneratedPrompt(db, prompt)`. The HandoffScreen calls it from a `useEffect` once the prompt is built — it must NOT also reset `onboardingBannerDismissedAt`; the service does that.
-2. **Skipping to starter from the Welcome screen does NOT clear** the saved prompt. The Today banner (dismissable) and Settings → LastPromptCard remain available for resumption.
-3. **Explicit clears**: HandoffScreen "Start over", HandoffScreen successful YAML import, Welcome screen "Start over" (only when wizard state exists; clears wizard state AND the saved prompt). All three are user-initiated.
+Wizard state in `sessionStorage` (`lib/session-storage.ts`, key `exercise-logger:onboarding:in-progress`) is the single recovery source — there is no persisted "last prompt" anywhere in the database anymore. The Today onboarding banner (`@/features/today/OnboardingBanner.tsx`) keys off the same wizard state existing (`loadWizardState() !== null`), not off a saved-prompt field.
+
+1. **Answering.** `QuestionnaireScreen` persists `WizardState` (`{ stepIndex, answers }`) to sessionStorage on every state change via a `useEffect`. Reaching "Next" on the last step (index 10) navigates to `/onboarding/generate` — it does not clear wizard state.
+2. **Generating.** `GenerationScreen` is a small state machine over `Phase` (`"boot" | "generating" | "preview" | "error"`). On mount, once `settings` resolves: if there's no wizard state, redirect to the questionnaire; if `settings.llmApiKey === ""`, render an inline API-key form instead of auto-generating; otherwise call `generateRoutine(db, wizard.answers, createAnthropicProvider(apiKey))` exactly once (guarded by a `useRef`, StrictMode-safe). A successful key entry (`handleSaveKey`) or a manual retry (`handleRetry`) can also (re-)trigger generation.
+3. **Previewing.** On success, `phase` becomes `{ name: "preview", routine }` and renders `<RoutinePreview>` (days, set blocks, cardio, notes) with "Use this routine →" and "Regenerate" actions.
+4. **Accepting.** `handleAccept` calls `importAndActivateRoutine` (transactional insert + activate, invariant 10). On success it calls `markOnboardingCompleted` **only when `onboardingCompletedAt === null`** (so re-entering generation from Settings after onboarding is already complete doesn't re-stamp it), then `clearWizardState()`, then navigates to `/` — in that order, so a concurrent settings-driven re-check of wizard state can't race the navigation.
+5. **Failing.** Any provider error, prompt-build error, or exhausted repair loop lands in `{ name: "error", failure }`. The error copy is keyed by `failure.kind`; a `"validation"` failure additionally renders the final `ValidationError[]` via `YamlErrorList`. Every error state offers "Try again" and a manual-YAML-import escape hatch (`/settings/import`); an `"auth"` failure also links to `/settings`.
+6. **Clearing wizard state.** Only two paths clear it: `OnboardingWelcomeScreen`'s "Start over" confirm dialog, and `GenerationScreen.handleAccept` on successful activation. Neither the questionnaire nor the generation screen clears it on exit/error — abandoning either screen returns to a state the user can resume.
 
 ## Design tokens
 

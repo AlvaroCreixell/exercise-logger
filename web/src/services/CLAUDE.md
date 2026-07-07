@@ -43,23 +43,34 @@ Pure business logic functions. Every function takes `db: ExerciseLoggerDB` as it
 
 ### `onboarding-service.ts` — Onboarding state transitions
 
-All five functions are thin `db.settings.update("user", …)` calls. No transactions — the single-record updates don't interact with sessions, so no active-session guard is needed.
+All three functions are thin `db.settings.update("user", …)` calls. No transactions — the single-record updates don't interact with sessions, so no active-session guard is needed. (Two prior functions, `saveGeneratedPrompt` and `clearLastPrompt`, were removed with the custom-GPT copy/paste flow — the fields they wrote no longer exist on the `Settings` type. See `docs/custom-gpt/DEPRECATED.md`.)
 
-- `markOnboardingCompleted(db)` — sets `onboardingCompletedAt = nowISO()`. Called after a successful YAML import on the handoff screen.
+- `markOnboardingCompleted(db)` — sets `onboardingCompletedAt = nowISO()`. Called by `GenerationScreen.handleAccept` on first-run only (re-entry from Settings must not re-stamp completion).
 - `markOnboardingSkipped(db)` — sets `onboardingSkippedAt = nowISO()`. Called by "Maybe later" on the welcome screen.
-- `saveGeneratedPrompt(db, prompt)` — sets `lastGeneratedPrompt`, `lastGeneratedPromptAt = nowISO()`, and `onboardingBannerDismissedAt = null`. Called by the handoff screen's Stage-1 button. The banner-reset lives here — do not duplicate it in the HandoffScreen.
-- `clearLastPrompt(db)` — nulls `lastGeneratedPrompt` and `lastGeneratedPromptAt`. Does NOT touch `onboardingBannerDismissedAt`.
-- `dismissOnboardingBanner(db)` — sets `onboardingBannerDismissedAt = nowISO()`.
+- `dismissOnboardingBanner(db)` — sets `onboardingBannerDismissedAt = nowISO()`. Nothing resets this back to `null`.
 
 Also extended in this feature:
 
 - `settings-service.setUserName(db, name)` — trims, truncates to 40 codepoints (surrogate-safe), accepts `null` to clear.
+- `settings-service.setLlmApiKey(db, key)` — trims outer whitespace; `""` clears the key ("not configured").
+
+### `generation-service.ts` — Orchestrates one LLM routine generation
+
+- `generateRoutine(db, answers, provider)` → `GenerationResult` (`{ ok: true, routine } | { ok: false, failure: GenerationFailure }`) — Never throws. Builds the system prompt from the live exercise catalog (`llm/system-prompt.ts`), builds the user prompt from questionnaire `Answers` (`features/onboarding/lib/prompt-builder.ts`), then round-trips with the injected `LlmProvider`. The provider's structured output is converted to the YAML-contract object shape (`llm/routine-schema.ts:toRawRoutine`) and run through `validateRoutineObject` (routine-service). On validation failure, appends the assistant's raw output plus a repair-request message (listing the validation errors) to the conversation and retries, up to `MAX_REPAIR_ATTEMPTS = 2` additional round trips (3 attempts total). If all attempts fail validation, returns a `"validation"` failure carrying the last `ValidationError[]`. Provider errors (auth/network/rate-limit) short-circuit immediately as their own failure kind — no repair attempt.
+- Pure orchestration: no React; the provider is injected so tests can fake it; `db` is only read (the `exercises` table), never written.
+
+### `llm/` — Provider abstraction and Anthropic implementation
+
+- `types.ts` — `LlmProvider` interface (`generateRoutine(system, messages) => Promise<GeneratedRoutine>`), `ProviderMessage`, and `GenerationFailure` (an `Error` subclass carrying a `kind`: `"no-api-key" | "auth" | "rate-limit" | "network" | "validation" | "unknown"`, plus `validationErrors` for the `"validation"` kind). `GenerationScreen`'s error UI switches on `failure.kind`.
+- `anthropic-provider.ts` — `createAnthropicProvider(apiKey)` implements `LlmProvider` by calling `api.anthropic.com` directly from the browser (`dangerouslyAllowBrowser: true` — the SDK's documented bring-your-own-key opt-in) with model `ANTHROPIC_MODEL = "claude-haiku-4-5"`, `max_tokens: 8192`, one automatic SDK retry on 429/5xx, using `client.messages.parse(...)` with a `zodOutputFormat(generatedRoutineSchema)` structured-output config. The `@anthropic-ai/sdk` package and its zod helper are dynamically imported (`loadSdk()`, memoized) to keep them out of the main bundle — they load only when generation actually runs. `mapProviderError(err)` maps thrown errors to a typed `GenerationFailure` by HTTP status (401/403 → auth, 429/503/529 → rate-limit, no status → network, otherwise unknown). `testAnthropicKey(apiKey)` is a cheap free `models.retrieve` ping used by the Settings "Test connection" button.
+- `routine-schema.ts` — `generatedRoutineSchema` (zod): the structured-output schema mirrors the YAML contract but with `days` as an array (not a record — strict JSON schemas forbid dynamic keys) and no `version` field. `toRawRoutine(generated)` converts a schema-valid `GeneratedRoutine` into the YAML-contract raw object shape (deriving `day_order` from array order, injecting `version: 1`), for `validateRoutineObject` to validate/normalize. Constraints the zod schema can't express (min < max, positive values, count ≥ 1, catalog-ID membership, superset arity/balance, duplicate-label rules) are left to `validateRoutineObject`; `toRawRoutine` is total and never throws on schema-valid input.
+- `system-prompt.ts` — `buildSystemPrompt(exercises)` builds the model's system prompt from the live `exercises` table (so the catalog section can never drift from the seeded catalog) plus fixed structural/programming rules and a repair-request instruction. Successor to `docs/custom-gpt/workout-routine-gpt.instructions.md`.
 
 ### `backup-service.ts` — Export/import/clear
 
-- `exportBackup(db)` → BackupEnvelope — Excludes exercises (re-seeded from CSV). Allowed with active session.
+- `exportBackup(db)` → BackupEnvelope — Excludes exercises (re-seeded from CSV). Allowed with active session. Strips `settings.llmApiKey` to `""` so the device-local Anthropic key never leaves the device in an exported file.
 - `validateBackupPayload(json, catalogIds)` → errors[] — Deep validation: schema version, exerciseId refs, FK integrity, structural checks.
-- `importBackup(db, envelope)` → `{ hasActiveSession }` — Full overwrite in one transaction. Blocked if local active session.
+- `importBackup(db, envelope)` → `{ hasActiveSession }` — Full overwrite in one transaction. Blocked if local active session. Ignores any `llmApiKey` in the incoming envelope and preserves the importing device's own key (read before the transaction, written back into the settings record that replaces the imported one) — the key is device-local, not part of the portable backup.
 - `clearAllData(db)` → void — Deletes all except exercises. Recreates default settings. Blocked if active session.
 - `downloadBackupFile(envelope)` — Triggers browser download.
 
@@ -71,7 +82,8 @@ Also extended in this feature:
 
 ### `routine-service.ts` — YAML validation and normalization
 
-- `validateAndNormalizeRoutine(yaml, exerciseLookup)` → `Promise<{ ok, routine } | { ok, errors }>` — async (dynamic-imports yaml to keep the ~50kB library out of the main bundle). 11 validation rules, deterministic entryId/groupId generation, all errors collected with field paths.
+- `validateAndNormalizeRoutine(yaml, exerciseLookup)` → `Promise<{ ok, routine } | { ok, errors }>` — async (dynamic-imports yaml to keep the ~50kB library out of the main bundle). Parses the YAML string, then delegates to `validateRoutineObject`.
+- `validateRoutineObject(rawInput, exerciseLookup)` → `ValidateRoutineResult` — synchronous. The actual 11-rule validation/normalization engine (deterministic entryId/groupId generation, all errors collected with field paths); works on an already-parsed object, not a YAML string. Shared by `validateAndNormalizeRoutine` (YAML import path) and `generation-service.generateRoutine` (LLM path, which produces JSON directly and never touches YAML).
 - `importRoutine(db, routine)` — Simple `db.routines.put` (low-level; no settings mutation).
 - `importAndActivateRoutine(db, routine)` → `Promise<{ ok: true } | { ok: false, message: string }>` — Transactional: blocks with a message when a session is active (invariant 10), otherwise puts the routine and sets it as the active routine in one `rw` transaction. Used by the Settings Import screen.
 
