@@ -4,36 +4,6 @@ import type { Page } from "@playwright/test";
 export const STARTER_ROUTINE_NAME = "Full Body 3-Day Rotation";
 
 /**
- * A small but valid YAML routine used by the Stage-2 import in the first-run
- * and settings-relaunch E2Es. Import will activate this as the new routine,
- * so Today's hero card will show "E2E Test Routine" as the active routine
- * name — the test asserts on that.
- *
- * All exercise IDs are from the bundled catalog
- * (web/src/data/catalog.csv) — confirmed present.
- */
-export const E2E_ROUTINE_YAML = `version: 1
-name: "E2E Test Routine"
-rest_default_sec: 90
-rest_superset_sec: 60
-day_order: [A, B]
-
-days:
-  A:
-    label: "Upper"
-    entries:
-      - exercise_id: barbell-bench-press
-        sets:
-          - { reps: [6, 10], count: 3 }
-  B:
-    label: "Lower"
-    entries:
-      - exercise_id: barbell-back-squat
-        sets:
-          - { reps: [6, 10], count: 3 }
-`;
-
-/**
  * Delete the Dexie database and clear the wizard sessionStorage key BEFORE the
  * first page.goto in a test. Must be called before `page.goto(...)`.
  */
@@ -94,45 +64,6 @@ export async function readLastOpenedUrl(page: Page): Promise<string | null> {
 }
 
 /**
- * Seed `onboardingSkippedAt = nowISO()` directly into Dexie. Call AFTER the
- * app has booted (i.e., after page.goto and after waiting for initial render)
- * so the `settings` row exists.
- */
-export async function seedSkippedUser(page: Page): Promise<void> {
-  await page.evaluate(
-    ({ iso }: { iso: string }) =>
-      new Promise<void>((resolve, reject) => {
-        const req = indexedDB.open("ExerciseLoggerDB");
-        req.onsuccess = () => {
-          const db = req.result;
-          const tx = db.transaction("settings", "readwrite");
-          const store = tx.objectStore("settings");
-          const g = store.get("user");
-          g.onsuccess = () => {
-            const cur = g.result as Record<string, unknown> | undefined;
-            const next = {
-              id: "user",
-              activeRoutineId: cur?.activeRoutineId ?? null,
-              units: cur?.units ?? "kg",
-              userName: null,
-              onboardingCompletedAt: null,
-              onboardingSkippedAt: iso,
-              lastGeneratedPrompt: null,
-              lastGeneratedPromptAt: null,
-              onboardingBannerDismissedAt: null,
-            };
-            store.put(next);
-            tx.oncomplete = () => resolve();
-            tx.onerror = () => reject(tx.error);
-          };
-        };
-        req.onerror = () => reject(req.error);
-      }),
-    { iso: new Date().toISOString() }
-  );
-}
-
-/**
  * Post-page.goto helper for tests that want to skip past the first-run
  * gate and land on Today. If the welcome screen is currently visible,
  * tap "Use starter routine" and wait until Today (or at least any non-welcome
@@ -167,42 +98,128 @@ export async function skipOnboardingIfShown(page: Page): Promise<void> {
 }
 
 /**
- * Seed a completed prompt directly so Today's banner appears and
- * /onboarding/handoff lands on Stage 2 on reload.
+ * Walk all 11 questionnaire steps, starting from step 1 (Goal) and ending
+ * once the final step's auto-advance navigates to `/onboarding/generate`.
+ * Assumes the caller has already landed on step 1 — e.g. via the welcome
+ * screen's "Build personalized routine" button, or Settings' "Create a
+ * personalized routine" row.
  */
-export async function seedCompletedPrompt(
+export async function completeQuestionnaire(page: Page): Promise<void> {
+  // Step 1 — Goal. GoalStep uses ChipRow >5 → aria-pressed buttons.
+  await page.getByRole("button", { name: /^Build muscle$/i }).click();
+
+  // Step 2 — Experience. ChipWithDescription → click the label element.
+  await page.locator('label[for="experience-Intermediate"]').click();
+
+  // Step 3 — Restrictions: skip.
+  await page.getByRole("button", { name: /all clear — skip/i }).click();
+
+  // Step 4 — DaysPerWeek: 3.
+  await page.locator('label[for="days-per-week-3"]').click();
+
+  // Step 5 — SessionLength: 60 min.
+  await page.locator('label[for="session-length-60"]').click();
+
+  // Step 6 — DistinctDays: 3 (D10 — numbers only).
+  await page.locator('label[for="distinct-days-3"]').click();
+
+  // Step 7 — Equipment: Barbell + Dumbbells, then Next.
+  await page.getByRole("button", { name: /^barbell$/i }).click();
+  await page.getByRole("button", { name: /^dumbbells$/i }).click();
+  await page.getByRole("button", { name: /^next$/i }).click();
+
+  // Step 8 — Priorities: skip.
+  await page.getByRole("button", { name: /keep it balanced — skip/i }).click();
+
+  // Step 9 — FavoritesAvoid: leave both blank, tap Next.
+  await page.getByRole("button", { name: /^next$/i }).click();
+
+  // Step 10 — Supersets: Yes. ChipWithDescription → click the label.
+  await page.locator('label[for="supersets-Yes"]').click();
+
+  // Step 11 — Cardio: Yes. ChipRow ≤5 → click the label. Auto-advances to
+  // /onboarding/generate since this is the last step.
+  await page.locator('label[for="cardio-Yes"]').click();
+}
+
+/**
+ * A schema-valid GeneratedRoutine payload using real catalog IDs. The
+ * structured-outputs client parses the message's text content as JSON.
+ */
+export const MOCK_GENERATED_ROUTINE = {
+  name: "E2E Test Plan",
+  rest_default_sec: 90,
+  rest_superset_sec: 60,
+  days: [
+    {
+      id: "A",
+      label: "Full Body",
+      entries: [
+        {
+          kind: "exercise",
+          exercise: {
+            exercise_id: "barbell-back-squat",
+            instance_label: null,
+            notes: null,
+            sets: [
+              { target_kind: "reps", min_value: 5, max_value: 8, exact_value: null, count: 3, tag: null },
+            ],
+          },
+        },
+      ],
+    },
+  ],
+  notes: [],
+  cardio: null,
+};
+
+/** Intercept Anthropic's messages endpoint with a canned structured output. */
+export async function mockAnthropicRoutine(
   page: Page,
-  prompt: string
+  generated: unknown = MOCK_GENERATED_ROUTINE
 ): Promise<void> {
-  await page.evaluate(
-    ({ prompt, iso }: { prompt: string; iso: string }) =>
-      new Promise<void>((resolve, reject) => {
-        const req = indexedDB.open("ExerciseLoggerDB");
-        req.onsuccess = () => {
-          const db = req.result;
-          const tx = db.transaction("settings", "readwrite");
-          const store = tx.objectStore("settings");
-          const g = store.get("user");
-          g.onsuccess = () => {
-            const cur = g.result as Record<string, unknown> | undefined;
-            const next = {
-              id: "user",
-              activeRoutineId: cur?.activeRoutineId ?? null,
-              units: cur?.units ?? "kg",
-              userName: cur?.userName ?? null,
-              onboardingCompletedAt: cur?.onboardingCompletedAt ?? null,
-              onboardingSkippedAt: cur?.onboardingSkippedAt ?? iso,
-              lastGeneratedPrompt: prompt,
-              lastGeneratedPromptAt: iso,
-              onboardingBannerDismissedAt: null,
-            };
-            store.put(next);
-            tx.oncomplete = () => resolve();
-            tx.onerror = () => reject(tx.error);
-          };
-        };
-        req.onerror = () => reject(req.error);
+  await page.route("https://api.anthropic.com/**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        id: "msg_e2e_mock",
+        type: "message",
+        role: "assistant",
+        model: "claude-haiku-4-5",
+        content: [{ type: "text", text: JSON.stringify(generated) }],
+        stop_reason: "end_turn",
+        stop_sequence: null,
+        usage: { input_tokens: 100, output_tokens: 200 },
       }),
-    { prompt, iso: new Date().toISOString() }
-  );
+    });
+  });
+}
+
+/** Seed the API key straight into IndexedDB so tests skip the key card. */
+export async function seedLlmApiKey(page: Page, key = "sk-ant-e2e-test"): Promise<void> {
+  await page.evaluate(async (k) => {
+    const openReq = indexedDB.open("ExerciseLoggerDB");
+    await new Promise<void>((resolve, reject) => {
+      openReq.onsuccess = () => {
+        const idb = openReq.result;
+        const tx = idb.transaction("settings", "readwrite");
+        const store = tx.objectStore("settings");
+        const getReq = store.get("user");
+        getReq.onsuccess = () => {
+          const record = getReq.result;
+          if (record) {
+            record.llmApiKey = k;
+            store.put(record);
+          }
+        };
+        tx.oncomplete = () => {
+          idb.close();
+          resolve();
+        };
+        tx.onerror = () => reject(tx.error);
+      };
+      openReq.onerror = () => reject(openReq.error);
+    });
+  }, key);
 }
