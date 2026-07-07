@@ -15,7 +15,7 @@ function WithRouter() {
           path="/onboarding/questionnaire"
           element={<QuestionnaireScreen />}
         />
-        <Route path="/onboarding/handoff" element={<div>HANDOFF</div>} />
+        <Route path="/onboarding/generate" element={<div>GENERATE</div>} />
       </Routes>
     </MemoryRouter>
   );
@@ -68,8 +68,8 @@ describe("onboarding walkthrough (integration)", () => {
     // Step 11: Cardio — Yes.
     await user.click(await screen.findByLabelText("Yes"));
 
-    // After step-11 we navigate to HANDOFF.
-    expect(await screen.findByText("HANDOFF")).toBeInTheDocument();
+    // After step-11 we navigate to /onboarding/generate.
+    expect(await screen.findByText("GENERATE")).toBeInTheDocument();
 
     // Inspect sessionStorage and build the prompt.
     const stored = loadWizardState();
